@@ -98,10 +98,7 @@ export default function SystemsTable() {
 
 	useEffect(() => {
 		if (filter !== undefined) {
-			// empty filter must REMOVE the column filter: passing "" keeps the
-			// previous filtered row model around intermittently (TanStack quirk
-			// with the cached filterFn in systems-table-columns)
-			table.getColumn("system")?.setFilterValue(filter || undefined)
+			table.getColumn("system")?.setFilterValue(filter)
 		}
 	}, [filter])
 
