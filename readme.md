@@ -33,6 +33,16 @@ Beszel consists of two main components: the **hub** and the **agent**.
 
 The [quick start guide](https://beszel.dev/guide/getting-started) and other documentation is available on our website, [beszel.dev](https://beszel.dev). You'll be up and running in a few minutes.
 
+## Deployment (this fork)
+
+This fork ships one-click, self-hosted deployment kits for a local GPU-cluster dashboard (中文说明见各目录下的 readme）：
+
+- **Windows 10/11**: `deploy/windows` — `build.ps1` produces a portable folder with `beszel.exe`, `Monitor.exe` (launcher) and config templates; autostart via a scheduled task. See `deploy/windows/app/readme.md`.
+- **Linux / WSL**: `Linux` branch, `deploy/linux` — `./run.sh start` builds (Go only, web UI prebuilt) and starts the hub; optional systemd service via `install.sh`; agent installer for monitored GPU nodes. See `deploy/linux/readme.md`.
+- Windows 7/8 are not supported: the Go toolchain requires Windows 10+ and this dependency stack cannot build on older toolchains.
+
+Note for building on Windows from source: `go build ./...` over the whole module first needs `go generate -run fetchsmartctl ./agent` (fetches `smartctl.exe` for the agent's embed). Building just the hub (`go build ./internal/cmd/hub`) is unaffected.
+
 ## Screenshots
 
 ![Dashboard](https://beszel.dev/image/dashboard.png)
