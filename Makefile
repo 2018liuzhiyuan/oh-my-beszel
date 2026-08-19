@@ -66,27 +66,13 @@ build-web-ui:
 		npm run --prefix ./internal/site build; \
 	fi
 
-# Conditional .NET build - only for Windows
-build-dotnet-conditional:
-	@if [ "$(OS)" = "windows" ]; then \
-		echo "Building .NET executable for Windows..."; \
-		if command -v dotnet >/dev/null 2>&1; then \
-			rm -rf ./agent/lhm/bin; \
-			dotnet build -c Release ./agent/lhm/beszel_lhm.csproj; \
-		else \
-			echo "Error: dotnet not found. Install .NET SDK to build Windows agent."; \
-			exit 1; \
-		fi; \
-	fi
-
 # Download smartctl.exe at build time for Windows (skips if already present)
 fetch-smartctl-conditional:
 	@if [ "$(OS)" = "windows" ]; then \
 		go generate -run fetchsmartctl ./agent; \
 	fi
 
-# Update build-agent to include conditional .NET build
-build-agent: tidy build-dotnet-conditional fetch-smartctl-conditional
+build-agent: tidy fetch-smartctl-conditional
 	GOOS=$(OS) GOARCH=$(ARCH) go build $(AGENT_GO_TAGS) -o ./build/beszel-agent_$(OS)_$(ARCH)$(EXE_EXT) -ldflags "-w -s" ./internal/cmd/agent
 
 build-hub: tidy $(if $(filter false,$(SKIP_WEB)),build-web-ui)
@@ -127,15 +113,7 @@ dev-agent:
 	else \
 		go run $(AGENT_GO_TAGS) github.com/henrygd/beszel/internal/cmd/agent; \
 	fi
-	
-build-dotnet:
-	@if command -v dotnet >/dev/null 2>&1; then \
-		rm -rf ./agent/lhm/bin; \
-		dotnet build -c Release ./agent/lhm/beszel_lhm.csproj; \
-	else \
-		echo "dotnet not found"; \
-	fi
-
 
 # KEY="..." make -j dev
 dev: dev-server dev-hub dev-agent
+
