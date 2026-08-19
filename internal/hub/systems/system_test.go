@@ -8,6 +8,112 @@ import (
 	"github.com/henrygd/beszel/internal/entities/system"
 )
 
+func TestSetDashboardGpuInfo(t *testing.T) {
+	gb := 1024.0
+	tests := []struct {
+		name     string
+		gpus     map[string]system.GPUData
+		staleId  string
+		want     float64
+		wantSet  bool
+		wantId   string
+		wantFree uint16
+	}{
+		{
+			name: "aggregates memory and reports largest GPU's free VRAM",
+			gpus: map[string]system.GPUData{
+				"0": {MemoryUsed: 1 * gb, MemoryTotal: 8 * gb},
+				"1": {MemoryUsed: 1 * gb, MemoryTotal: 24 * gb},
+			},
+			want:     6.25,
+			wantSet:  true,
+			wantId:   "1",
+			wantFree: 23,
+		},
+		{
+			name: "ignores GPUs without a memory total",
+			gpus: map[string]system.GPUData{
+				"0": {MemoryUsed: 8},
+			},
+			want: 0,
+		},
+		{
+			name: "clamps invalid used memory",
+			gpus: map[string]system.GPUData{
+				"0": {MemoryUsed: 20, MemoryTotal: 16},
+			},
+			want:     100,
+			wantSet:  true,
+			wantId:   "0",
+			wantFree: 0,
+		},
+		{
+			name: "floors free VRAM to whole GB",
+			gpus: map[string]system.GPUData{
+				"0": {MemoryUsed: 0, MemoryTotal: 4*gb + 1023},
+			},
+			want:     0,
+			wantSet:  true,
+			wantId:   "0",
+			wantFree: 4,
+		},
+		{
+			name: "prefers the freest GPU when totals are equal",
+			gpus: map[string]system.GPUData{
+				"0": {MemoryUsed: 8 * gb, MemoryTotal: 8 * gb},
+				"1": {MemoryUsed: 0.5 * gb, MemoryTotal: 8 * gb},
+			},
+			want:     53.13,
+			wantSet:  true,
+			wantId:   "1",
+			wantFree: 7,
+		},
+		{
+			name: "breaks ties by numeric id",
+			gpus: map[string]system.GPUData{
+				"10": {MemoryTotal: gb},
+				"2":  {MemoryTotal: gb},
+			},
+			want:     0,
+			wantSet:  true,
+			wantId:   "2",
+			wantFree: 1,
+		},
+		{
+			name:    "clears stale GPU fields when no GPU data remains",
+			gpus:    map[string]system.GPUData{},
+			staleId: "0",
+			want:    0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data := &system.CombinedData{Stats: system.Stats{GPUData: tt.gpus}}
+			if tt.staleId != "" {
+				stalePct := 50.0
+				data.Info.GpuMemPct = &stalePct
+				data.Info.LargestGpuId = tt.staleId
+				data.Info.LargestGpuFreeGb = 7
+			}
+			setDashboardGpuInfo(data)
+			got := data.Info.GpuMemPct
+			if (got != nil) != tt.wantSet {
+				t.Fatalf("expected value presence %t, got %t", tt.wantSet, got != nil)
+			}
+			if got != nil && *got != tt.want {
+				t.Fatalf("expected %.2f%%, got %.2f%%", tt.want, *got)
+			}
+			if data.Info.LargestGpuId != tt.wantId {
+				t.Errorf("expected LargestGpuId %q, got %q", tt.wantId, data.Info.LargestGpuId)
+			}
+			if data.Info.LargestGpuFreeGb != tt.wantFree {
+				t.Errorf("expected LargestGpuFreeGb %d, got %d", tt.wantFree, data.Info.LargestGpuFreeGb)
+			}
+		})
+	}
+}
+
 func TestCombinedData_MigrateDeprecatedFields(t *testing.T) {
 	t.Run("Migrate NetworkSent and NetworkRecv to Bandwidth", func(t *testing.T) {
 		cd := &system.CombinedData{

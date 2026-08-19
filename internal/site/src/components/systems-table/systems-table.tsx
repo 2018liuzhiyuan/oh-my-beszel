@@ -69,7 +69,10 @@ export default function SystemsTable() {
 		sessionStorage
 	)
 	const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-	const [columnVisibility, setColumnVisibility] = useBrowserStorage<VisibilityState>("cols", {})
+	const [columnVisibility, setColumnVisibility] = useBrowserStorage<VisibilityState>("gpuDashboardColsV1", {
+		services: false,
+		agent: false,
+	})
 
 	const locale = i18n.locale
 
@@ -386,7 +389,6 @@ const AllSystemsTable = memo(
 )
 
 function SystemsTableHead({ table }: { table: TableType<SystemRecord> }) {
-	const { t } = useLingui()
 	return (
 		<TableHeader className="sticky top-0 z-50 w-full border-b-2">
 			{table.getHeaderGroups().map((headerGroup) => (
@@ -449,6 +451,8 @@ const SystemCard = memo(
 		const { t } = useLingui()
 
 		return useMemo(() => {
+			// build cell lookup once instead of searching per column
+			const cellsById = new Map(row.getAllCells().map((cell) => [cell.column.id, cell]))
 			return (
 				<Card
 					onMouseEnter={preloadSystemDetail}
@@ -480,7 +484,7 @@ const SystemCard = memo(
 						<div className="grid gap-2.5" style={{ gridTemplateColumns: "24px minmax(80px, max-content) 1fr" }}>
 							{table.getAllColumns().map((column) => {
 								if (!column.getIsVisible() || column.id === "system" || column.id === "actions") return null
-								const cell = row.getAllCells().find((cell) => cell.column.id === column.id)
+								const cell = cellsById.get(column.id)
 								if (!cell) return null
 								// @ts-expect-error
 								const { Icon, name } = column.columnDef as ColumnDef<SystemRecord, unknown>

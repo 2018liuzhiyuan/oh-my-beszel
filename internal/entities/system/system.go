@@ -155,6 +155,10 @@ type Info struct {
 	ExtraFsPct     map[string]float64 `json:"efs,omitempty" cbor:"21,keyasint,omitempty"`
 	Services       []uint16           `json:"sv,omitempty" cbor:"22,keyasint,omitempty"` // [totalServices, numFailedServices]
 	Battery        [2]uint8           `json:"bat,omitzero" cbor:"23,keyasint,omitzero"`  // [percent, charge state]
+	GpuMemPct      *float64           `json:"gm,omitempty" cbor:"24,keyasint,omitempty"`
+	// id of the GPU with the most VRAM, and its free VRAM (GB, floored)
+	LargestGpuId     string `json:"gi,omitempty" cbor:"25,keyasint,omitempty"`
+	LargestGpuFreeGb uint16 `json:"gf,omitempty" cbor:"26,keyasint,omitempty"`
 }
 
 // Data that does not change during process lifetime and is not needed in All Systems table

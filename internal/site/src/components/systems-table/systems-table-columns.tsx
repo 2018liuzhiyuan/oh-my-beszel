@@ -25,18 +25,9 @@ import {
 import { memo, useMemo, useRef, useState } from "react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip"
 import { isReadOnlyUser, pb } from "@/lib/api"
-import { BatteryState, ConnectionType, connectionTypeLabels, MeterState, SystemStatus } from "@/lib/enums"
+import { ConnectionType, connectionTypeLabels, MeterState, SystemStatus } from "@/lib/enums"
 import { $longestSystemNameLen, $userSettings } from "@/lib/stores"
-import {
-	cn,
-	copyToClipboard,
-	decimalString,
-	formatBytes,
-	formatTemperature,
-	parseSemVer,
-	secondsToUptimeString,
-} from "@/lib/utils"
-import { batteryStateTranslations } from "@/lib/i18n"
+import { cn, copyToClipboard, decimalString, formatBytes, secondsToUptimeString } from "@/lib/utils"
 import type { SystemRecord } from "@/types"
 import { SystemDialog } from "../add-system"
 import AlertButton from "../alerts/alert-button"
@@ -60,18 +51,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "../ui/dropdown-menu"
-import {
-	BatteryMediumIcon,
-	EthernetIcon,
-	GpuIcon,
-	HourglassIcon,
-	ThermometerIcon,
-	WebSocketIcon,
-	BatteryHighIcon,
-	BatteryLowIcon,
-	PlugChargingIcon,
-	BatteryFullIcon,
-} from "../ui/icons"
+import { EthernetIcon, GpuIcon, WebSocketIcon } from "../ui/icons"
 
 const STATUS_COLORS = {
 	[SystemStatus.Up]: "bg-green-500",
@@ -89,7 +69,7 @@ function getMeterStateByThresholds(value: number, warn = 65, crit = 90): MeterSt
  * @returns - Column definitions for the systems table
  */
 export function SystemsTableColumns(viewMode: "table" | "grid"): ColumnDef<SystemRecord>[] {
-	return [
+	const columns = [
 		{
 			// size: 200,
 			size: 100,
@@ -164,7 +144,7 @@ export function SystemsTableColumns(viewMode: "table" | "grid"): ColumnDef<Syste
 			header: sortableHeader,
 		},
 		{
-			accessorFn: ({ info }) => info.cpu || undefined,
+			accessorFn: ({ info }) => info.cpu,
 			id: "cpu",
 			name: () => t`CPU`,
 			cell: TableCellWithMeter,
@@ -173,7 +153,7 @@ export function SystemsTableColumns(viewMode: "table" | "grid"): ColumnDef<Syste
 		},
 		{
 			// accessorKey: "info.mp",
-			accessorFn: ({ info }) => info.mp || undefined,
+			accessorFn: ({ info }) => info.mp,
 			id: "memory",
 			name: () => t`Memory`,
 			cell: TableCellWithMeter,
@@ -181,7 +161,7 @@ export function SystemsTableColumns(viewMode: "table" | "grid"): ColumnDef<Syste
 			header: sortableHeader,
 		},
 		{
-			accessorFn: ({ info }) => info.dp || undefined,
+			accessorFn: ({ info }) => info.dp,
 			id: "disk",
 			name: () => t`Disk`,
 			cell: (info: CellContext<SystemRecord, unknown>) =>
@@ -190,48 +170,39 @@ export function SystemsTableColumns(viewMode: "table" | "grid"): ColumnDef<Syste
 			header: sortableHeader,
 		},
 		{
-			accessorFn: ({ info }) => info.g || undefined,
+			accessorFn: ({ info }) => info.g,
 			id: "gpu",
-			name: () => "GPU",
+			name: () => t({ message: "GPU_util", comment: "GPU utilization, systems table column" }),
 			cell: TableCellWithMeter,
 			Icon: GpuIcon,
 			header: sortableHeader,
 		},
 		{
-			id: "loadAverage",
-			accessorFn: ({ info }) => info.la?.reduce((acc, curr) => acc + curr, 0),
-			name: () => t({ message: "Load Avg", comment: "Short label for load average" }),
-			size: 0,
-			Icon: HourglassIcon,
+			accessorFn: ({ info }) => info.gm,
+			id: "vram",
+			name: () => t({ message: "VRAM", comment: "Video memory, systems table column" }),
+			cell: TableCellWithMeter,
+			Icon: MemoryStickIcon,
 			header: sortableHeader,
-			cell(info: CellContext<SystemRecord, unknown>) {
-				const { info: sysInfo, status } = info.row.original
-				const { major, minor } = parseSemVer(sysInfo.v)
-				const { colorWarn = 65, colorCrit = 90 } = useStore($userSettings, { keys: ["colorWarn", "colorCrit"] })
-				const loadAverages = sysInfo.la || []
-
-				const max = Math.max(...loadAverages)
-				if (max === 0 && (status === SystemStatus.Paused || (major < 1 && minor < 13))) {
+		},
+		{
+			accessorFn: ({ info }) => (info.gi === undefined ? undefined : (info.gf ?? 0)),
+			id: "gpuFree",
+			name: () => t({ message: "VRAM Free", comment: "Free VRAM of the GPU with the most VRAM, systems table column" }),
+			size: 50,
+			Icon: MemoryStickIcon,
+			header: sortableHeader,
+			sortUndefined: "last",
+			cell(info) {
+				const { gi, gf } = info.row.original.info
+				if (gi === undefined) {
 					return null
 				}
-
-				const normalizedLoad = max / (sysInfo.t ?? 1)
-				const threshold = getMeterStateByThresholds(normalizedLoad * 100, colorWarn, colorCrit)
-
+				const freeGb = gf ?? 0
 				return (
-					<div className="flex items-center gap-[.35em] w-full tabular-nums tracking-tight">
-						<span
-							className={cn("inline-block size-2 rounded-full me-0.5", {
-								[STATUS_COLORS[SystemStatus.Up]]: threshold === MeterState.Good,
-								[STATUS_COLORS[SystemStatus.Pending]]: threshold === MeterState.Warn,
-								[STATUS_COLORS[SystemStatus.Down]]: threshold === MeterState.Crit,
-								[STATUS_COLORS[SystemStatus.Paused]]: status !== SystemStatus.Up,
-							})}
-						/>
-						{loadAverages?.map((la, i) => (
-							<span key={i}>{decimalString(la, la >= 10 ? 1 : 2)}</span>
-						))}
-					</div>
+					<span className={cn("tabular-nums whitespace-nowrap", freeGb === 0 && "text-red-500")}>
+						{freeGb} GB,GPU_{gi}
+					</span>
 				)
 			},
 		},
@@ -254,74 +225,6 @@ export function SystemsTableColumns(viewMode: "table" | "grid"): ColumnDef<Syste
 					<span className="tabular-nums whitespace-nowrap">
 						{decimalString(value, value >= 100 ? 1 : 2)} {unit}
 					</span>
-				)
-			},
-		},
-		{
-			accessorFn: ({ info }) => info.dt,
-			id: "temp",
-			name: () => t({ message: "Temp", comment: "Temperature label in systems table" }),
-			size: 50,
-			hideSort: true,
-			Icon: ThermometerIcon,
-			header: sortableHeader,
-			cell(info) {
-				const val = info.getValue() as number
-				const userSettings = useStore($userSettings, { keys: ["unitTemp"] })
-				if (!val) {
-					return null
-				}
-				const { value, unit } = formatTemperature(val, userSettings.unitTemp)
-				return (
-					<span className={cn("tabular-nums whitespace-nowrap", viewMode === "table" && "ps-0.5")}>
-						{decimalString(value, value >= 100 ? 1 : 2)} {unit}
-					</span>
-				)
-			},
-		},
-		{
-			accessorFn: ({ info }) => info.bat?.[0],
-			id: "battery",
-			name: () => t({ message: "Bat", comment: "Battery label in systems table header" }),
-			size: 70,
-			Icon: BatteryMediumIcon,
-			header: sortableHeader,
-			hideSort: true,
-			cell(info) {
-				const [pct, state] = info.row.original.info.bat ?? []
-				if (pct === undefined) {
-					return null
-				}
-
-				let Icon = PlugChargingIcon
-				let iconColor = "text-muted-foreground"
-
-				if (state !== BatteryState.Charging) {
-					if (pct < 25) {
-						iconColor = pct < 11 ? "text-red-500" : "text-yellow-500"
-						Icon = BatteryLowIcon
-					} else if (pct < 75) {
-						Icon = BatteryMediumIcon
-					} else if (pct < 95) {
-						Icon = BatteryHighIcon
-					} else {
-						Icon = BatteryFullIcon
-					}
-				}
-
-				const stateLabel =
-					state !== undefined ? (batteryStateTranslations[state as BatteryState]?.() ?? undefined) : undefined
-
-				return (
-					<Link
-						tabIndex={-1}
-						href={getPagePath($router, "system", { id: info.row.original.id })}
-						className="flex items-center gap-1 tabular-nums tracking-tight relative z-10"
-						title={stateLabel}
-					>
-						<Icon className={cn("size-3.5", iconColor)} />
-						<span className="min-w-10">{pct}%</span>
-					</Link>
 				)
 			},
 		},
@@ -435,6 +338,27 @@ export function SystemsTableColumns(viewMode: "table" | "grid"): ColumnDef<Syste
 			),
 		},
 	] as ColumnDef<SystemRecord>[]
+
+	const preferredOrder = [
+		"system",
+		"gpu",
+		"vram",
+		"gpuFree",
+		"cpu",
+		"memory",
+		"net",
+		"disk",
+		"uptime",
+		"services",
+		"agent",
+		"actions",
+	]
+	const orderIndex = new Map(preferredOrder.map((id, index) => [id, index]))
+	return columns.sort((a, b) => {
+		const aIndex = orderIndex.get(a.id ?? "") ?? preferredOrder.length
+		const bIndex = orderIndex.get(b.id ?? "") ?? preferredOrder.length
+		return aIndex - bIndex
+	})
 }
 
 function sortableHeader(context: HeaderContext<SystemRecord, unknown>) {
@@ -457,7 +381,11 @@ function sortableHeader(context: HeaderContext<SystemRecord, unknown>) {
 
 function TableCellWithMeter(info: CellContext<SystemRecord, unknown>) {
 	const { colorWarn = 65, colorCrit = 90 } = useStore($userSettings, { keys: ["colorWarn", "colorCrit"] })
-	const val = Number(info.getValue()) || 0
+	const rawValue = info.getValue()
+	if (rawValue === undefined || rawValue === null) {
+		return null
+	}
+	const val = Number(rawValue) || 0
 	const threshold = getMeterStateByThresholds(val, colorWarn, colorCrit)
 	const meterClass = cn(
 		"h-full",

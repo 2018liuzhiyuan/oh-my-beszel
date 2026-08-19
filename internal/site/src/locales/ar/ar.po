@@ -245,11 +245,6 @@ msgstr "النسخ الاحتياطية"
 msgid "Bandwidth"
 msgstr "عرض النطاق الترددي"
 
-#. Battery label in systems table header
-#: src/components/systems-table/systems-table-columns.tsx
-msgid "Bat"
-msgstr "بطارية"
-
 #: src/components/routes/system/charts/sensor-charts.tsx
 #: src/lib/alerts.ts
 msgid "Battery"
@@ -872,6 +867,11 @@ msgstr "استهلاك طاقة وحدة معالجة الرسوميات"
 msgid "GPU Usage"
 msgstr "استخدام وحدة معالجة الرسوميات"
 
+#. GPU utilization, systems table column
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "GPU_util"
+msgstr ""
+
 #: src/components/routes/system/info-bar.tsx
 #: src/components/systems-table/systems-table.tsx
 msgid "Grid"
@@ -990,15 +990,11 @@ msgstr "متوسط التحميل 1 دقيقة"
 msgid "Load Average 5m"
 msgstr "متوسط التحميل 5 دقائق"
 
-#. Short label for load average
-#: src/components/systems-table/systems-table-columns.tsx
-msgid "Load Avg"
-msgstr "متوسط التحميل"
-
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Load state"
 msgstr "حالة التحميل"
 
+#: src/components/add-system.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Loading..."
 msgstr "جاري التحميل..."
@@ -1035,6 +1031,7 @@ msgstr "معرف العملية الرئيسي"
 msgid "Manage display and notification preferences."
 msgstr "إدارة تفضيلات العرض والإشعارات."
 
+#: src/components/add-system.tsx
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Manual setup instructions"
@@ -1111,6 +1108,7 @@ msgstr "وحدة الشبكة"
 msgid "No"
 msgstr "لا"
 
+#: src/components/add-system.tsx
 #: src/components/command-palette.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "No results found."
@@ -1337,6 +1335,8 @@ msgstr "قراءة"
 msgid "Received"
 msgstr "تم الاستلام"
 
+#: src/components/add-system.tsx
+#: src/components/add-system.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/routes/system/smart-table.tsx
@@ -1455,6 +1455,10 @@ msgstr "راجع <0>إعدادات الإشعارات</0> لتكوين كيفي�
 msgid "Select {foo}"
 msgstr "تحديد {foo}"
 
+#: src/components/add-system.tsx
+msgid "Select an SSH Host from your local SSH config."
+msgstr ""
+
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Send a single heartbeat ping to verify your endpoint is working."
 msgstr "أرسل ping نبضة قلب واحدة للتحقق من أن نقطة النهاية الخاصة بك تعمل."
@@ -1517,6 +1521,10 @@ msgstr "إعدادات SMTP"
 #: src/components/systems-table/systems-table.tsx
 msgid "Sort By"
 msgstr "الترتيب حسب"
+
+#: src/components/add-system.tsx
+msgid "SSH Host not found in ~/.ssh/config."
+msgstr ""
 
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
@@ -1594,9 +1602,7 @@ msgstr "تبويبات"
 msgid "Tasks"
 msgstr "المهام"
 
-#. Temperature label in systems table
 #: src/components/routes/system/smart-table.tsx
-#: src/components/systems-table/systems-table-columns.tsx
 msgid "Temp"
 msgstr "درجة الحرارة"
 
@@ -1867,6 +1873,16 @@ msgstr "عرض أحدث 200 تنبيه."
 #: src/components/systems-table/systems-table.tsx
 msgid "Visible Fields"
 msgstr "الأعمدة الظاهرة"
+
+#. Video memory, systems table column
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "VRAM"
+msgstr ""
+
+#. Free VRAM of the GPU with the most VRAM, systems table column
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "VRAM Free"
+msgstr ""
 
 #: src/components/routes/system/chart-card.tsx
 msgid "Waiting for enough records to display"

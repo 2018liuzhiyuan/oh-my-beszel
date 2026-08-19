@@ -240,11 +240,6 @@ msgstr "Backups"
 msgid "Bandwidth"
 msgstr "Bandwidth"
 
-#. Battery label in systems table header
-#: src/components/systems-table/systems-table-columns.tsx
-msgid "Bat"
-msgstr "Bat"
-
 #: src/components/routes/system/charts/sensor-charts.tsx
 #: src/lib/alerts.ts
 msgid "Battery"
@@ -867,6 +862,11 @@ msgstr "GPU Power Draw"
 msgid "GPU Usage"
 msgstr "GPU Usage"
 
+#. GPU utilization, systems table column
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "GPU_util"
+msgstr "GPU_util"
+
 #: src/components/routes/system/info-bar.tsx
 #: src/components/systems-table/systems-table.tsx
 msgid "Grid"
@@ -985,15 +985,11 @@ msgstr "Load Average 1m"
 msgid "Load Average 5m"
 msgstr "Load Average 5m"
 
-#. Short label for load average
-#: src/components/systems-table/systems-table-columns.tsx
-msgid "Load Avg"
-msgstr "Load Avg"
-
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Load state"
 msgstr "Load state"
 
+#: src/components/add-system.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Loading..."
 msgstr "Loading..."
@@ -1030,6 +1026,7 @@ msgstr "Main PID"
 msgid "Manage display and notification preferences."
 msgstr "Manage display and notification preferences."
 
+#: src/components/add-system.tsx
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Manual setup instructions"
@@ -1106,6 +1103,7 @@ msgstr "Network unit"
 msgid "No"
 msgstr "No"
 
+#: src/components/add-system.tsx
 #: src/components/command-palette.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "No results found."
@@ -1332,6 +1330,8 @@ msgstr "Read"
 msgid "Received"
 msgstr "Received"
 
+#: src/components/add-system.tsx
+#: src/components/add-system.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/routes/system/smart-table.tsx
@@ -1450,6 +1450,10 @@ msgstr "See <0>notification settings</0> to configure how you receive alerts."
 msgid "Select {foo}"
 msgstr "Select {foo}"
 
+#: src/components/add-system.tsx
+msgid "Select an SSH Host from your local SSH config."
+msgstr "Select an SSH Host from your local SSH config."
+
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Send a single heartbeat ping to verify your endpoint is working."
 msgstr "Send a single heartbeat ping to verify your endpoint is working."
@@ -1512,6 +1516,10 @@ msgstr "SMTP settings"
 #: src/components/systems-table/systems-table.tsx
 msgid "Sort By"
 msgstr "Sort By"
+
+#: src/components/add-system.tsx
+msgid "SSH Host not found in ~/.ssh/config."
+msgstr "SSH Host not found in ~/.ssh/config."
 
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
@@ -1589,9 +1597,7 @@ msgstr "Tabs"
 msgid "Tasks"
 msgstr "Tasks"
 
-#. Temperature label in systems table
 #: src/components/routes/system/smart-table.tsx
-#: src/components/systems-table/systems-table-columns.tsx
 msgid "Temp"
 msgstr "Temp"
 
@@ -1862,6 +1868,16 @@ msgstr "View your 200 most recent alerts."
 #: src/components/systems-table/systems-table.tsx
 msgid "Visible Fields"
 msgstr "Visible Fields"
+
+#. Video memory, systems table column
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "VRAM"
+msgstr "VRAM"
+
+#. Free VRAM of the GPU with the most VRAM, systems table column
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "VRAM Free"
+msgstr "VRAM Free"
 
 #: src/components/routes/system/chart-card.tsx
 msgid "Waiting for enough records to display"

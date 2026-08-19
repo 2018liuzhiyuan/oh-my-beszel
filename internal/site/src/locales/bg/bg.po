@@ -245,11 +245,6 @@ msgstr "Архиви"
 msgid "Bandwidth"
 msgstr "Bandwidth на мрежата"
 
-#. Battery label in systems table header
-#: src/components/systems-table/systems-table-columns.tsx
-msgid "Bat"
-msgstr "Бат"
-
 #: src/components/routes/system/charts/sensor-charts.tsx
 #: src/lib/alerts.ts
 msgid "Battery"
@@ -872,6 +867,11 @@ msgstr "Консумация на ток от графична карта"
 msgid "GPU Usage"
 msgstr "Употреба на GPU"
 
+#. GPU utilization, systems table column
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "GPU_util"
+msgstr ""
+
 #: src/components/routes/system/info-bar.tsx
 #: src/components/systems-table/systems-table.tsx
 msgid "Grid"
@@ -990,15 +990,11 @@ msgstr "Средно натоварване 1 минута"
 msgid "Load Average 5m"
 msgstr "Средно натоварване 5 минути"
 
-#. Short label for load average
-#: src/components/systems-table/systems-table-columns.tsx
-msgid "Load Avg"
-msgstr "Средно натоварване"
-
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Load state"
 msgstr "Състояние на зареждане"
 
+#: src/components/add-system.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Loading..."
 msgstr "Зареждане..."
@@ -1035,6 +1031,7 @@ msgstr "Главен PID"
 msgid "Manage display and notification preferences."
 msgstr "Управление на предпочитанията за показване и уведомяване."
 
+#: src/components/add-system.tsx
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Manual setup instructions"
@@ -1111,6 +1108,7 @@ msgstr "Единица за измерване на скорост"
 msgid "No"
 msgstr "Не"
 
+#: src/components/add-system.tsx
 #: src/components/command-palette.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "No results found."
@@ -1337,6 +1335,8 @@ msgstr "Прочети"
 msgid "Received"
 msgstr "Получени"
 
+#: src/components/add-system.tsx
+#: src/components/add-system.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/routes/system/smart-table.tsx
@@ -1455,6 +1455,10 @@ msgstr "Виж <0>настройките за нотификациите</0> з�
 msgid "Select {foo}"
 msgstr "Избери {foo}"
 
+#: src/components/add-system.tsx
+msgid "Select an SSH Host from your local SSH config."
+msgstr ""
+
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Send a single heartbeat ping to verify your endpoint is working."
 msgstr "Изпратете единичен heartbeat пинг, за да се уверите, че крайната Ви точка работи."
@@ -1517,6 +1521,10 @@ msgstr "Настройки за SMTP"
 #: src/components/systems-table/systems-table.tsx
 msgid "Sort By"
 msgstr "Сортиране по"
+
+#: src/components/add-system.tsx
+msgid "SSH Host not found in ~/.ssh/config."
+msgstr ""
 
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
@@ -1594,9 +1602,7 @@ msgstr "Табове"
 msgid "Tasks"
 msgstr "Задачи"
 
-#. Temperature label in systems table
 #: src/components/routes/system/smart-table.tsx
-#: src/components/systems-table/systems-table-columns.tsx
 msgid "Temp"
 msgstr "Температура"
 
@@ -1867,6 +1873,16 @@ msgstr "Прегледайте последните си 200 сигнала."
 #: src/components/systems-table/systems-table.tsx
 msgid "Visible Fields"
 msgstr "Видими полета"
+
+#. Video memory, systems table column
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "VRAM"
+msgstr ""
+
+#. Free VRAM of the GPU with the most VRAM, systems table column
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "VRAM Free"
+msgstr ""
 
 #: src/components/routes/system/chart-card.tsx
 msgid "Waiting for enough records to display"

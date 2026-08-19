@@ -245,11 +245,6 @@ msgstr "Zálohy"
 msgid "Bandwidth"
 msgstr "Přenos"
 
-#. Battery label in systems table header
-#: src/components/systems-table/systems-table-columns.tsx
-msgid "Bat"
-msgstr ""
-
 #: src/components/routes/system/charts/sensor-charts.tsx
 #: src/lib/alerts.ts
 msgid "Battery"
@@ -872,6 +867,11 @@ msgstr "Spotřeba energie GPU"
 msgid "GPU Usage"
 msgstr "Využití GPU"
 
+#. GPU utilization, systems table column
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "GPU_util"
+msgstr ""
+
 #: src/components/routes/system/info-bar.tsx
 #: src/components/systems-table/systems-table.tsx
 msgid "Grid"
@@ -990,15 +990,11 @@ msgstr "Průměrná zátěž 1m"
 msgid "Load Average 5m"
 msgstr "Průměrná zátěž 5m"
 
-#. Short label for load average
-#: src/components/systems-table/systems-table-columns.tsx
-msgid "Load Avg"
-msgstr "Prům. zatížení"
-
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Load state"
 msgstr "Stav načtení"
 
+#: src/components/add-system.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Loading..."
 msgstr "Načítání..."
@@ -1035,6 +1031,7 @@ msgstr "Hlavní PID"
 msgid "Manage display and notification preferences."
 msgstr "Správa nastavení zobrazení a oznámení."
 
+#: src/components/add-system.tsx
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Manual setup instructions"
@@ -1111,6 +1108,7 @@ msgstr "Síťová jednotka"
 msgid "No"
 msgstr "Ne"
 
+#: src/components/add-system.tsx
 #: src/components/command-palette.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "No results found."
@@ -1337,6 +1335,8 @@ msgstr "Číst"
 msgid "Received"
 msgstr "Přijato"
 
+#: src/components/add-system.tsx
+#: src/components/add-system.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/routes/system/smart-table.tsx
@@ -1455,6 +1455,10 @@ msgstr "Podívejte se na <0>nastavení upozornění</0> pro nastavení toho, jak
 msgid "Select {foo}"
 msgstr "Vybrat {foo}"
 
+#: src/components/add-system.tsx
+msgid "Select an SSH Host from your local SSH config."
+msgstr ""
+
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Send a single heartbeat ping to verify your endpoint is working."
 msgstr "Odešlete jeden heartbeat ping pro ověření funkčnosti vašeho koncového bodu."
@@ -1517,6 +1521,10 @@ msgstr "Nastavení SMTP"
 #: src/components/systems-table/systems-table.tsx
 msgid "Sort By"
 msgstr "Seřadit podle"
+
+#: src/components/add-system.tsx
+msgid "SSH Host not found in ~/.ssh/config."
+msgstr ""
 
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
@@ -1594,9 +1602,7 @@ msgstr "Karty"
 msgid "Tasks"
 msgstr "Úlohy"
 
-#. Temperature label in systems table
 #: src/components/routes/system/smart-table.tsx
-#: src/components/systems-table/systems-table-columns.tsx
 msgid "Temp"
 msgstr "Teplota"
 
@@ -1867,6 +1873,16 @@ msgstr "Zobrazit vašich 200 nejnovějších upozornění."
 #: src/components/systems-table/systems-table.tsx
 msgid "Visible Fields"
 msgstr "Viditelné sloupce"
+
+#. Video memory, systems table column
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "VRAM"
+msgstr ""
+
+#. Free VRAM of the GPU with the most VRAM, systems table column
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "VRAM Free"
+msgstr ""
 
 #: src/components/routes/system/chart-card.tsx
 msgid "Waiting for enough records to display"

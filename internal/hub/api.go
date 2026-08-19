@@ -115,6 +115,7 @@ func (h *Hub) registerApiRoutes(se *core.ServeEvent) error {
 	apiAuth.POST("/test-heartbeat", h.testHeartbeat).BindFunc(requireAdminRole)
 	// get config.yml content
 	apiAuth.GET("/config-yaml", config.GetYamlConfig).BindFunc(requireAdminRole)
+	apiAuth.GET("/ssh-hosts", getSSHHosts).BindFunc(excludeReadOnlyRole)
 	// handle agent websocket connection
 	apiNoAuth.GET("/agent-connect", h.handleAgentConnect)
 	// get or create universal tokens

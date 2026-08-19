@@ -2,8 +2,8 @@ import { t } from "@lingui/core/macro"
 import { Trans } from "@lingui/react/macro"
 import { useStore } from "@nanostores/react"
 import { getPagePath } from "@nanostores/router"
-import { ChevronDownIcon, ExternalLinkIcon } from "lucide-react"
-import { memo, useEffect, useRef, useState } from "react"
+import { ChevronDownIcon, ExternalLinkIcon, RefreshCwIcon } from "lucide-react"
+import { memo, useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
 	Dialog,
@@ -47,7 +47,7 @@ export function AddSystemDialog({ open, setOpen }: { open: boolean; setOpen: (op
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
-			{opened.current && <SystemDialog setOpen={setOpen} />}
+			{opened.current && <SystemDialog setOpen={setOpen} open={open} />}
 		</Dialog>
 	)
 }
@@ -58,19 +58,70 @@ export function AddSystemDialog({ open, setOpen }: { open: boolean; setOpen: (op
  */
 let nextSystemToken: string | null = null
 
+type SSHHost = {
+	name: string
+	hostName: string
+}
+
 /**
  * SystemDialog component for adding or editing a system.
  * @param {Object} props - The component props.
  * @param {function} props.setOpen - Function to set the open state of the dialog.
  * @param {SystemRecord} [props.system] - Optional system record for editing an existing system.
  */
-export const SystemDialog = ({ setOpen, system }: { setOpen: (open: boolean) => void; system?: SystemRecord }) => {
+export const SystemDialog = ({
+	setOpen,
+	system,
+	open,
+}: {
+	setOpen: (open: boolean) => void
+	system?: SystemRecord
+	open?: boolean
+}) => {
 	const publicKey = useStore($publicKey)
 	const port = useRef<HTMLInputElement>(null)
+	const [nameValue, setNameValue] = useState(system?.name ?? "")
 	const [hostValue, setHostValue] = useState(system?.host ?? "")
 	const isUnixSocket = hostValue.startsWith("/")
 	const [tab, setTab] = useBrowserStorage("as-tab", "docker")
 	const [token, setToken] = useState(system?.token ?? "")
+	const [quickMode, setQuickMode] = useState(!system)
+	const [sshHosts, setSSHHosts] = useState<SSHHost[]>([])
+	const [sshHostValue, setSSHHostValue] = useState("")
+	const [sshHostsLoading, setSSHHostsLoading] = useState(false)
+	const [sshHostsError, setSSHHostsError] = useState(false)
+	const selectedSSHHost = sshHosts.find((host) => host.name.toLowerCase() === sshHostValue.trim().toLowerCase())
+	const sshHostNotFound = sshHostValue.trim() !== "" && !selectedSSHHost && !sshHostsLoading
+
+	const loadSSHHosts = useCallback(async () => {
+		setSSHHostsLoading(true)
+		setSSHHostsError(false)
+		try {
+			const response = await pb.send<{ hosts: SSHHost[] }>("/api/beszel/ssh-hosts", {})
+			setSSHHosts(response.hosts)
+			setSSHHostsError(response.hosts.length === 0)
+		} catch (error) {
+			console.error(error)
+			setSSHHosts([])
+			setSSHHostsError(true)
+		} finally {
+			setSSHHostsLoading(false)
+		}
+	}, [])
+
+	useEffect(() => {
+		if (!system && open) {
+			loadSSHHosts().catch(console.error)
+		}
+	}, [loadSSHHosts, open, system])
+
+	useEffect(() => {
+		if (!quickMode) {
+			return
+		}
+		setNameValue(selectedSSHHost?.name ?? "")
+		setHostValue(selectedSSHHost?.hostName ?? "")
+	}, [quickMode, selectedSSHHost])
 
 	useEffect(() => {
 		;(async () => {
@@ -116,13 +167,18 @@ export const SystemDialog = ({ setOpen, system }: { setOpen: (open: boolean) => 
 		}
 	}
 
+	const getAgentPort = () => (isUnixSocket ? hostValue : port.current?.value || system?.port || "45876")
+
 	const systemTranslation = t`System`
 
 	return (
 		<DialogContent
 			className="w-[90%] sm:w-auto sm:ns-dialog max-w-full rounded-lg"
 			onCloseAutoFocus={() => {
+				setNameValue(system?.name ?? "")
 				setHostValue(system?.host ?? "")
+				setSSHHostValue("")
+				setQuickMode(!system)
 			}}
 		>
 			<Tabs defaultValue={tab} onValueChange={setTab}>
@@ -141,69 +197,154 @@ export const SystemDialog = ({ setOpen, system }: { setOpen: (open: boolean) => 
 						</TabsTrigger>
 					</TabsList>
 				</DialogHeader>
+				{quickMode && (
+					<DialogDescription className="sr-only">
+						<Trans>Select an SSH Host from your local SSH config.</Trans>
+					</DialogDescription>
+				)}
 				{/* Docker (set tab index to prevent auto focusing content in edit system dialog) */}
 				<TabsContent value="docker" tabIndex={-1}>
-					<DialogDescription className="mb-3 leading-relaxed w-0 min-w-full">
-						<Trans>
-							Copy the
-							<code className="bg-muted px-1 rounded-sm leading-3">docker-compose.yml</code> content for the agent
-							below, or register agents automatically with a{" "}
-							<Link
-								onClick={() => setOpen(false)}
-								href={getPagePath($router, "settings", { name: "tokens" })}
-								className="link"
-							>
-								universal token
-							</Link>
-							.
-						</Trans>
-					</DialogDescription>
+					{!quickMode && (
+						<DialogDescription className="mb-3 leading-relaxed w-0 min-w-full">
+							<Trans>
+								Copy the
+								<code className="bg-muted px-1 rounded-sm leading-3">docker-compose.yml</code> content for the agent
+								below, or register agents automatically with a{" "}
+								<Link
+									onClick={() => setOpen(false)}
+									href={getPagePath($router, "settings", { name: "tokens" })}
+									className="link"
+								>
+									universal token
+								</Link>
+								.
+							</Trans>
+						</DialogDescription>
+					)}
 				</TabsContent>
 				{/* Binary */}
 				<TabsContent value="binary" tabIndex={-1}>
-					<DialogDescription className="mb-3 leading-relaxed w-0 min-w-full">
-						<Trans>
-							Copy the installation command for the agent below, or register agents automatically with a{" "}
-							<Link
-								onClick={() => setOpen(false)}
-								href={getPagePath($router, "settings", { name: "tokens" })}
-								className="link"
-							>
-								universal token
-							</Link>
-							.
-						</Trans>
-					</DialogDescription>
+					{!quickMode && (
+						<DialogDescription className="mb-3 leading-relaxed w-0 min-w-full">
+							<Trans>
+								Copy the installation command for the agent below, or register agents automatically with a{" "}
+								<Link
+									onClick={() => setOpen(false)}
+									href={getPagePath($router, "settings", { name: "tokens" })}
+									className="link"
+								>
+									universal token
+								</Link>
+								.
+							</Trans>
+						</DialogDescription>
+					)}
 				</TabsContent>
 				<form onSubmit={handleSubmit as any}>
+					{!system && (
+						<div className="flex justify-end -mb-1">
+							<Button type="button" variant="link" size="sm" onClick={() => setQuickMode((value) => !value)}>
+								{quickMode ? <Trans>Manual setup instructions</Trans> : "SSH config"}
+							</Button>
+						</div>
+					)}
 					<div className="grid xs:grid-cols-[auto_1fr] gap-y-3 gap-x-4 items-center mt-1 mb-4">
-						<Label htmlFor="name" className="xs:text-end">
-							<Trans>Name</Trans>
-						</Label>
-						<Input id="name" name="name" defaultValue={system?.name} required />
-						<Label htmlFor="host" className="xs:text-end">
-							<Trans>Host / IP</Trans>
-						</Label>
-						<Input
-							id="host"
-							name="host"
-							value={hostValue}
-							required
-							onChange={(e) => {
-								setHostValue(e.target.value)
-							}}
-						/>
-						<Label htmlFor="port" className={cn("xs:text-end", isUnixSocket && "hidden")}>
-							<Trans>Port</Trans>
-						</Label>
-						<Input
-							ref={port}
-							name="port"
-							id="port"
-							defaultValue={system?.port || "45876"}
-							required={!isUnixSocket}
-							className={cn(isUnixSocket && "hidden")}
-						/>
+						{quickMode ? (
+							<>
+								<Label htmlFor="ssh-host" className="xs:text-end">
+									SSH Host
+								</Label>
+								<div className="space-y-1.5 min-w-0">
+									<div className="flex gap-2">
+										<Input
+											id="ssh-host"
+											list="ssh-host-options"
+											value={sshHostValue}
+											onChange={(event) => setSSHHostValue(event.target.value)}
+											placeholder="h102"
+											autoComplete="off"
+											aria-invalid={sshHostNotFound}
+											aria-describedby="ssh-host-status"
+											className={cn(sshHostNotFound && "border-destructive focus-visible:ring-destructive")}
+											required
+										/>
+										<datalist id="ssh-host-options">
+											{sshHosts.map((host) => (
+												<option key={host.name} value={host.name}>
+													{host.hostName}
+												</option>
+											))}
+										</datalist>
+										<Button
+											type="button"
+											variant="outline"
+											size="icon"
+											onClick={loadSSHHosts}
+											disabled={sshHostsLoading}
+											aria-label={t`Refresh`}
+											title={t`Refresh`}
+										>
+											<RefreshCwIcon className={cn("size-4", sshHostsLoading && "animate-spin")} />
+										</Button>
+									</div>
+									<p
+										id="ssh-host-status"
+										aria-live="polite"
+										className={cn(
+											"text-xs truncate",
+											sshHostsError || sshHostNotFound ? "text-destructive" : "text-muted-foreground"
+										)}
+									>
+										{selectedSSHHost
+											? `${selectedSSHHost.name} → ${selectedSSHHost.hostName}:45876`
+											: sshHostsLoading
+												? t`Loading...`
+												: sshHostNotFound
+													? t`SSH Host not found in ~/.ssh/config.`
+													: sshHostsError
+														? t`No results found.`
+														: `~/.ssh/config · ${sshHosts.length}`}
+									</p>
+									<input type="hidden" name="name" value={nameValue} />
+									<input type="hidden" name="host" value={hostValue} />
+									<input type="hidden" name="port" value="45876" />
+								</div>
+							</>
+						) : (
+							<>
+								<Label htmlFor="name" className="xs:text-end">
+									<Trans>Name</Trans>
+								</Label>
+								<Input
+									id="name"
+									name="name"
+									value={nameValue}
+									onChange={(event) => setNameValue(event.target.value)}
+									required
+								/>
+								<Label htmlFor="host" className="xs:text-end">
+									<Trans>Host / IP</Trans>
+								</Label>
+								<Input
+									id="host"
+									name="host"
+									value={hostValue}
+									required
+									onChange={(event) => setHostValue(event.target.value)}
+								/>
+								<Label htmlFor="port" className={cn("xs:text-end", isUnixSocket && "hidden")}>
+									<Trans>Port</Trans>
+								</Label>
+								<Input
+									ref={port}
+									name="port"
+									id="port"
+									defaultValue={system?.port || "45876"}
+									required={!isUnixSocket}
+									className={cn(isUnixSocket && "hidden")}
+								/>
+							</>
+						)}
 						<Label htmlFor="pkey" className="xs:text-end whitespace-pre">
 							<Trans comment="Use 'Key' if your language requires many more characters">Public Key</Trans>
 						</Label>
@@ -218,15 +359,12 @@ export const SystemDialog = ({ setOpen, system }: { setOpen: (open: boolean) => 
 						<TabsContent value="docker" className="contents">
 							<CopyButton
 								text={t({ message: "Copy docker compose", context: "Button to copy docker compose file content" })}
-								onClick={async () =>
-									copyDockerCompose(isUnixSocket ? hostValue : port.current?.value, publicKey, token)
-								}
+								onClick={async () => copyDockerCompose(getAgentPort(), publicKey, token)}
 								icon={<DockerIcon className="size-4 -me-0.5" />}
 								dropdownItems={[
 									{
 										text: t({ message: "Copy docker run", context: "Button to copy docker run command" }),
-										onClick: async () =>
-											copyDockerRun(isUnixSocket ? hostValue : port.current?.value, publicKey, token),
+										onClick: async () => copyDockerRun(getAgentPort(), publicKey, token),
 										icons: [DockerIcon],
 									},
 								]}
@@ -237,24 +375,21 @@ export const SystemDialog = ({ setOpen, system }: { setOpen: (open: boolean) => 
 							<CopyButton
 								text={t`Copy Linux command`}
 								icon={<TuxIcon className="size-4" />}
-								onClick={async () => copyLinuxCommand(isUnixSocket ? hostValue : port.current?.value, publicKey, token)}
+								onClick={async () => copyLinuxCommand(getAgentPort(), publicKey, token)}
 								dropdownItems={[
 									{
 										text: t({ message: "Homebrew command", context: "Button to copy install command" }),
-										onClick: async () =>
-											copyLinuxCommand(isUnixSocket ? hostValue : port.current?.value, publicKey, token, true),
+										onClick: async () => copyLinuxCommand(getAgentPort(), publicKey, token, true),
 										icons: [AppleIcon, TuxIcon],
 									},
 									{
 										text: t({ message: "Windows command", context: "Button to copy install command" }),
-										onClick: async () =>
-											copyWindowsCommand(isUnixSocket ? hostValue : port.current?.value, publicKey, token),
+										onClick: async () => copyWindowsCommand(getAgentPort(), publicKey, token),
 										icons: [WindowsIcon],
 									},
 									{
 										text: t({ message: "FreeBSD command", context: "Button to copy install command" }),
-										onClick: async () =>
-											copyLinuxCommand(isUnixSocket ? hostValue : port.current?.value, publicKey, token),
+										onClick: async () => copyLinuxCommand(getAgentPort(), publicKey, token),
 										icons: [FreeBsdIcon],
 									},
 									{
@@ -266,7 +401,7 @@ export const SystemDialog = ({ setOpen, system }: { setOpen: (open: boolean) => 
 							/>
 						</TabsContent>
 						{/* Save */}
-						<Button>
+						<Button disabled={quickMode && !selectedSSHHost}>
 							{system ? (
 								<Trans>Save {{ foo: systemTranslation }}</Trans>
 							) : (

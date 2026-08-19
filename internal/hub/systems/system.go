@@ -6,9 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"math"
 	"math/rand"
 	"net"
 	"slices"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -189,6 +191,7 @@ func (sys *System) createRecords(data *system.CombinedData) (*core.Record, error
 	if err != nil {
 		return nil, err
 	}
+	setDashboardGpuInfo(data)
 	hub := sys.manager.hub
 	err = hub.RunInTransaction(func(txApp core.App) error {
 		// add system_stats record
@@ -248,6 +251,54 @@ func (sys *System) createRecords(data *system.CombinedData) (*core.Record, error
 	})
 
 	return systemRecord, err
+}
+
+// setDashboardGpuInfo sets aggregate GPU memory usage plus the id and free
+// VRAM (GB, floored) of the GPU shown in the systems table: the GPU with the
+// most VRAM, preferring the one with the most free VRAM when totals are equal.
+func setDashboardGpuInfo(data *system.CombinedData) {
+	var memoryUsed float64
+	var memoryTotal float64
+	var largestId string
+	var largestTotal float64
+	var largestFree float64
+	for id, gpu := range data.Stats.GPUData {
+		if gpu.MemoryTotal <= 0 {
+			continue
+		}
+		used := max(0, min(gpu.MemoryUsed, gpu.MemoryTotal))
+		memoryUsed += used
+		memoryTotal += gpu.MemoryTotal
+		free := gpu.MemoryTotal - used
+		if gpu.MemoryTotal > largestTotal ||
+			(gpu.MemoryTotal == largestTotal && free > largestFree) ||
+			(gpu.MemoryTotal == largestTotal && free == largestFree && gpuIdLess(id, largestId)) {
+			largestId = id
+			largestTotal = gpu.MemoryTotal
+			largestFree = free
+			data.Info.LargestGpuFreeGb = uint16(math.Floor(free / 1024))
+		}
+	}
+	if memoryTotal == 0 {
+		data.Info.GpuMemPct = nil
+		data.Info.LargestGpuId = ""
+		data.Info.LargestGpuFreeGb = 0
+		return
+	}
+	data.Info.LargestGpuId = largestId
+	gpuMemPct := math.Round(memoryUsed/memoryTotal*10000) / 100
+	data.Info.GpuMemPct = &gpuMemPct
+}
+
+// gpuIdLess orders numeric GPU ids numerically ("2" before "10") and falls
+// back to string comparison for non-numeric ids.
+func gpuIdLess(a, b string) bool {
+	aNum, aErr := strconv.Atoi(a)
+	bNum, bErr := strconv.Atoi(b)
+	if aErr == nil && bErr == nil {
+		return aNum < bNum
+	}
+	return a < b
 }
 
 func createSystemDetailsRecord(app core.App, data *system.Details, systemId string) error {

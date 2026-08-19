@@ -245,11 +245,6 @@ msgstr "備份"
 msgid "Bandwidth"
 msgstr "帶寬"
 
-#. Battery label in systems table header
-#: src/components/systems-table/systems-table-columns.tsx
-msgid "Bat"
-msgstr "電池"
-
 #: src/components/routes/system/charts/sensor-charts.tsx
 #: src/lib/alerts.ts
 msgid "Battery"
@@ -872,6 +867,11 @@ msgstr "GPU 功耗"
 msgid "GPU Usage"
 msgstr "GPU 使用率"
 
+#. GPU utilization, systems table column
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "GPU_util"
+msgstr "GPU利用率"
+
 #: src/components/routes/system/info-bar.tsx
 #: src/components/systems-table/systems-table.tsx
 msgid "Grid"
@@ -990,15 +990,11 @@ msgstr "1分鐘平均負載"
 msgid "Load Average 5m"
 msgstr "5分鐘平均負載"
 
-#. Short label for load average
-#: src/components/systems-table/systems-table-columns.tsx
-msgid "Load Avg"
-msgstr "平均負載"
-
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Load state"
 msgstr "載入狀態"
 
+#: src/components/add-system.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Loading..."
 msgstr "載入中..."
@@ -1035,6 +1031,7 @@ msgstr "主進程 ID"
 msgid "Manage display and notification preferences."
 msgstr "管理顯示和通知偏好。"
 
+#: src/components/add-system.tsx
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Manual setup instructions"
@@ -1111,6 +1108,7 @@ msgstr "網路單位"
 msgid "No"
 msgstr "否"
 
+#: src/components/add-system.tsx
 #: src/components/command-palette.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "No results found."
@@ -1337,6 +1335,8 @@ msgstr "讀取"
 msgid "Received"
 msgstr "接收"
 
+#: src/components/add-system.tsx
+#: src/components/add-system.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/routes/system/smart-table.tsx
@@ -1455,6 +1455,10 @@ msgstr "查看<0>通知設置</0>以配置您接收警報的方式。"
 msgid "Select {foo}"
 msgstr "選擇 {foo}"
 
+#: src/components/add-system.tsx
+msgid "Select an SSH Host from your local SSH config."
+msgstr ""
+
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Send a single heartbeat ping to verify your endpoint is working."
 msgstr "發送單次 heartbeat ping 以驗證您的端點是否正常運作。"
@@ -1517,6 +1521,10 @@ msgstr "SMTP設置"
 #: src/components/systems-table/systems-table.tsx
 msgid "Sort By"
 msgstr "排序依據"
+
+#: src/components/add-system.tsx
+msgid "SSH Host not found in ~/.ssh/config."
+msgstr ""
 
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
@@ -1594,9 +1602,7 @@ msgstr "分頁"
 msgid "Tasks"
 msgstr "任務數"
 
-#. Temperature label in systems table
 #: src/components/routes/system/smart-table.tsx
-#: src/components/systems-table/systems-table-columns.tsx
 msgid "Temp"
 msgstr "溫度"
 
@@ -1867,6 +1873,16 @@ msgstr "檢視最近 200 則警報。"
 #: src/components/systems-table/systems-table.tsx
 msgid "Visible Fields"
 msgstr "可見欄位"
+
+#. Video memory, systems table column
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "VRAM"
+msgstr "顯存"
+
+#. Free VRAM of the GPU with the most VRAM, systems table column
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "VRAM Free"
+msgstr "剩餘顯存"
 
 #: src/components/routes/system/chart-card.tsx
 msgid "Waiting for enough records to display"

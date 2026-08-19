@@ -245,11 +245,6 @@ msgstr "备份"
 msgid "Bandwidth"
 msgstr "带宽"
 
-#. Battery label in systems table header
-#: src/components/systems-table/systems-table-columns.tsx
-msgid "Bat"
-msgstr "电池"
-
 #: src/components/routes/system/charts/sensor-charts.tsx
 #: src/lib/alerts.ts
 msgid "Battery"
@@ -477,11 +472,11 @@ msgstr "复制文本"
 
 #: src/components/add-system.tsx
 msgid "Copy the installation command for the agent below, or register agents automatically with a <0>universal token</0>."
-msgstr "复制下面的客户端安装命令，或使用<0>通用令牌</0>自动注册客户端。"
+msgstr "复制下面的客户端安装命令，或使用<0>通用令牌</0>自⁠动⁠注⁠册⁠客⁠户⁠端。"
 
 #: src/components/add-system.tsx
 msgid "Copy the<0>docker-compose.yml</0> content for the agent below, or register agents automatically with a <1>universal token</1>."
-msgstr "复制下面的客户端<0>docker-compose.yml</0>内容，或使用<1>通用令牌</1>自动注册客户端。"
+msgstr "复制下面的客户端<0>docker-compose.yml</0>内容，或使用<1>通用令牌</1>自⁠动⁠注⁠册⁠客⁠户⁠端。"
 
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Copy YAML"
@@ -872,6 +867,11 @@ msgstr "GPU 功耗"
 msgid "GPU Usage"
 msgstr "GPU 使用率"
 
+#. GPU utilization, systems table column
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "GPU_util"
+msgstr "GPU利用率"
+
 #: src/components/routes/system/info-bar.tsx
 #: src/components/systems-table/systems-table.tsx
 msgid "Grid"
@@ -990,15 +990,11 @@ msgstr "1 分钟负载平均值"
 msgid "Load Average 5m"
 msgstr "5 分钟内的平均负载"
 
-#. Short label for load average
-#: src/components/systems-table/systems-table-columns.tsx
-msgid "Load Avg"
-msgstr "负载"
-
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Load state"
 msgstr "加载状态"
 
+#: src/components/add-system.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Loading..."
 msgstr "加载中..."
@@ -1035,6 +1031,7 @@ msgstr "主进程 ID"
 msgid "Manage display and notification preferences."
 msgstr "管理显示和通知偏好。"
 
+#: src/components/add-system.tsx
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Manual setup instructions"
@@ -1111,6 +1108,7 @@ msgstr "网络单位"
 msgid "No"
 msgstr "否"
 
+#: src/components/add-system.tsx
 #: src/components/command-palette.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "No results found."
@@ -1337,6 +1335,8 @@ msgstr "读取"
 msgid "Received"
 msgstr "接收"
 
+#: src/components/add-system.tsx
+#: src/components/add-system.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/routes/system/smart-table.tsx
@@ -1455,6 +1455,10 @@ msgstr "查看<0>通知设置</0>以配置您接收警报的方式。"
 msgid "Select {foo}"
 msgstr "选择 {foo}"
 
+#: src/components/add-system.tsx
+msgid "Select an SSH Host from your local SSH config."
+msgstr "从本机 SSH 配置中选择一个 Host。"
+
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Send a single heartbeat ping to verify your endpoint is working."
 msgstr "发送单个 heartbeat ping 以验证您的端点是否正常工作。"
@@ -1517,6 +1521,10 @@ msgstr "SMTP 设置"
 #: src/components/systems-table/systems-table.tsx
 msgid "Sort By"
 msgstr "排序依据"
+
+#: src/components/add-system.tsx
+msgid "SSH Host not found in ~/.ssh/config."
+msgstr "在 ~/.ssh/config 中未找到该 Host。"
 
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
@@ -1594,9 +1602,7 @@ msgstr "标签页"
 msgid "Tasks"
 msgstr "任务数"
 
-#. Temperature label in systems table
 #: src/components/routes/system/smart-table.tsx
-#: src/components/systems-table/systems-table-columns.tsx
 msgid "Temp"
 msgstr "温度"
 
@@ -1867,6 +1873,16 @@ msgstr "查看您最近的200个警报。"
 #: src/components/systems-table/systems-table.tsx
 msgid "Visible Fields"
 msgstr "可见列"
+
+#. Video memory, systems table column
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "VRAM"
+msgstr "显存"
+
+#. Free VRAM of the GPU with the most VRAM, systems table column
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "VRAM Free"
+msgstr "剩余显存"
 
 #: src/components/routes/system/chart-card.tsx
 msgid "Waiting for enough records to display"

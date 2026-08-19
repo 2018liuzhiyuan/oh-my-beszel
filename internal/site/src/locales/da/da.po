@@ -245,11 +245,6 @@ msgstr "Sikkerhedskopier"
 msgid "Bandwidth"
 msgstr "Båndbredde"
 
-#. Battery label in systems table header
-#: src/components/systems-table/systems-table-columns.tsx
-msgid "Bat"
-msgstr ""
-
 #: src/components/routes/system/charts/sensor-charts.tsx
 #: src/lib/alerts.ts
 msgid "Battery"
@@ -872,6 +867,11 @@ msgstr "GPU Strøm Træk"
 msgid "GPU Usage"
 msgstr "GPU-forbrug"
 
+#. GPU utilization, systems table column
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "GPU_util"
+msgstr ""
+
 #: src/components/routes/system/info-bar.tsx
 #: src/components/systems-table/systems-table.tsx
 msgid "Grid"
@@ -990,15 +990,11 @@ msgstr "Belastning Gennemsnitlig 1m"
 msgid "Load Average 5m"
 msgstr "Belastning Gennemsnitlig 5m"
 
-#. Short label for load average
-#: src/components/systems-table/systems-table-columns.tsx
-msgid "Load Avg"
-msgstr "Belastning gns."
-
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Load state"
 msgstr "Indlæsningstilstand"
 
+#: src/components/add-system.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Loading..."
 msgstr "Indlæser..."
@@ -1035,6 +1031,7 @@ msgstr "Primær PID"
 msgid "Manage display and notification preferences."
 msgstr "Administrer display og notifikationsindstillinger."
 
+#: src/components/add-system.tsx
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Manual setup instructions"
@@ -1111,6 +1108,7 @@ msgstr "Netværksenhed"
 msgid "No"
 msgstr "Nej"
 
+#: src/components/add-system.tsx
 #: src/components/command-palette.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "No results found."
@@ -1337,6 +1335,8 @@ msgstr "Læs"
 msgid "Received"
 msgstr "Modtaget"
 
+#: src/components/add-system.tsx
+#: src/components/add-system.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/routes/system/smart-table.tsx
@@ -1455,6 +1455,10 @@ msgstr "Se <0>meddelelsesindstillinger</0> for at konfigurere, hvordan du modtag
 msgid "Select {foo}"
 msgstr "Vælg {foo}"
 
+#: src/components/add-system.tsx
+msgid "Select an SSH Host from your local SSH config."
+msgstr ""
+
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Send a single heartbeat ping to verify your endpoint is working."
 msgstr "Send et enkelt heartbeat-ping for at bekræfte, at dit endpoint fungerer."
@@ -1517,6 +1521,10 @@ msgstr "SMTP-indstillinger"
 #: src/components/systems-table/systems-table.tsx
 msgid "Sort By"
 msgstr "Sorter efter"
+
+#: src/components/add-system.tsx
+msgid "SSH Host not found in ~/.ssh/config."
+msgstr ""
 
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
@@ -1594,9 +1602,7 @@ msgstr "Faner"
 msgid "Tasks"
 msgstr "Opgaver"
 
-#. Temperature label in systems table
 #: src/components/routes/system/smart-table.tsx
-#: src/components/systems-table/systems-table-columns.tsx
 msgid "Temp"
 msgstr "Temperatur"
 
@@ -1867,6 +1873,16 @@ msgstr "Se dine 200 nyeste alarmer."
 #: src/components/systems-table/systems-table.tsx
 msgid "Visible Fields"
 msgstr "Synlige felter"
+
+#. Video memory, systems table column
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "VRAM"
+msgstr ""
+
+#. Free VRAM of the GPU with the most VRAM, systems table column
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "VRAM Free"
+msgstr ""
 
 #: src/components/routes/system/chart-card.tsx
 msgid "Waiting for enough records to display"

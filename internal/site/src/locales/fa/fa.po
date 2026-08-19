@@ -245,11 +245,6 @@ msgstr "پشتیبان‌گیری‌ها"
 msgid "Bandwidth"
 msgstr "پهنای باند"
 
-#. Battery label in systems table header
-#: src/components/systems-table/systems-table-columns.tsx
-msgid "Bat"
-msgstr "باتری"
-
 #: src/components/routes/system/charts/sensor-charts.tsx
 #: src/lib/alerts.ts
 msgid "Battery"
@@ -872,6 +867,11 @@ msgstr "مصرف برق پردازنده گرافیکی"
 msgid "GPU Usage"
 msgstr "میزان استفاده از GPU"
 
+#. GPU utilization, systems table column
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "GPU_util"
+msgstr ""
+
 #: src/components/routes/system/info-bar.tsx
 #: src/components/systems-table/systems-table.tsx
 msgid "Grid"
@@ -990,15 +990,11 @@ msgstr "میانگین بار ۱ دقیقه"
 msgid "Load Average 5m"
 msgstr "میانگین بار ۵ دقیقه"
 
-#. Short label for load average
-#: src/components/systems-table/systems-table-columns.tsx
-msgid "Load Avg"
-msgstr "میانگین بار"
-
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Load state"
 msgstr "وضعیت بارگذاری"
 
+#: src/components/add-system.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Loading..."
 msgstr "در حال بارگذاری..."
@@ -1035,6 +1031,7 @@ msgstr "PID اصلی"
 msgid "Manage display and notification preferences."
 msgstr "مدیریت تنظیمات نمایش و اعلان‌ها."
 
+#: src/components/add-system.tsx
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Manual setup instructions"
@@ -1111,6 +1108,7 @@ msgstr "واحد شبکه"
 msgid "No"
 msgstr "خیر"
 
+#: src/components/add-system.tsx
 #: src/components/command-palette.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "No results found."
@@ -1337,6 +1335,8 @@ msgstr "خواندن"
 msgid "Received"
 msgstr "دریافت شد"
 
+#: src/components/add-system.tsx
+#: src/components/add-system.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/routes/system/smart-table.tsx
@@ -1455,6 +1455,10 @@ msgstr "برای پیکربندی نحوه دریافت هشدارها، به <0
 msgid "Select {foo}"
 msgstr "انتخاب {foo}"
 
+#: src/components/add-system.tsx
+msgid "Select an SSH Host from your local SSH config."
+msgstr ""
+
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Send a single heartbeat ping to verify your endpoint is working."
 msgstr "یک پینگ ضربان قلب تکی ارسال کنید تا از کارکرد نقطه پایانی خود اطمینان حاصل کنید."
@@ -1517,6 +1521,10 @@ msgstr "تنظیمات SMTP"
 #: src/components/systems-table/systems-table.tsx
 msgid "Sort By"
 msgstr "مرتب‌سازی بر اساس"
+
+#: src/components/add-system.tsx
+msgid "SSH Host not found in ~/.ssh/config."
+msgstr ""
 
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
@@ -1594,9 +1602,7 @@ msgstr "تب‌ها"
 msgid "Tasks"
 msgstr "وظایف"
 
-#. Temperature label in systems table
 #: src/components/routes/system/smart-table.tsx
-#: src/components/systems-table/systems-table-columns.tsx
 msgid "Temp"
 msgstr "دما"
 
@@ -1867,6 +1873,16 @@ msgstr "۲۰۰ هشدار اخیر خود را مشاهده کنید."
 #: src/components/systems-table/systems-table.tsx
 msgid "Visible Fields"
 msgstr "فیلدهای قابل مشاهده"
+
+#. Video memory, systems table column
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "VRAM"
+msgstr ""
+
+#. Free VRAM of the GPU with the most VRAM, systems table column
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "VRAM Free"
+msgstr ""
 
 #: src/components/routes/system/chart-card.tsx
 msgid "Waiting for enough records to display"
