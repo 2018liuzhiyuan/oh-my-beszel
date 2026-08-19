@@ -1,0 +1,16 @@
+{
+    "host": "127.0.0.1",
+    "port": 8090,
+    "sshConfigPath": "",
+    "openBrowser": true,
+    "startupTimeoutSeconds": 45,
+    "tasks": [
+        "Beszel Hub"
+    ],
+    "hub": {
+        "userEmail": "admin@beszel.local",
+        "userPassword": "ChangeMe_Before_Use",
+        "autoLogin": "admin@beszel.local",
+        "checkUpdates": false
+    }
+}
