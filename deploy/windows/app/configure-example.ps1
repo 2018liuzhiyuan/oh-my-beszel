@@ -35,7 +35,7 @@ $created = foreach ($system in $systems) {
         status = 'pending'
     } | ConvertTo-Json
 
-    $filter = [uri]EscapeDataString("name=`"$($system.name)`"")
+    $filter = [uri]::EscapeDataString("name=`"$($system.name)`"")
     $existing = Invoke-RestMethod -Method Get -Uri "$baseUrl/api/collections/systems/records?filter=$filter" -Headers $headers
     if ($existing.totalItems -gt 0) {
         $record = Invoke-RestMethod -Method Patch -Uri "$baseUrl/api/collections/systems/records/$($existing.items[0].id)" -Headers $headers -ContentType 'application/json' -Body $body
