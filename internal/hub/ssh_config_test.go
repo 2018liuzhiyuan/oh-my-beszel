@@ -18,9 +18,9 @@ Host gpu-*
     User worker
 
 Host h102 H101
-    HostName 100.88.104.79 # local tailnet address
+    HostName 192.0.2.79 # local tailnet address
 Host RoboDojo
-    HostName "114.111.17.111"
+    HostName "203.0.113.111"
 Host no-hostname
     User root
 Host templated
@@ -34,11 +34,11 @@ Host=quoted
 	hosts, err := parseSSHHosts(strings.NewReader(config))
 	require.NoError(t, err)
 	require.Equal(t, []sshHost{
-		{Name: "H101", HostName: "100.88.104.79"},
-		{Name: "h102", HostName: "100.88.104.79"},
+		{Name: "H101", HostName: "192.0.2.79"},
+		{Name: "h102", HostName: "192.0.2.79"},
 		{Name: "no-hostname", HostName: "no-hostname"},
 		{Name: "quoted", HostName: "quoted.example.com"},
-		{Name: "RoboDojo", HostName: "114.111.17.111"},
+		{Name: "RoboDojo", HostName: "203.0.113.111"},
 		{Name: "templated", HostName: "node-templated"},
 	}, hosts)
 }
