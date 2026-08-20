@@ -178,8 +178,7 @@ func (a *Agent) getTempsWithTimeout(getTemps getTempsFn) ([]sensors.TemperatureS
 		err   error
 	}
 
-	// Use a longer timeout on the first run to allow for initialization
-	// (e.g. Windows LHM subprocess startup)
+	// Use a longer timeout on the first run to allow sensor backends to initialize
 	timeout := a.sensorConfig.timeout
 	if a.sensorConfig.firstRun {
 		a.sensorConfig.firstRun = false

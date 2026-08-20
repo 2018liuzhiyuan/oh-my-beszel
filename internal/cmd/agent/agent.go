@@ -49,7 +49,6 @@ func (opts *cmdOptions) parse() bool {
 	pflag.StringVarP(&opts.listen, "listen", "l", "", "Address or port to listen on")
 	pflag.StringVarP(&opts.hubURL, "url", "u", "", "URL of the Beszel hub")
 	pflag.StringVarP(&opts.token, "token", "t", "", "Token to use for authentication")
-	chinaMirrors := pflag.BoolP("china-mirrors", "c", false, "Use mirror for update (gh.beszel.dev) instead of GitHub")
 	version := pflag.BoolP("version", "v", false, "Show version information")
 	help := pflag.BoolP("help", "h", false, "Show this help message")
 
@@ -77,7 +76,6 @@ func (opts *cmdOptions) parse() bool {
 		builder.WriteString("\nCommands:\n")
 		builder.WriteString("  fingerprint  View or reset the agent fingerprint\n")
 		builder.WriteString("  health       Check if the agent is running\n")
-		builder.WriteString("  update       Update to the latest version\n")
 		builder.WriteString("\nFlags:\n")
 		fmt.Print(builder.String())
 		pflag.PrintDefaults()
@@ -93,9 +91,6 @@ func (opts *cmdOptions) parse() bool {
 		return true
 	case *help || subcommand == "help":
 		pflag.Usage()
-		return true
-	case subcommand == "update":
-		agent.Update(*chinaMirrors)
 		return true
 	}
 
