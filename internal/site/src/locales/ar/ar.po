@@ -281,10 +281,18 @@ msgstr "يستخدم بيزيل <0>Shoutrrr</0> للتكامل مع خدمات �
 msgid "Binary"
 msgstr "ثنائي"
 
+#: src/components/routes/system/info-bar.tsx
+msgid "BIOS version"
+msgstr ""
+
 #: src/components/routes/settings/general.tsx
 #: src/components/routes/settings/general.tsx
 msgid "Bits (Kbps, Mbps, Gbps)"
 msgstr "بت (كيلوبت/ثانية، ميجابت/ثانية، جيجابت/ثانية)"
+
+#: src/components/routes/system/info-bar.tsx
+msgid "BMC firmware"
+msgstr ""
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Boot state"
@@ -829,6 +837,10 @@ msgstr "لمدة <0>{min}</0> {min, plural, one {دقيقة} other {دقائق}}
 msgid "Forgot password?"
 msgstr "هل نسيت كلمة المرور؟"
 
+#: src/lib/alerts.ts
+msgid "Free GPU Memory"
+msgstr ""
+
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgctxt "Button to copy install command"
@@ -876,6 +888,10 @@ msgstr ""
 #: src/components/systems-table/systems-table.tsx
 msgid "Grid"
 msgstr "شبكة"
+
+#: src/components/routes/system/info-bar.tsx
+msgid "Hardware event log (IPMI SEL)"
+msgstr ""
 
 #: src/components/containers-table/containers-table-columns.tsx
 msgid "Health"
@@ -951,6 +967,10 @@ msgstr "الفاصل الزمني"
 #: src/components/login/auth-form.tsx
 msgid "Invalid email address."
 msgstr "عنوان البريد الإشباكي غير صالح."
+
+#: src/components/routes/system/info-bar.tsx
+msgid "IP addresses"
+msgstr ""
 
 #: src/components/lang-toggle.tsx
 #: src/components/routes/settings/general.tsx
@@ -1085,6 +1105,10 @@ msgstr "الاسم"
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Net"
 msgstr "الشبكة"
+
+#: src/components/routes/system/info-bar.tsx
+msgid "Network interfaces (nominal link speed)"
+msgstr ""
 
 #: src/components/routes/system/charts/network-charts.tsx
 msgid "Network traffic of docker containers"
@@ -1745,6 +1769,10 @@ msgstr "يتم التفعيل عندما يتجاوز الجمع بين الصع
 #: src/lib/alerts.ts
 msgid "Triggers when CPU usage exceeds a threshold"
 msgstr "يتم التفعيل عندما يتجاوز استخدام وحدة المعالجة المركزية عتبة معينة"
+
+#: src/lib/alerts.ts
+msgid "Triggers when free VRAM on any GPU stays above a threshold"
+msgstr ""
 
 #: src/lib/alerts.ts
 msgid "Triggers when GPU usage exceeds a threshold"

@@ -8,7 +8,9 @@ import {
 	GlobeIcon,
 	MemoryStickIcon,
 	MonitorIcon,
+	ServerIcon,
 	Settings2Icon,
+	TriangleAlertIcon,
 } from "lucide-react"
 import { useMemo } from "react"
 import ChartTimeSelect from "@/components/charts/chart-time-select"
@@ -23,7 +25,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { FreeBsdIcon, TuxIcon, WebSocketIcon, WindowsIcon } from "@/components/ui/icons"
+import { EthernetIcon, FreeBsdIcon, TuxIcon, WebSocketIcon, WindowsIcon } from "@/components/ui/icons"
 import { Separator } from "@/components/ui/separator"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { ConnectionType, connectionTypeLabels, Os, SystemStatus } from "@/lib/enums"
@@ -123,8 +125,43 @@ export default function InfoBar({
 			})
 		}
 
+		// hardware inventory (shown only when the agent reports it)
+		if (details?.ip_addrs) {
+			info.push({
+				value: details.ip_addrs,
+				Icon: GlobeIcon,
+				label: t`IP addresses`,
+			})
+		}
+		if (details?.nic_count) {
+			const speed = details.nic_speed_mbps
+			const speedText = speed ? ` @ ${speed >= 1000 ? `${speed / 1000}G` : `${speed}M`}` : ""
+			info.push({
+				value: `${details.nic_count} NIC${speedText}`,
+				Icon: EthernetIcon,
+				label: t`Network interfaces (nominal link speed)`,
+			})
+		}
+		if (details?.bios_version) {
+			info.push({
+				value: `BIOS ${details.bios_version}`,
+				Icon: CpuIcon,
+				label: t`BIOS version`,
+			})
+		}
+		if (details?.bmc_version) {
+			info.push({
+				value: `BMC ${details.bmc_version}`,
+				Icon: ServerIcon,
+				label: t`BMC firmware`,
+			})
+		}
+
 		return info
 	}, [system, details, t])
+
+	// IPMI System Event Log entries (hardware alerts), newest first
+	const selEntries = (details?.sel_entries ?? "").split("\n").filter(Boolean).slice(0, 10)
 
 	let translatedStatus: string = system.status
 	if (system.status === SystemStatus.Up) {
@@ -134,8 +171,9 @@ export default function InfoBar({
 	}
 
 	return (
-		<Card>
-			<div className="grid xl:flex xl:gap-4 px-4 sm:px-6 pt-3 sm:pt-4 pb-5">
+		<>
+			<Card>
+				<div className="grid xl:flex xl:gap-4 px-4 sm:px-6 pt-3 sm:pt-4 pb-5">
 				<div className="min-w-0">
 					<h1 className="text-2xl sm:text-[1.6rem] font-semibold mb-1.5">{system.name}</h1>
 					<div className="flex xl:flex-wrap items-center py-4 xl:p-0 -mt-3 xl:mt-1 gap-3 text-sm text-nowrap opacity-90 overflow-x-auto scrollbar-hide -mx-4 px-4 xl:mx-0">
@@ -252,5 +290,24 @@ export default function InfoBar({
 				</div>
 			</div>
 		</Card>
+		{selEntries.length > 0 && (
+			<Card className="mt-4 border-amber-500/40 bg-amber-500/5">
+				<div className="px-4 sm:px-6 py-3">
+					<div className="flex items-center gap-2 text-sm font-medium text-amber-600 dark:text-amber-400 mb-2">
+						<TriangleAlertIcon className="h-4 w-4" />
+						<Trans>Hardware event log (IPMI SEL)</Trans>
+						<span className="opacity-70">({selEntries.length})</span>
+					</div>
+					<ul className="text-xs font-mono space-y-1 opacity-90 max-h-40 overflow-y-auto">
+						{selEntries.map((entry, i) => (
+							<li key={i} className="truncate" title={entry}>
+								{entry}
+							</li>
+						))}
+					</ul>
+				</div>
+			</Card>
+		)}
+		</>
 	)
 }

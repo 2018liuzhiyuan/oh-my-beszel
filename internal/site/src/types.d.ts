@@ -395,6 +395,16 @@ export interface SystemDetailsRecord extends RecordModel {
 	os_name: string
 	memory: number
 	podman: boolean
+	/** comma-separated primary IPs */
+	ip_addrs?: string
+	/** physical NIC count */
+	nic_count?: number
+	/** nominal link speed (Mbps) of the fastest primary NIC */
+	nic_speed_mbps?: number
+	bios_version?: string
+	bmc_version?: string
+	/** recent IPMI SEL entries, newline-separated, newest first */
+	sel_entries?: string
 }
 
 export interface SmartDeviceRecord extends RecordModel {

@@ -127,6 +127,9 @@ func NewAgent(dataDir ...string) (agent *Agent, err error) {
 	// initialize net io stats
 	agent.initializeNetIoStats()
 
+	// hardware inventory (IP / NIC / BIOS / BMC) after interfaces are known
+	agent.collectHardwareDetails()
+
 	agent.systemdManager, err = newSystemdManager()
 	if err != nil {
 		slog.Debug("Systemd", "err", err)

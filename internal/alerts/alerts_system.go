@@ -62,6 +62,19 @@ func (am *AlertManager) HandleSystemAlerts(systemRecord *core.Record, data *syst
 			unit = ""
 		case "GPU":
 			val = data.Info.GpuPct
+		case "GpuMemoryFree":
+			// current max free VRAM across all GPUs (GB)
+			maxFree := 0.0
+			for _, gpu := range data.Stats.GPUData {
+				if gpu.MemoryTotal > 0 {
+					free := (gpu.MemoryTotal - gpu.MemoryUsed) / 1024
+					if free > maxFree {
+						maxFree = free
+					}
+				}
+			}
+			val = maxFree
+			unit = " GB"
 		case "Battery":
 			if data.Stats.Battery[0] == 0 {
 				continue
@@ -234,6 +247,21 @@ func (am *AlertManager) HandleSystemAlerts(systemRecord *core.Record, data *syst
 					}
 				}
 				alert.val += maxUsage
+			case "GpuMemoryFree":
+				// track the minimum free VRAM within the window: a "sustained"
+				// alert only fires when every sample stays above the threshold
+				maxFree := 0.0
+				for _, gpu := range stats.GPU {
+					if gpu.MemoryTotal > 0 {
+						free := (gpu.MemoryTotal - gpu.MemoryUsed) / 1024
+						if free > maxFree {
+							maxFree = free
+						}
+					}
+				}
+				if alert.count == 0 || maxFree < alert.val {
+					alert.val = maxFree
+				}
 			case "Battery":
 				alert.val += float64(stats.Battery[0])
 			default:
@@ -265,6 +293,9 @@ func (am *AlertManager) HandleSystemAlerts(systemRecord *core.Record, data *syst
 				}
 			}
 			alert.val = float64(maxTemp)
+		case "GpuMemoryFree":
+			// keep the window minimum (strict "sustained" semantics); no averaging
+			alert.descriptor = "Free VRAM"
 		default:
 			alert.val = alert.val / float64(alert.count)
 		}

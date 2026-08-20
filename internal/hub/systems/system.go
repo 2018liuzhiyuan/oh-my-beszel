@@ -304,19 +304,25 @@ func gpuIdLess(a, b string) bool {
 func createSystemDetailsRecord(app core.App, data *system.Details, systemId string) error {
 	collectionName := "system_details"
 	params := dbx.Params{
-		"id":       systemId,
-		"system":   systemId,
-		"hostname": data.Hostname,
-		"kernel":   data.Kernel,
-		"cores":    data.Cores,
-		"threads":  data.Threads,
-		"cpu":      data.CpuModel,
-		"os":       data.Os,
-		"os_name":  data.OsName,
-		"arch":     data.Arch,
-		"memory":   data.MemoryTotal,
-		"podman":   data.Podman,
-		"updated":  time.Now().UTC(),
+		"id":             systemId,
+		"system":         systemId,
+		"hostname":       data.Hostname,
+		"kernel":         data.Kernel,
+		"cores":          data.Cores,
+		"threads":        data.Threads,
+		"cpu":            data.CpuModel,
+		"os":             data.Os,
+		"os_name":        data.OsName,
+		"arch":           data.Arch,
+		"memory":         data.MemoryTotal,
+		"podman":         data.Podman,
+		"ip_addrs":       data.IpAddrs,
+		"nic_count":      data.NicCount,
+		"nic_speed_mbps": data.NicSpeedMbps,
+		"bios_version":   data.BiosVersion,
+		"bmc_version":    data.BmcVersion,
+		"sel_entries":    data.SelEntries,
+		"updated":        time.Now().UTC(),
 	}
 	result, err := app.DB().Update(collectionName, params, dbx.HashExp{"id": systemId}).Execute()
 	rowsAffected, _ := result.RowsAffected()

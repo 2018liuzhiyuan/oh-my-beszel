@@ -59,7 +59,9 @@ type SystemAlertStats struct {
 }
 
 type SystemAlertGPUData struct {
-	Usage float64 `json:"u"`
+	Usage       float64 `json:"u"`
+	MemoryUsed  float64 `json:"mu"`
+	MemoryTotal float64 `json:"mt"`
 }
 
 type SystemAlertData struct {

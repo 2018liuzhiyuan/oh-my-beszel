@@ -281,9 +281,17 @@ msgstr "Beszel utilise <0>Shoutrrr</0> pour s'intégrer aux services de notifica
 msgid "Binary"
 msgstr "Binaire"
 
+#: src/components/routes/system/info-bar.tsx
+msgid "BIOS version"
+msgstr ""
+
 #: src/components/routes/settings/general.tsx
 #: src/components/routes/settings/general.tsx
 msgid "Bits (Kbps, Mbps, Gbps)"
+msgstr ""
+
+#: src/components/routes/system/info-bar.tsx
+msgid "BMC firmware"
 msgstr ""
 
 #: src/components/systemd-table/systemd-table.tsx
@@ -829,6 +837,10 @@ msgstr "Pendant <0>{min}</0> {min, plural, one {minute} other {minutes}}"
 msgid "Forgot password?"
 msgstr "Mot de passe oublié ?"
 
+#: src/lib/alerts.ts
+msgid "Free GPU Memory"
+msgstr ""
+
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgctxt "Button to copy install command"
@@ -876,6 +888,10 @@ msgstr ""
 #: src/components/systems-table/systems-table.tsx
 msgid "Grid"
 msgstr "Grille"
+
+#: src/components/routes/system/info-bar.tsx
+msgid "Hardware event log (IPMI SEL)"
+msgstr ""
 
 #: src/components/containers-table/containers-table-columns.tsx
 msgid "Health"
@@ -951,6 +967,10 @@ msgstr "Intervalle"
 #: src/components/login/auth-form.tsx
 msgid "Invalid email address."
 msgstr "Adresse email invalide."
+
+#: src/components/routes/system/info-bar.tsx
+msgid "IP addresses"
+msgstr ""
 
 #: src/components/lang-toggle.tsx
 #: src/components/routes/settings/general.tsx
@@ -1085,6 +1105,10 @@ msgstr "Nom"
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Net"
 msgstr "Rés"
+
+#: src/components/routes/system/info-bar.tsx
+msgid "Network interfaces (nominal link speed)"
+msgstr ""
 
 #: src/components/routes/system/charts/network-charts.tsx
 msgid "Network traffic of docker containers"
@@ -1745,6 +1769,10 @@ msgstr "Déclenchement lorsque le montant/descendant combinée dépasse un seuil
 #: src/lib/alerts.ts
 msgid "Triggers when CPU usage exceeds a threshold"
 msgstr "Déclenchement lorsque l'utilisation du CPU dépasse un seuil"
+
+#: src/lib/alerts.ts
+msgid "Triggers when free VRAM on any GPU stays above a threshold"
+msgstr ""
 
 #: src/lib/alerts.ts
 msgid "Triggers when GPU usage exceeds a threshold"

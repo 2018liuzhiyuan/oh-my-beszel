@@ -174,6 +174,15 @@ type Details struct {
 	Podman        bool          `cbor:"8,keyasint,omitempty"`
 	MemoryTotal   uint64        `cbor:"9,keyasint"`
 	SmartInterval time.Duration `cbor:"10,keyasint,omitempty"`
+	// hardware inventory (best-effort, empty/0 when not detectable)
+	IpAddrs      string `cbor:"11,keyasint,omitempty"` // comma-separated primary IPs
+	NicCount     int    `cbor:"12,keyasint,omitempty"` // physical NIC count
+	NicSpeedMbps uint64 `cbor:"13,keyasint,omitempty"` // nominal link speed of primary NIC
+	BiosVersion  string `cbor:"14,keyasint,omitempty"`
+	BmcVersion   string `cbor:"15,keyasint,omitempty"`
+	// SelEntries holds the most recent IPMI System Event Log lines (newline-separated,
+	// newest first). Empty when IPMI is unavailable.
+	SelEntries string `cbor:"16,keyasint,omitempty"`
 }
 
 // Final data structure to return to the hub

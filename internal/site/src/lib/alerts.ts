@@ -48,6 +48,13 @@ export const alertInfo: Record<string, AlertInfo> = {
 		icon: GpuIcon,
 		desc: () => t`Triggers when GPU usage exceeds a threshold`,
 	},
+	GpuMemoryFree: {
+		name: () => t`Free GPU Memory`,
+		unit: " GB",
+		icon: GpuIcon,
+		max: 256,
+		desc: () => t`Triggers when free VRAM on any GPU stays above a threshold`,
+	},
 	Temperature: {
 		name: () => t`Temperature`,
 		unit: "°C",

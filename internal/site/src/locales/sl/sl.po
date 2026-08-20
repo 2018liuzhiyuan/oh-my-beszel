@@ -281,10 +281,18 @@ msgstr "Beszel uporablja <0>Shoutrrr</0> za integracijo s priljubljenimi storitv
 msgid "Binary"
 msgstr "Binarno"
 
+#: src/components/routes/system/info-bar.tsx
+msgid "BIOS version"
+msgstr ""
+
 #: src/components/routes/settings/general.tsx
 #: src/components/routes/settings/general.tsx
 msgid "Bits (Kbps, Mbps, Gbps)"
 msgstr "Biti (Kbps, Mbps, Gbps)"
+
+#: src/components/routes/system/info-bar.tsx
+msgid "BMC firmware"
+msgstr ""
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Boot state"
@@ -829,6 +837,10 @@ msgstr "Za <0>{min}</0> {min, plural, one {minuto} other {minut}}"
 msgid "Forgot password?"
 msgstr "Pozabljeno geslo?"
 
+#: src/lib/alerts.ts
+msgid "Free GPU Memory"
+msgstr ""
+
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgctxt "Button to copy install command"
@@ -876,6 +888,10 @@ msgstr ""
 #: src/components/systems-table/systems-table.tsx
 msgid "Grid"
 msgstr "Mreža"
+
+#: src/components/routes/system/info-bar.tsx
+msgid "Hardware event log (IPMI SEL)"
+msgstr ""
 
 #: src/components/containers-table/containers-table-columns.tsx
 msgid "Health"
@@ -951,6 +967,10 @@ msgstr ""
 #: src/components/login/auth-form.tsx
 msgid "Invalid email address."
 msgstr "Napačen e-poštni naslov."
+
+#: src/components/routes/system/info-bar.tsx
+msgid "IP addresses"
+msgstr ""
 
 #: src/components/lang-toggle.tsx
 #: src/components/routes/settings/general.tsx
@@ -1085,6 +1105,10 @@ msgstr "Naziv"
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Net"
 msgstr "Mreža"
+
+#: src/components/routes/system/info-bar.tsx
+msgid "Network interfaces (nominal link speed)"
+msgstr ""
 
 #: src/components/routes/system/charts/network-charts.tsx
 msgid "Network traffic of docker containers"
@@ -1745,6 +1769,10 @@ msgstr "Sproži, ko kombinacija gor/dol preseže prag"
 #: src/lib/alerts.ts
 msgid "Triggers when CPU usage exceeds a threshold"
 msgstr "Sproži se, ko poraba procesorja preseže prag"
+
+#: src/lib/alerts.ts
+msgid "Triggers when free VRAM on any GPU stays above a threshold"
+msgstr ""
 
 #: src/lib/alerts.ts
 msgid "Triggers when GPU usage exceeds a threshold"
