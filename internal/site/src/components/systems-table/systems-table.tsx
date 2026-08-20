@@ -359,7 +359,9 @@ const AllSystemsTable = memo(
 				<div style={{ height: `${virtualizer.getTotalSize() + 50}px`, paddingTop, paddingBottom }}>
 					<table className="text-sm w-full h-full">
 						<SystemsTableHead table={table} />
-						<TableBody onMouseEnter={preloadSystemDetail}>
+							// preload the lazy detail chunk as soon as the pointer enters the
+							// table body, so clicking any row is already warm
+							<TableBody onPointerEnter={preloadSystemDetail}>
 							{rows.length ? (
 								virtualRows.map((virtualRow) => {
 									const row = rows[virtualRow.index] as Row<SystemRecord>
@@ -454,9 +456,9 @@ const SystemCard = memo(
 			// build cell lookup once instead of searching per column
 			const cellsById = new Map(row.getAllCells().map((cell) => [cell.column.id, cell]))
 			return (
-				<Card
-					onMouseEnter={preloadSystemDetail}
-					key={system.id}
+					<Card
+						onPointerEnter={preloadSystemDetail}
+						key={system.id}
 					className={cn(
 						"cursor-pointer hover:shadow-md transition-all bg-transparent w-full dark:border-border duration-200 relative",
 						{
