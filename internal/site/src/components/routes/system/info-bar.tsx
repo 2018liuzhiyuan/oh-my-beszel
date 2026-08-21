@@ -7,7 +7,6 @@ import {
 	CpuIcon,
 	GlobeIcon,
 	MemoryStickIcon,
-	MonitorIcon,
 	ServerIcon,
 	Settings2Icon,
 	TriangleAlertIcon,
@@ -58,7 +57,6 @@ export default function InfoBar({
 		}
 
 		// Use details if available, otherwise fall back to system.info
-		const hostname = details?.hostname ?? system.info.h
 		const kernel = details?.kernel ?? system.info.k
 		const cores = details?.cores ?? system.info.c
 		const threads = details?.threads ?? system.info.t ?? 0
@@ -93,13 +91,6 @@ export default function InfoBar({
 
 		const info = [
 			{ value: getHostDisplayValue(system), Icon: GlobeIcon },
-			{
-				value: hostname,
-				Icon: MonitorIcon,
-				label: "Hostname",
-				// hide if hostname is same as host or name
-				hide: hostname === system.host || hostname === system.name,
-			},
 			{ value: secondsToUptimeString(system.info.u), Icon: ClockArrowUp, label: t`Uptime`, hide: !system.info.u },
 			osInfo[os],
 			{
