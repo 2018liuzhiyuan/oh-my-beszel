@@ -111,6 +111,7 @@ func (sm *SystemManager) SetSystemStatusInDB(systemID string, status string) boo
 
 // TESTING ONLY: RemoveAllSystems removes all systems from the store
 func (sm *SystemManager) RemoveAllSystems() {
+	sm.StopSampler()
 	for _, system := range sm.systems.GetAll() {
 		sm.RemoveSystem(system.Id)
 	}

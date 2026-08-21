@@ -14,7 +14,8 @@ import (
 )
 
 func (am *AlertManager) HandleSystemAlerts(systemRecord *core.Record, data *system.CombinedData) error {
-	alerts := am.alertsCache.GetAlertsExcludingNames(systemRecord.Id, "Status")
+	// GpuMemoryFree is handled by its own sustained-sampling alert path
+	alerts := am.alertsCache.GetAlertsExcludingNames(systemRecord.Id, "Status", "GpuMemoryFree")
 	if len(alerts) == 0 {
 		return nil
 	}

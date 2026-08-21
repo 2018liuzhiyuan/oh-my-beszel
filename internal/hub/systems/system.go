@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -43,6 +44,7 @@ type System struct {
 	client         *ssh.Client             // SSH client for fetching data
 	sshTransport   *transport.SSHTransport // SSH transport for requests
 	data           *system.CombinedData    // system data from agent
+	dataMu         sync.RWMutex            // Guards reads/writes of data (sampler reads it every second)
 	ctx            context.Context         // Context for stopping the updater
 	cancel         context.CancelFunc      // Stops and removes system from updater
 	WsConn         *ws.WsConn              // Handler for agent WebSocket connection
@@ -275,6 +277,8 @@ func (sys *System) createRecords(data *system.CombinedData) (*core.Record, error
 		if err := txApp.SaveNoValidate(systemRecord); err != nil {
 			return err
 		}
+		// keep the in-memory status in sync for background readers (alert sampler)
+		sys.Status = up
 		return nil
 	})
 
@@ -311,9 +315,11 @@ func setDashboardGpuInfo(data *system.CombinedData) {
 		data.Info.GpuMemPct = nil
 		data.Info.LargestGpuId = ""
 		data.Info.LargestGpuFreeGb = 0
+		data.Info.GpuTotalGb = 0
 		return
 	}
 	data.Info.LargestGpuId = largestId
+	data.Info.GpuTotalGb = uint16(math.Floor(largestTotal / 1024))
 	gpuMemPct := math.Round(memoryUsed/memoryTotal*10000) / 100
 	data.Info.GpuMemPct = &gpuMemPct
 }
@@ -463,7 +469,11 @@ func (sys *System) setDown(originalError error) error {
 		sys.manager.hub.Logger().Error("System down", "system", record.GetString("name"), "err", originalError)
 	}
 	record.Set("status", down)
-	return sys.manager.hub.SaveNoValidate(record)
+	if err := sys.manager.hub.SaveNoValidate(record); err != nil {
+		return err
+	}
+	sys.Status = down
+	return nil
 }
 
 func (sys *System) getContext() (context.Context, context.CancelFunc) {
@@ -546,10 +556,6 @@ func (sys *System) ensureSSHTransport() error {
 
 // fetchDataFromAgent attempts to fetch data from the agent, prioritizing WebSocket if available.
 func (sys *System) fetchDataFromAgent(options common.DataRequestOptions) (*system.CombinedData, error) {
-	if sys.data == nil {
-		sys.data = &system.CombinedData{}
-	}
-
 	if sys.WsConn != nil && sys.WsConn.IsConnected() {
 		wsData, err := sys.fetchDataViaWebSocket(options)
 		if err == nil {
@@ -570,12 +576,35 @@ func (sys *System) fetchDataViaWebSocket(options common.DataRequestOptions) (*sy
 	if sys.WsConn == nil || !sys.WsConn.IsConnected() {
 		return nil, errors.New("no websocket connection")
 	}
+	// decode into a fresh object so the lock is never held across a network call
+	data := &system.CombinedData{}
 	wsTransport := transport.NewWebSocketTransport(sys.WsConn)
-	err := wsTransport.Request(context.Background(), common.GetData, options, sys.data)
+	err := wsTransport.Request(context.Background(), common.GetData, options, data)
 	if err != nil {
 		return nil, err
 	}
-	return sys.data, nil
+	sys.setData(data)
+	return data, nil
+}
+
+// setData replaces the system data under lock.
+func (sys *System) setData(data *system.CombinedData) {
+	sys.dataMu.Lock()
+	sys.data = data
+	sys.dataMu.Unlock()
+}
+
+// dataSnapshot returns a shallow copy of the current data for concurrent
+// readers (the sampler). Map/slice fields point at objects the writer has
+// already released, so a shallow copy is safe.
+func (sys *System) dataSnapshot() *system.CombinedData {
+	sys.dataMu.RLock()
+	defer sys.dataMu.RUnlock()
+	if sys.data == nil {
+		return nil
+	}
+	cp := *sys.data
+	return &cp
 }
 
 // FetchContainerInfoFromAgent fetches container info from the agent
@@ -626,6 +655,8 @@ func makeStableHashId(strings ...string) string {
 // This function encapsulates the original SSH logic.
 // It updates sys.data directly upon successful fetch.
 func (sys *System) fetchDataViaSSH(options common.DataRequestOptions) (*system.CombinedData, error) {
+	// decode into a fresh object so the data lock is never held during I/O
+	data := &system.CombinedData{}
 	err := sys.runSSHOperation(4*time.Second, 1, func(session *ssh.Session) (bool, error) {
 		stdout, err := session.StdoutPipe()
 		if err != nil {
@@ -636,7 +667,7 @@ func (sys *System) fetchDataViaSSH(options common.DataRequestOptions) (*system.C
 			return false, err
 		}
 
-		*sys.data = system.CombinedData{}
+		*data = system.CombinedData{}
 
 		if sys.agentVersion.GTE(beszel.MinVersionAgentResponse) && stdinErr == nil {
 			req := common.HubRequest[any]{Action: common.GetData, Data: options}
@@ -645,7 +676,7 @@ func (sys *System) fetchDataViaSSH(options common.DataRequestOptions) (*system.C
 
 			var resp common.AgentResponse
 			if decErr := cbor.NewDecoder(stdout).Decode(&resp); decErr == nil && resp.SystemData != nil {
-				*sys.data = *resp.SystemData
+				*data = *resp.SystemData
 				if err := session.Wait(); err != nil {
 					return false, err
 				}
@@ -655,9 +686,9 @@ func (sys *System) fetchDataViaSSH(options common.DataRequestOptions) (*system.C
 
 		var decodeErr error
 		if sys.agentVersion.GTE(beszel.MinVersionCbor) {
-			decodeErr = cbor.NewDecoder(stdout).Decode(sys.data)
+			decodeErr = cbor.NewDecoder(stdout).Decode(data)
 		} else {
-			decodeErr = json.NewDecoder(stdout).Decode(sys.data)
+			decodeErr = json.NewDecoder(stdout).Decode(data)
 		}
 
 		if decodeErr != nil {

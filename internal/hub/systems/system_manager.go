@@ -2,6 +2,7 @@ package systems
 
 import (
 	"errors"
+	"sync"
 	"fmt"
 	"time"
 
@@ -45,6 +46,8 @@ type SystemManager struct {
 	systems       *store.Store[string, *System]         // Thread-safe store of active systems
 	sshConfig     *ssh.ClientConfig                     // SSH client configuration for system connections
 	smartFetchMap *expirymap.ExpiryMap[smartFetchState] // Stores last SMART fetch time/result; TTL is only for cleanup
+	samplerStop   chan struct{}                          // Stops the GpuMemoryFree sampler goroutine
+	samplerOnce   sync.Once
 }
 
 // hubLike defines the interface requirements for the hub dependency.
@@ -55,6 +58,7 @@ type hubLike interface {
 	HandleSystemAlerts(systemRecord *core.Record, data *system.CombinedData) error
 	HandleStatusAlerts(status string, systemRecord *core.Record) error
 	CancelPendingStatusAlerts(systemID string)
+	SampleGpuFreeAlerts(systemID string, data *system.CombinedData)
 }
 
 // NewSystemManager creates a new SystemManager instance with the provided hub.
@@ -213,7 +217,7 @@ func (sm *SystemManager) onRecordAfterUpdateSuccess(e *core.RecordEvent) error {
 
 	// Trigger system alerts when system comes online
 	if newStatus == up {
-		if err := sm.hub.HandleSystemAlerts(e.Record, system.data); err != nil {
+		if err := sm.hub.HandleSystemAlerts(e.Record, system.dataSnapshot()); err != nil {
 			e.App.Logger().Error("Error handling system alerts", "err", err)
 		}
 	}

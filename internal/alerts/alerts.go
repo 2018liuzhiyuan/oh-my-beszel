@@ -24,6 +24,7 @@ type AlertManager struct {
 	stopOnce      sync.Once
 	pendingAlerts sync.Map
 	alertsCache   *AlertsCache
+	gpuFree       gpuFreeSampler
 }
 
 type AlertMessageData struct {
@@ -102,6 +103,7 @@ func NewAlertManager(app hubLike) *AlertManager {
 	am := &AlertManager{
 		hub:         app,
 		alertsCache: NewAlertsCache(app),
+		gpuFree:     newGpuFreeSampler(),
 	}
 	am.bindEvents()
 	return am

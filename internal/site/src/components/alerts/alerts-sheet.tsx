@@ -235,6 +235,9 @@ export function AlertContent({
 }) {
 	const { name } = alertData
 
+	// GpuMemoryFree thresholds are bounded by the system's largest GPU VRAM
+	const thresholdMax = alertKey === "GpuMemoryFree" ? system?.info?.gt || 256 : alertData.max ?? 99
+
 	const singleDescription = alertData.singleDesc?.()
 
 	const [checked, setChecked] = useState(global ? false : !!alert)
@@ -339,7 +342,7 @@ export function AlertContent({
 										onValueChange={(val) => setValue(val[0])}
 										step={alertData.step ?? 1}
 										min={alertData.min ?? 1}
-										max={alertData.max ?? 99}
+										max={thresholdMax}
 									/>
 									<Input
 										type="number"
@@ -347,7 +350,7 @@ export function AlertContent({
 										onChange={(e) => {
 											let val = parseFloat(e.target.value)
 											if (!Number.isNaN(val)) {
-												if (alertData.max != null) val = Math.min(val, alertData.max)
+												val = Math.min(val, thresholdMax)
 												if (alertData.min != null) val = Math.max(val, alertData.min)
 												setValue(val)
 												sendUpsert(min, val)
@@ -355,7 +358,7 @@ export function AlertContent({
 										}}
 										step={alertData.step ?? 1}
 										min={alertData.min ?? 1}
-										max={alertData.max ?? 99}
+										max={thresholdMax}
 										className="w-16 h-8 text-center px-1"
 									/>
 								</div>
@@ -381,7 +384,7 @@ export function AlertContent({
 									onValueCommit={(val) => sendUpsert(val[0], value)}
 									onValueChange={(val) => setMin(val[0])}
 									min={1}
-									max={60}
+									max={100}
 								/>
 								<Input
 									type="number"
@@ -389,13 +392,13 @@ export function AlertContent({
 									onChange={(e) => {
 										let val = parseInt(e.target.value, 10)
 										if (!Number.isNaN(val)) {
-											val = Math.max(1, Math.min(val, 60))
+											val = Math.max(1, Math.min(val, 100))
 											setMin(val)
 											sendUpsert(val, value)
 										}
 									}}
 									min={1}
-									max={60}
+									max={100}
 									className="w-16 h-8 text-center px-1"
 								/>
 							</div>

@@ -73,6 +73,8 @@ export interface SystemInfo {
 	gi?: string
 	/** free VRAM (GB, floored) of the GPU with the most VRAM */
 	gf?: number
+	/** total VRAM (GB) of the largest GPU */
+	gt?: number
 	/** dashboard display temperature */
 	dt?: number
 	/** operating system */

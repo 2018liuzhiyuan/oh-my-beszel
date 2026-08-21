@@ -159,6 +159,8 @@ type Info struct {
 	// id of the GPU with the most VRAM, and its free VRAM (GB, floored)
 	LargestGpuId     string `json:"gi,omitempty" cbor:"25,keyasint,omitempty"`
 	LargestGpuFreeGb uint16 `json:"gf,omitempty" cbor:"26,keyasint,omitempty"`
+	// total VRAM (GB, floored) of the largest GPU on the system
+	GpuTotalGb uint16 `json:"gt,omitempty" cbor:"27,keyasint,omitempty"`
 }
 
 // Data that does not change during process lifetime and is not needed in All Systems table
