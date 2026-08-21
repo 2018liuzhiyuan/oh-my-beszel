@@ -62,6 +62,11 @@ func (sm *SystemManager) NewSystem(systemId string) *System {
 	return system
 }
 
+// pollBackoff is the retry schedule after a failed poll. A failed system is
+// re-probed within seconds so recovery is reflected quickly on the dashboard,
+// settling at the last step (30s) so unreachable systems aren't hammered.
+var pollBackoff = [...]time.Duration{5 * time.Second, 10 * time.Second, 20 * time.Second, 30 * time.Second}
+
 // StartUpdater starts the system updater.
 // It first fetches the data from the agent then updates the records.
 // If the data is not found or the system is down, it sets the system down.
@@ -86,8 +91,21 @@ func (sys *System) StartUpdater() {
 
 	// update immediately if system is not paused (only for ws connections)
 	// we'll wait a minute before connecting via SSH to prioritize ws connections
+	failures := 0
+	resetTicker := func() {
+		if failures > 0 {
+			i := failures - 1
+			if i >= len(pollBackoff) {
+				i = len(pollBackoff) - 1
+			}
+			sys.updateTicker.Reset(pollBackoff[i])
+		} else {
+			sys.updateTicker.Reset(time.Duration(interval) * time.Millisecond)
+		}
+	}
 	if sys.Status != paused && sys.ctx.Err() == nil {
 		if err := sys.update(); err != nil {
+			failures++
 			_ = sys.setDown(err)
 		}
 	}
@@ -95,24 +113,34 @@ func (sys *System) StartUpdater() {
 	sys.updateTicker = time.NewTicker(time.Duration(interval) * time.Millisecond)
 	// Go 1.23+ will automatically stop the ticker when the system is garbage collected, however we seem to need this or testing/synctest will block even if calling runtime.GC()
 	defer sys.updateTicker.Stop()
+	// the initial ticker period doesn't account for the startup poll result
+	resetTicker()
+
+	poll := func() {
+		if err := sys.update(); err != nil {
+			failures++
+			_ = sys.setDown(err)
+		} else {
+			failures = 0
+		}
+		resetTicker()
+	}
 
 	for {
 		select {
 		case <-sys.ctx.Done():
 			return
 		case <-sys.updateTicker.C:
-			if err := sys.update(); err != nil {
-				_ = sys.setDown(err)
-			}
+			poll()
 		case <-downChan:
 			sys.WsConn = nil
 			downChan = nil
 			_ = sys.setDown(nil)
+			// retry quickly after a websocket drop so recovery is noticed fast
+			failures = 1
+			resetTicker()
 		case <-jitter:
-			sys.updateTicker.Reset(time.Duration(interval) * time.Millisecond)
-			if err := sys.update(); err != nil {
-				_ = sys.setDown(err)
-			}
+			poll()
 		}
 	}
 }
