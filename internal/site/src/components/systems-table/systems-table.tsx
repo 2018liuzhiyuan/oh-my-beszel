@@ -359,9 +359,7 @@ const AllSystemsTable = memo(
 				<div style={{ height: `${virtualizer.getTotalSize() + 50}px`, paddingTop, paddingBottom }}>
 					<table className="text-sm w-full h-full">
 						<SystemsTableHead table={table} />
-							// preload the lazy detail chunk as soon as the pointer enters the
-							// table body, so clicking any row is already warm
-							<TableBody onPointerEnter={preloadSystemDetail}>
+						<TableBody onPointerEnter={preloadSystemDetail}>
 							{rows.length ? (
 								virtualRows.map((virtualRow) => {
 									const row = rows[virtualRow.index] as Row<SystemRecord>

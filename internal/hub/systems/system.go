@@ -726,17 +726,36 @@ func (s *System) createSSHClient() error {
 			return err
 		}
 	}
-	network := "tcp"
-	host := s.Host
-	if strings.HasPrefix(host, "/") {
-		network = "unix"
+	if strings.HasPrefix(s.Host, "/") {
+		conn, err := net.Dial("unix", s.Host)
+		if err != nil {
+			return err
+		}
+		c, chans, reqs, err := ssh.NewClientConn(conn, s.Host, s.manager.sshConfig)
+		if err != nil {
+			conn.Close()
+			return err
+		}
+		s.client = ssh.NewClient(c, chans, reqs)
 	} else {
-		host = net.JoinHostPort(host, s.Port)
+		// resolve through the user's ssh config: aliases, renumbered IPs and
+		// ProxyJump chains reflect the current file on every poll
+		conn, err := s.manager.DialAgent(s.Host, s.Port)
+		if err != nil {
+			return err
+		}
+		addr := net.JoinHostPort(s.Host, s.Port)
+		c, chans, reqs, err := ssh.NewClientConn(conn, addr, s.manager.sshConfig)
+		if err != nil {
+			conn.Close()
+			return err
+		}
+		// clear the dial deadline; the connection is long-lived from here on
+		_ = conn.SetDeadline(time.Time{})
+		s.client = ssh.NewClient(c, chans, reqs)
 	}
-	var err error
-	s.client, err = ssh.Dial(network, host, s.manager.sshConfig)
-	if err != nil {
-		return err
+	if s.client == nil {
+		return fmt.Errorf("client not initialized")
 	}
 	s.agentVersion, _ = extractAgentVersion(string(s.client.Conn.ServerVersion()))
 	s.manager.resetFailedSmartFetchState(s.Id)

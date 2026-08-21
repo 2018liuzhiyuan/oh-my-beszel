@@ -160,8 +160,11 @@ export default function InfoBar({
 		return info
 	}, [system, details, t])
 
-	// IPMI System Event Log entries (hardware alerts), newest first
-	const selEntries = (details?.sel_entries ?? "").split("\n").filter(Boolean).slice(0, 10)
+	// IPMI System Event Log entries (hardware alerts), newest first;
+	// keep the panel compact: show the 3 most recent, count the rest
+	const selLines = (details?.sel_entries ?? "").split("\n").filter(Boolean)
+	const selEntries = selLines.slice(0, 3)
+	const selMore = selLines.length - selEntries.length
 
 	let translatedStatus: string = system.status
 	if (system.status === SystemStatus.Up) {
@@ -291,20 +294,21 @@ export default function InfoBar({
 			</div>
 		</Card>
 		{selEntries.length > 0 && (
-			<Card className="mt-4 border-amber-500/40 bg-amber-500/5">
-				<div className="px-4 sm:px-6 py-3">
-					<div className="flex items-center gap-2 text-sm font-medium text-amber-600 dark:text-amber-400 mb-2">
-						<TriangleAlertIcon className="h-4 w-4" />
+			<Card className="mt-2 border-amber-500/40 bg-amber-500/5">
+				<div className="px-4 sm:px-6 py-2">
+					<div className="flex items-center gap-2 text-xs font-medium text-amber-600 dark:text-amber-400 mb-1">
+						<TriangleAlertIcon className="h-3.5 w-3.5" />
 						<Trans>Hardware event log (IPMI SEL)</Trans>
-						<span className="opacity-70">({selEntries.length})</span>
+						<span className="opacity-70">({selLines.length})</span>
 					</div>
-					<ul className="text-xs font-mono space-y-1 opacity-90 max-h-40 overflow-y-auto">
+					<ul className="text-xs font-mono leading-tight space-y-0.5 opacity-90">
 						{selEntries.map((entry, i) => (
 							<li key={i} className="truncate" title={entry}>
 								{entry}
 							</li>
 						))}
 					</ul>
+					{selMore > 0 && <div className="text-xs opacity-60 mt-0.5">+{selMore}</div>}
 				</div>
 			</Card>
 		)}
