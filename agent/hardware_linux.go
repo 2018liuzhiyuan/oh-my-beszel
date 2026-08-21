@@ -32,14 +32,16 @@ func (a *Agent) collectHardwareDetails() {
 			}
 			count++
 			for _, addr := range iface.Addrs {
-				// keep only IPv4/IPv6 addresses, strip CIDR suffix
+				// keep only global addresses; strip CIDR suffix and skip
+				// loopback / IPv6 link-local (fe80::) which add noise
 				ip := addr.Addr
 				if idx := strings.Index(ip, "/"); idx >= 0 {
 					ip = ip[:idx]
 				}
-				if ip != "" && !strings.HasPrefix(ip, "127.") && ip != "::1" {
-					ips = append(ips, ip)
+				if ip == "" || strings.HasPrefix(ip, "127.") || ip == "::1" || strings.HasPrefix(ip, "fe80:") {
+					continue
 				}
+				ips = append(ips, ip)
 			}
 			if speed := nicSpeedMbps(iface.Name); speed > maxSpeed {
 				maxSpeed = speed
