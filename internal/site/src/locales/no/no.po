@@ -246,6 +246,7 @@ msgid "Bandwidth"
 msgstr "Båndbredde"
 
 #: src/components/routes/system/charts/sensor-charts.tsx
+#: src/components/routes/system/charts/sensor-charts.tsx
 #: src/lib/alerts.ts
 msgid "Battery"
 msgstr "Batteri"
@@ -474,6 +475,10 @@ msgstr "Kopier Linux-kommando"
 msgid "Copy name"
 msgstr "Kopier navn"
 
+#: src/components/routes/settings/tokens-fingerprints.tsx
+msgid "Copy public key"
+msgstr ""
+
 #: src/components/copy-to-clipboard.tsx
 msgid "Copy text"
 msgstr "Kopier tekst"
@@ -550,6 +555,8 @@ msgid "Cumulative Upload"
 msgstr "Kumulativ opplasting"
 
 #. Context: Battery state
+#. Context: Battery state
+#: src/components/routes/system/charts/sensor-charts.tsx
 #: src/components/routes/system/charts/sensor-charts.tsx
 msgid "Current state"
 msgstr "Nåværende tilstand"
@@ -720,7 +727,6 @@ msgstr "Skriv inn ditt engangspassord."
 msgid "Ephemeral"
 msgstr "Flyktig"
 
-#: src/components/login/auth-form.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
 #: src/components/routes/settings/config-yaml.tsx
 #: src/components/routes/settings/heartbeat.tsx
@@ -811,6 +817,10 @@ msgstr "Kunne ikke oppdatere alarm"
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Failed: {0}"
 msgstr "Mislyktes: {0}"
+
+#: src/components/routes/system/charts/sensor-charts.tsx
+msgid "Fans"
+msgstr ""
 
 #: src/components/containers-table/containers-table.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
@@ -1333,6 +1343,10 @@ msgstr "Foretrukket Språk"
 msgid "Process started"
 msgstr "Prosess startet"
 
+#: src/components/routes/settings/tokens-fingerprints.tsx
+msgid "Public key"
+msgstr ""
+
 #. Use 'Key' if your language requires many more characters
 #: src/components/add-system.tsx
 msgid "Public Key"
@@ -1582,6 +1596,11 @@ msgstr "Swap-plass i bruk av systemet"
 msgid "Swap Usage"
 msgstr "Swap-bruk"
 
+#: src/components/mode-toggle.tsx
+#: src/components/mode-toggle.tsx
+msgid "Switch theme"
+msgstr ""
+
 #: src/components/add-system.tsx
 #: src/components/alerts-history-columns.tsx
 #: src/components/containers-table/containers-table-columns.tsx
@@ -1595,6 +1614,10 @@ msgstr "Swap-bruk"
 #: src/components/systems-table/systems-table-columns.tsx
 #: src/lib/alerts.ts
 msgid "System"
+msgstr ""
+
+#: src/components/routes/system/charts/sensor-charts.tsx
+msgid "System fan speeds (RPM)"
 msgstr ""
 
 #: src/components/routes/system/charts/load-average-chart.tsx
@@ -1686,11 +1709,6 @@ msgstr "Tidsformat"
 #: src/components/routes/settings/notifications.tsx
 msgid "To email(s)"
 msgstr "Til e-postadresse(r)"
-
-#: src/components/mode-toggle.tsx
-#: src/components/mode-toggle.tsx
-msgid "Toggle theme"
-msgstr "Tema av/på"
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx

@@ -246,6 +246,7 @@ msgid "Bandwidth"
 msgstr "רוחב פס"
 
 #: src/components/routes/system/charts/sensor-charts.tsx
+#: src/components/routes/system/charts/sensor-charts.tsx
 #: src/lib/alerts.ts
 msgid "Battery"
 msgstr "סוללה"
@@ -474,6 +475,10 @@ msgstr "העתק פקודת Linux"
 msgid "Copy name"
 msgstr "העתק שם"
 
+#: src/components/routes/settings/tokens-fingerprints.tsx
+msgid "Copy public key"
+msgstr ""
+
 #: src/components/copy-to-clipboard.tsx
 msgid "Copy text"
 msgstr "העתק טקסט"
@@ -550,6 +555,8 @@ msgid "Cumulative Upload"
 msgstr "העלאה מצטברת"
 
 #. Context: Battery state
+#. Context: Battery state
+#: src/components/routes/system/charts/sensor-charts.tsx
 #: src/components/routes/system/charts/sensor-charts.tsx
 msgid "Current state"
 msgstr "מצב נוכחי"
@@ -720,7 +727,6 @@ msgstr "הכנס את הסיסמה החד-פעמית שלך."
 msgid "Ephemeral"
 msgstr "זמני"
 
-#: src/components/login/auth-form.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
 #: src/components/routes/settings/config-yaml.tsx
 #: src/components/routes/settings/heartbeat.tsx
@@ -811,6 +817,10 @@ msgstr "עדכון התראה נכשל"
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Failed: {0}"
 msgstr "נכשל: {0}"
+
+#: src/components/routes/system/charts/sensor-charts.tsx
+msgid "Fans"
+msgstr ""
 
 #: src/components/containers-table/containers-table.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
@@ -1333,6 +1343,10 @@ msgstr "שפה מועדפת"
 msgid "Process started"
 msgstr "תהליך התחיל"
 
+#: src/components/routes/settings/tokens-fingerprints.tsx
+msgid "Public key"
+msgstr ""
+
 #. Use 'Key' if your language requires many more characters
 #: src/components/add-system.tsx
 msgid "Public Key"
@@ -1582,6 +1596,11 @@ msgstr "שטח swap בשימוש על ידי המערכת"
 msgid "Swap Usage"
 msgstr "שימוש ב-Swap"
 
+#: src/components/mode-toggle.tsx
+#: src/components/mode-toggle.tsx
+msgid "Switch theme"
+msgstr ""
+
 #: src/components/add-system.tsx
 #: src/components/alerts-history-columns.tsx
 #: src/components/containers-table/containers-table-columns.tsx
@@ -1596,6 +1615,10 @@ msgstr "שימוש ב-Swap"
 #: src/lib/alerts.ts
 msgid "System"
 msgstr "מערכת"
+
+#: src/components/routes/system/charts/sensor-charts.tsx
+msgid "System fan speeds (RPM)"
+msgstr ""
 
 #: src/components/routes/system/charts/load-average-chart.tsx
 msgid "System load averages over time"
@@ -1686,11 +1709,6 @@ msgstr "פורמט זמן"
 #: src/components/routes/settings/notifications.tsx
 msgid "To email(s)"
 msgstr "לאימייל(ים)"
-
-#: src/components/mode-toggle.tsx
-#: src/components/mode-toggle.tsx
-msgid "Toggle theme"
-msgstr "החלף ערכת נושא"
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx

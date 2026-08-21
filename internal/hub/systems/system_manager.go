@@ -1,9 +1,10 @@
 package systems
 
 import (
+	"context"
 	"errors"
-	"sync"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/henrygd/beszel/internal/hub/ws"
@@ -46,7 +47,9 @@ type SystemManager struct {
 	systems       *store.Store[string, *System]         // Thread-safe store of active systems
 	sshConfig     *ssh.ClientConfig                     // SSH client configuration for system connections
 	smartFetchMap *expirymap.ExpiryMap[smartFetchState] // Stores last SMART fetch time/result; TTL is only for cleanup
-	samplerStop   chan struct{}                          // Stops the GpuMemoryFree sampler goroutine
+	ctx           context.Context
+	cancel        context.CancelFunc
+	samplerStop   chan struct{} // Stops the GpuMemoryFree sampler goroutine
 	samplerOnce   sync.Once
 }
 
@@ -64,11 +67,40 @@ type hubLike interface {
 // NewSystemManager creates a new SystemManager instance with the provided hub.
 // The hub must implement the hubLike interface to provide database and alert functionality.
 func NewSystemManager(hub hubLike) *SystemManager {
-	return &SystemManager{
+	sm := &SystemManager{
 		systems:       store.New(map[string]*System{}),
 		hub:           hub,
 		smartFetchMap: expirymap.New[smartFetchState](time.Hour),
+		samplerStop:   make(chan struct{}),
 	}
+	sm.ctx, sm.cancel = context.WithCancel(context.Background())
+	go sm.sampleGpuFree()
+	return sm
+}
+
+// sampleGpuFree feeds every online system's latest data to the GpuMemoryFree
+// sampler once per second; the sampler itself paces samples evenly.
+func (sm *SystemManager) sampleGpuFree() {
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-sm.samplerStop:
+			return
+		case <-ticker.C:
+			for _, sys := range sm.systems.Values() {
+				if sys.Status != up {
+					continue
+				}
+				sm.hub.SampleGpuFreeAlerts(sys.Id, sys.dataSnapshot())
+			}
+		}
+	}
+}
+
+// StopSampler stops the GpuMemoryFree sampling goroutine (used by tests).
+func (sm *SystemManager) StopSampler() {
+	sm.samplerOnce.Do(func() { close(sm.samplerStop) })
 }
 
 // GetSystem returns a system by ID from the store
@@ -107,7 +139,9 @@ func (sm *SystemManager) Initialize() error {
 		sleepTime := time.Duration(delta) * time.Millisecond
 
 		for _, system := range systems {
-			time.Sleep(sleepTime)
+			if !waitForContext(sm.ctx, sleepTime) {
+				return
+			}
 			_ = sm.AddSystem(system)
 		}
 	}()
@@ -125,6 +159,14 @@ func (sm *SystemManager) bindEventHooks() {
 	sm.hub.OnRecordAfterUpdateSuccess("fingerprints").BindFunc(sm.onTokenRotated)
 	sm.hub.OnRealtimeSubscribeRequest().BindFunc(sm.onRealtimeSubscribeRequest)
 	sm.hub.OnRealtimeConnectRequest().BindFunc(sm.onRealtimeConnectRequest)
+	sm.hub.OnTerminate().BindFunc(sm.onTerminate)
+}
+
+// onTerminate cancels SystemManager context on app shutdown
+func (sm *SystemManager) onTerminate(e *core.TerminateEvent) error {
+	sm.cancel()
+	sm.StopSampler()
+	return e.Next()
 }
 
 // onTokenRotated handles fingerprint token rotation events.
@@ -251,8 +293,8 @@ func (sm *SystemManager) AddSystem(sys *System) error {
 
 	// Initialize system for monitoring
 	sys.manager = sm
-	sys.ctx, sys.cancel = sys.getContext()
-	sys.data = &system.CombinedData{}
+	sys.ctx, sys.cancel = sys.getContext(sm.ctx)
+	sys.setData(&system.CombinedData{})
 	sm.systems.Set(sys.Id, sys)
 
 	// Start monitoring in background
@@ -375,4 +417,16 @@ func deactivateAlerts(app core.App, systemID string) error {
 		}
 	}
 	return nil
+}
+
+// waitForContext waits for delay or returns early when ctx is cancelled.
+func waitForContext(ctx context.Context, delay time.Duration) bool {
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return false
+	case <-timer.C:
+		return true
+	}
 }

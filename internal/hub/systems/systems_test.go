@@ -30,6 +30,7 @@ func TestSystemManagerNew(t *testing.T) {
 	require.NoError(t, err)
 
 	synctest.Test(t, func(t *testing.T) {
+		sm.ResetContextForTesting()
 		sm.Initialize()
 
 		record, err := tests.CreateRecord(hub, "systems", map[string]any{
@@ -112,6 +113,8 @@ func TestSystemManagerNew(t *testing.T) {
 		assert.False(t, sm.HasSystem(record.Id), "System should not exist in the store after deletion")
 	})
 
+	// The following subtests run outside the synctest bubble.
+	sm.ResetContextForTesting()
 	testOld(t, hub)
 
 	synctest.Test(t, func(t *testing.T) {
@@ -419,5 +422,62 @@ func testOld(t *testing.T, hub *tests.TestHub) {
 		// Clean up
 		err = sm.RemoveSystem(record.Id)
 		assert.NoError(t, err)
+	})
+}
+
+func TestHasUser(t *testing.T) {
+	hub, err := tests.NewTestHub(t.TempDir())
+	require.NoError(t, err)
+	defer hub.Cleanup()
+
+	sm := hub.GetSystemManager()
+	err = sm.Initialize()
+	require.NoError(t, err)
+
+	user1, err := tests.CreateUser(hub, "user1@test.com", "password123")
+	require.NoError(t, err)
+	user2, err := tests.CreateUser(hub, "user2@test.com", "password123")
+	require.NoError(t, err)
+
+	systemRecord, err := tests.CreateRecord(hub, "systems", map[string]any{
+		"name":  "has-user-test",
+		"host":  "127.0.0.1",
+		"port":  "33914",
+		"users": []string{user1.Id},
+	})
+	require.NoError(t, err)
+
+	sys, err := sm.GetSystemFromStore(systemRecord.Id)
+	require.NoError(t, err)
+
+	t.Run("user in list returns true", func(t *testing.T) {
+		assert.True(t, sys.HasUser(hub, user1))
+	})
+
+	t.Run("user not in list returns false", func(t *testing.T) {
+		assert.False(t, sys.HasUser(hub, user2))
+	})
+
+	t.Run("unknown user ID returns false", func(t *testing.T) {
+		assert.False(t, sys.HasUser(hub, nil))
+	})
+
+	t.Run("SHARE_ALL_SYSTEMS=true grants access to non-member", func(t *testing.T) {
+		t.Setenv("SHARE_ALL_SYSTEMS", "true")
+		assert.True(t, sys.HasUser(hub, user2))
+	})
+
+	t.Run("BESZEL_HUB_SHARE_ALL_SYSTEMS=true grants access to non-member", func(t *testing.T) {
+		t.Setenv("BESZEL_HUB_SHARE_ALL_SYSTEMS", "true")
+		assert.True(t, sys.HasUser(hub, user2))
+	})
+
+	t.Run("additional user works", func(t *testing.T) {
+		assert.False(t, sys.HasUser(hub, user2))
+		systemRecord.Set("users", []string{user1.Id, user2.Id})
+		err = hub.Save(systemRecord)
+		require.NoError(t, err)
+		assert.True(t, sys.HasUser(hub, user1))
+		assert.True(t, sys.HasUser(hub, user2))
 	})
 }

@@ -9,7 +9,6 @@ import (
 	"math"
 	"math/rand"
 	"net"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -18,6 +17,7 @@ import (
 
 	"github.com/henrygd/beszel/internal/common"
 	"github.com/henrygd/beszel/internal/hub/transport"
+	"github.com/henrygd/beszel/internal/hub/utils"
 	"github.com/henrygd/beszel/internal/hub/ws"
 
 	"github.com/henrygd/beszel/internal/entities/container"
@@ -60,7 +60,7 @@ func (sm *SystemManager) NewSystem(systemId string) *System {
 		Id:   systemId,
 		data: &system.CombinedData{},
 	}
-	system.ctx, system.cancel = system.getContext()
+	system.ctx, system.cancel = system.getContext(sm.ctx)
 	return system
 }
 
@@ -88,7 +88,10 @@ func (sys *System) StartUpdater() {
 	} else {
 		// if the system does not have a websocket connection, wait before updating
 		// to allow the agent to connect via websocket (makes sure fingerprint is set).
-		time.Sleep(11 * time.Second)
+		if !waitForContext(sys.ctx, 11*time.Second) {
+			return
+		}
+
 	}
 
 	// update immediately if system is not paused (only for ws connections)
@@ -277,8 +280,6 @@ func (sys *System) createRecords(data *system.CombinedData) (*core.Record, error
 		if err := txApp.SaveNoValidate(systemRecord); err != nil {
 			return err
 		}
-		// keep the in-memory status in sync for background readers (alert sampler)
-		sys.Status = up
 		return nil
 	})
 
@@ -439,27 +440,47 @@ func (sys *System) getRecord(app core.App) (*core.Record, error) {
 	record, err := app.FindRecordById("systems", sys.Id)
 	if err != nil || record == nil {
 		_ = sys.manager.RemoveSystem(sys.Id)
+		if err == nil {
+			err = fmt.Errorf("system record %s not found", sys.Id)
+		}
 		return nil, err
 	}
 	return record, nil
 }
 
-// HasUser checks if the given user ID is in the system's users list.
-func (sys *System) HasUser(app core.App, userID string) bool {
-	record, err := sys.getRecord(app)
-	if err != nil {
+// HasUser checks if the given user is in the system's users list.
+// Returns true if SHARE_ALL_SYSTEMS is enabled (any authenticated user can access any system).
+func (sys *System) HasUser(app core.App, user *core.Record) bool {
+	if user == nil {
 		return false
 	}
-	users := record.GetStringSlice("users")
-	return slices.Contains(users, userID)
+	if v, _ := utils.GetEnv("SHARE_ALL_SYSTEMS"); v == "true" {
+		return true
+	}
+	var recordData = struct {
+		Users string
+	}{}
+	err := app.DB().NewQuery("SELECT users FROM systems WHERE id={:id}").
+		Bind(dbx.Params{"id": sys.Id}).
+		One(&recordData)
+	if err != nil || recordData.Users == "" {
+		return false
+	}
+	return strings.Contains(recordData.Users, user.Id)
 }
 
 // setDown marks a system as down in the database.
 // It takes the original error that caused the system to go down and returns any error
 // encountered during the process of updating the system status.
+// It is a no-op if the system's context has been cancelled.
 func (sys *System) setDown(originalError error) error {
 	if sys.Status == down || sys.Status == paused {
 		return nil
+	}
+	// the updater can race shutdown, and the app may already be disposed by the
+	// time we get here, so don't touch the database once the context is cancelled
+	if sys.ctx != nil && sys.ctx.Err() != nil {
+		return sys.ctx.Err()
 	}
 	record, err := sys.getRecord(sys.manager.hub)
 	if err != nil {
@@ -468,17 +489,14 @@ func (sys *System) setDown(originalError error) error {
 	if originalError != nil {
 		sys.manager.hub.Logger().Error("System down", "system", record.GetString("name"), "err", originalError)
 	}
+	sys.detailsFetched.Store(false)
 	record.Set("status", down)
-	if err := sys.manager.hub.SaveNoValidate(record); err != nil {
-		return err
-	}
-	sys.Status = down
-	return nil
+	return sys.manager.hub.SaveNoValidate(record)
 }
 
-func (sys *System) getContext() (context.Context, context.CancelFunc) {
+func (sys *System) getContext(ctx context.Context) (context.Context, context.CancelFunc) {
 	if sys.ctx == nil {
-		sys.ctx, sys.cancel = context.WithCancel(context.Background())
+		sys.ctx, sys.cancel = context.WithCancel(ctx)
 	}
 	return sys.ctx, sys.cancel
 }
@@ -634,11 +652,16 @@ func (sys *System) FetchSystemdInfoFromAgent(serviceName string) (systemd.Servic
 	return result, err
 }
 
-// FetchSmartDataFromAgent fetches SMART data from the agent
-func (sys *System) FetchSmartDataFromAgent() (map[string]smart.SmartData, error) {
+// FetchSmartDataFromAgent fetches SMART data from the agent.
+func (sys *System) FetchSmartDataFromAgent() (smart.SmartDataResponse, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	var result map[string]smart.SmartData
+	if sys.agentVersion.LT(beszel.MinVersionAgentResponse) {
+		var data map[string]smart.SmartData
+		err := sys.request(ctx, common.GetSmartData, nil, &data)
+		return smart.SmartDataResponse{Data: data}, err
+	}
+	var result smart.SmartDataResponse
 	err := sys.request(ctx, common.GetSmartData, nil, &result)
 	return result, err
 }
@@ -653,7 +676,7 @@ func makeStableHashId(strings ...string) string {
 
 // fetchDataViaSSH handles fetching data using SSH.
 // This function encapsulates the original SSH logic.
-// It updates sys.data directly upon successful fetch.
+// It updates sys.data via setData upon successful fetch.
 func (sys *System) fetchDataViaSSH(options common.DataRequestOptions) (*system.CombinedData, error) {
 	// decode into a fresh object so the data lock is never held during I/O
 	data := &system.CombinedData{}
@@ -705,7 +728,8 @@ func (sys *System) fetchDataViaSSH(options common.DataRequestOptions) (*system.C
 		return nil, err
 	}
 
-	return sys.data, nil
+	sys.setData(data)
+	return data, nil
 }
 
 // runSSHOperation establishes an SSH session and executes the provided operation.
@@ -728,10 +752,17 @@ func (sys *System) runSSHOperation(timeout time.Duration, retries int, operation
 			continue
 		}
 
-		retry, opErr := func() (bool, error) {
+		// Bound the whole operation. A half-open TCP connection (a dead peer that
+		// never sends RST/FIN) or a wedged agent that accepts the session but
+		// never writes a response would otherwise block the read forever. Because
+		// StartUpdater runs update() synchronously on its ticker, that stalls the
+		// per-system updater indefinitely with no error and no re-dial until the
+		// hub is restarted (issue #2041). On timeout we tear down the connection
+		// so the blocked read unwinds and the system is re-dialed on the next tick.
+		retry, opErr := runWithTimeout(sshOperationTimeout, func() (bool, error) {
 			defer session.Close()
 			return operation(session)
-		}()
+		}, sys.closeSSHConnection)
 
 		if opErr == nil {
 			return nil
@@ -748,6 +779,43 @@ func (sys *System) runSSHOperation(timeout time.Duration, retries int, operation
 	}
 
 	return fmt.Errorf("ssh operation failed")
+}
+
+// sshOperationTimeout bounds a single SSH data exchange (send request, read
+// response, wait for the remote command to exit). It is more generous than the
+// session-creation timeout to tolerate briefly slow agents, but is kept well
+// under the collection interval so a stalled connection is detected and
+// re-dialed within one cycle (see issue #2041).
+const sshOperationTimeout = 20 * time.Second
+
+// runWithTimeout runs op in a goroutine and returns its result, or, if op does
+// not finish within timeout, calls onTimeout (used to tear down the connection
+// so a blocked op can unwind) and returns a retryable timeout error. This
+// guarantees the caller can never block indefinitely on a dead SSH connection.
+func runWithTimeout(timeout time.Duration, op func() (bool, error), onTimeout func()) (retry bool, err error) {
+	type opResult struct {
+		retry bool
+		err   error
+	}
+	// Buffered so the op goroutine never leaks even when we return on timeout.
+	done := make(chan opResult, 1)
+	go func() {
+		r, e := op()
+		done <- opResult{retry: r, err: e}
+	}()
+
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+
+	select {
+	case res := <-done:
+		return res.retry, res.err
+	case <-timer.C:
+		if onTimeout != nil {
+			onTimeout()
+		}
+		return true, fmt.Errorf("ssh operation timed out after %s", timeout)
+	}
 }
 
 // createSSHClient creates a new SSH client for the system
@@ -792,6 +860,14 @@ func (s *System) createSSHClient() error {
 	s.manager.resetFailedSmartFetchState(s.Id)
 	return nil
 }
+
+// sshKeepAliveInterval is the TCP keep-alive idle interval for SSH connections
+// to agents. Enabling OS-level keep-alives lets the hub eventually detect a
+// dead peer on an otherwise idle connection instead of trusting it forever.
+// This is a backstop for genuine network death; an application-level wedge
+// (agent process hung while its kernel keeps ACKing) is caught by the
+// per-operation timeout in runSSHOperation instead (see issue #2041).
+const sshKeepAliveInterval = 30 * time.Second
 
 // createSessionWithTimeout creates a new SSH session with a timeout to avoid hanging
 // in case of network issues

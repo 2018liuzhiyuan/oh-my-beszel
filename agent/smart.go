@@ -51,6 +51,11 @@ type DeviceInfo struct {
 	typeVerified bool
 	// parserType holds the parser type (nvme, sat, scsi) that last succeeded.
 	parserType string
+	// explicitType reports whether Type came from an explicit ":type" hint in
+	// SMART_DEVICES. Such a type is a deliberate user override and must always be
+	// passed to smartctl via -d, even for scsi/ata where a scan-detected type is
+	// otherwise left off (see smartctlArgs and issue #1345).
+	explicitType bool
 }
 
 // deviceKey is a composite key for a device, used to identify a device uniquely.
@@ -61,8 +66,9 @@ type deviceKey struct {
 
 var errNoValidSmartData = fmt.Errorf("no valid SMART data found") // Error for missing data
 
-// Refresh updates SMART data for all known devices
-func (sm *SmartManager) Refresh(forceScan bool) error {
+// Refresh updates SMART data for all known devices and reports whether every
+// discovered device was collected successfully.
+func (sm *SmartManager) Refresh(forceScan bool) (bool, error) {
 	sm.refreshMutex.Lock()
 	defer sm.refreshMutex.Unlock()
 
@@ -83,7 +89,7 @@ func (sm *SmartManager) Refresh(forceScan bool) error {
 		}
 	}
 
-	return sm.resolveRefreshError(scanErr, collectErr)
+	return scanErr == nil && collectErr == nil, sm.resolveRefreshError(scanErr, collectErr)
 }
 
 // devicesSnapshot returns a copy of the current device slice to avoid iterating
@@ -247,8 +253,9 @@ func (sm *SmartManager) parseConfiguredDevices(config string) ([]*DeviceInfo, er
 		}
 
 		devices = append(devices, &DeviceInfo{
-			Name: name,
-			Type: devType,
+			Name:         name,
+			Type:         devType,
+			explicitType: devType != "",
 		})
 	}
 
@@ -364,9 +371,15 @@ func (sm *SmartManager) parseSmartOutput(deviceInfo *DeviceInfo, output []byte) 
 		Type  string
 		Parse func([]byte) (bool, int)
 	}{
-		{Type: "nvme", Parse: sm.parseSmartForNvme},
-		{Type: "sat", Parse: sm.parseSmartForSata},
-		{Type: "scsi", Parse: sm.parseSmartForScsi},
+		{Type: "nvme", Parse: func(output []byte) (bool, int) {
+			return sm.parseSmartForNvme(output, deviceInfo.Type)
+		}},
+		{Type: "sat", Parse: func(output []byte) (bool, int) {
+			return sm.parseSmartForSata(output, deviceInfo.Type)
+		}},
+		{Type: "scsi", Parse: func(output []byte) (bool, int) {
+			return sm.parseSmartForScsi(output, deviceInfo.Type)
+		}},
 	}
 
 	deviceType := normalizeParserType(deviceInfo.parserType)
@@ -475,10 +488,11 @@ func (sm *SmartManager) CollectSmart(deviceInfo *DeviceInfo) error {
 		return errNoValidSmartData
 	}
 
-	// slog.Info("collecting SMART data", "device", deviceInfo.Name, "type", deviceInfo.Type, "has_existing_data", sm.hasDataForDevice(deviceInfo.Name))
+	// slog.Info("collecting SMART data", "device", deviceInfo.Name, "type", deviceInfo.Type, "has_existing_data", sm.hasDataForDevice(deviceInfo))
 
-	// Check if we have any existing data for this device
-	hasExistingData := sm.hasDataForDevice(deviceInfo.Name)
+	// Check if we have existing data for this exact device identity. Multiple
+	// bridge slots can share a path, so a name-only match is not sufficient.
+	hasExistingData := sm.hasDataForDevice(deviceInfo)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
@@ -554,7 +568,9 @@ func (sm *SmartManager) smartctlArgs(deviceInfo *DeviceInfo, includeStandby bool
 		deviceType = strings.ToLower(deviceInfo.Type)
 		parserType = strings.ToLower(deviceInfo.parserType)
 		// types sometimes misidentified in scan; see github.com/henrygd/beszel/issues/1345
-		if deviceType != "" && deviceType != "scsi" && deviceType != "ata" {
+		// An explicit SMART_DEVICES ":type" hint is a deliberate override, so always
+		// pass it through; otherwise scsi/ata are left off so smartctl can auto-detect.
+		if deviceType != "" && (deviceInfo.explicitType || (deviceType != "scsi" && deviceType != "ata")) {
 			args = append(args, "-d", deviceInfo.Type)
 		}
 	}
@@ -579,14 +595,18 @@ func (sm *SmartManager) smartctlArgs(deviceInfo *DeviceInfo, includeStandby bool
 	return args
 }
 
-// hasDataForDevice checks if we have cached SMART data for a specific device
-func (sm *SmartManager) hasDataForDevice(deviceName string) bool {
+// hasDataForDevice checks if we have cached SMART data for a specific device identity.
+func (sm *SmartManager) hasDataForDevice(deviceInfo *DeviceInfo) bool {
+	if deviceInfo == nil {
+		return false
+	}
+
 	sm.Lock()
 	defer sm.Unlock()
 
-	// Check if any cached data has this device name
+	deviceKey := makeDeviceKey(deviceInfo.Name, deviceInfo.Type)
 	for _, data := range sm.SmartDataMap {
-		if data != nil && data.DiskName == deviceName {
+		if data != nil && makeDeviceKey(data.DiskName, data.DiskType) == deviceKey {
 			return true
 		}
 	}
@@ -659,6 +679,9 @@ func mergeDeviceLists(existing, scanned, configured []*DeviceInfo) []*DeviceInfo
 		target.Type = prev.Type
 		target.typeVerified = true
 		target.parserType = prev.parserType
+		if prev.explicitType {
+			target.explicitType = true
+		}
 	}
 
 	// applyConfiguredMetadata updates a matched device with any configured
@@ -671,6 +694,9 @@ func mergeDeviceLists(existing, scanned, configured []*DeviceInfo) []*DeviceInfo
 			existingDev.Type = newType
 			existingDev.typeVerified = false
 			existingDev.parserType = normalizeParserType(newType)
+		}
+		if configuredDev.explicitType {
+			existingDev.explicitType = true
 		}
 		if configuredDev.InfoName != "" {
 			existingDev.InfoName = configuredDev.InfoName
@@ -728,7 +754,14 @@ func mergeDeviceLists(existing, scanned, configured []*DeviceInfo) []*DeviceInfo
 			continue
 		}
 		if existingDev := deviceIndexByName[configuredDevice.Name]; existingDev != nil {
+			oldKey := makeDeviceKey(existingDev.Name, existingDev.Type)
+			if prev := existingIndex[key]; prev != nil {
+				preserveVerifiedType(existingDev, prev)
+			}
 			applyConfiguredMetadata(existingDev, configuredDevice)
+			delete(deviceIndex, oldKey)
+			deviceIndex[makeDeviceKey(existingDev.Name, existingDev.Type)] = existingDev
+			delete(deviceIndexByName, configuredDevice.Name)
 			continue
 		}
 
@@ -832,9 +865,11 @@ func (sm *SmartManager) isVirtualDeviceFromStrings(fields ...string) bool {
 	return false
 }
 
-// parseSmartForSata parses the output of smartctl --all -j for SATA/ATA devices and updates the SmartDataMap
+// parseSmartForSata parses the output of smartctl --all -j for SATA/ATA devices and updates the SmartDataMap.
+// deviceType is the exact type used to identify and query the device; when set,
+// it takes precedence over the generic type reported by smartctl.
 // Returns hasValidData and exitStatus
-func (sm *SmartManager) parseSmartForSata(output []byte) (bool, int) {
+func (sm *SmartManager) parseSmartForSata(output []byte, deviceType string) (bool, int) {
 	var data smart.SmartInfoForSata
 
 	if err := json.Unmarshal(output, &data); err != nil {
@@ -873,6 +908,9 @@ func (sm *SmartManager) parseSmartForSata(output []byte) (bool, int) {
 	smartData.SmartStatus = getSmartStatus(smartData.Temperature, data.SmartStatus.Passed)
 	smartData.DiskName = data.Device.Name
 	smartData.DiskType = data.Device.Type
+	if deviceType != "" {
+		smartData.DiskType = deviceType
+	}
 
 	// get values from ata_device_statistics if necessary
 	var ataDeviceStats smart.AtaDeviceStatistics
@@ -946,7 +984,7 @@ func findAtaDeviceStatisticsValue(data *smart.SmartInfoForSata, ataDeviceStats *
 	return nil
 }
 
-func (sm *SmartManager) parseSmartForScsi(output []byte) (bool, int) {
+func (sm *SmartManager) parseSmartForScsi(output []byte, deviceType string) (bool, int) {
 	var data smart.SmartInfoForScsi
 
 	if err := json.Unmarshal(output, &data); err != nil {
@@ -981,6 +1019,9 @@ func (sm *SmartManager) parseSmartForScsi(output []byte) (bool, int) {
 	smartData.SmartStatus = getSmartStatus(smartData.Temperature, data.SmartStatus.Passed)
 	smartData.DiskName = data.Device.Name
 	smartData.DiskType = data.Device.Type
+	if deviceType != "" {
+		smartData.DiskType = deviceType
+	}
 
 	attributes := make([]*smart.SmartAttribute, 0, 10)
 	attributes = append(attributes, &smart.SmartAttribute{Name: "PowerOnHours", RawValue: data.PowerOnTime.Hours})
@@ -1078,9 +1119,11 @@ func (sm *SmartManager) lookupDarwinNvmeCapacity(serial string) uint64 {
 	return sm.darwinNvmeCapacity[serial]
 }
 
-// parseSmartForNvme parses the output of smartctl --all -j /dev/nvmeX and updates the SmartDataMap
+// parseSmartForNvme parses the output of smartctl --all -j /dev/nvmeX and updates the SmartDataMap.
+// deviceType is the exact type used to identify and query the device; when set,
+// it takes precedence over the generic type reported by smartctl.
 // Returns hasValidData and exitStatus
-func (sm *SmartManager) parseSmartForNvme(output []byte) (bool, int) {
+func (sm *SmartManager) parseSmartForNvme(output []byte, deviceType string) (bool, int) {
 	data := &smart.SmartInfoForNvme{}
 
 	if err := json.Unmarshal(output, &data); err != nil {
@@ -1114,6 +1157,9 @@ func (sm *SmartManager) parseSmartForNvme(output []byte) (bool, int) {
 	smartData.SerialNumber = data.SerialNumber
 	smartData.FirmwareVersion = data.FirmwareVersion
 	smartData.Capacity = data.UserCapacity.Bytes
+	if smartData.Capacity == 0 {
+		smartData.Capacity = data.NVMeTotalCapacity
+	}
 	if smartData.Capacity == 0 && (runtime.GOOS == "darwin" || sm.darwinNvmeProvider != nil) {
 		smartData.Capacity = sm.lookupDarwinNvmeCapacity(data.SerialNumber)
 	}
@@ -1121,6 +1167,9 @@ func (sm *SmartManager) parseSmartForNvme(output []byte) (bool, int) {
 	smartData.SmartStatus = getSmartStatus(smartData.Temperature, data.SmartStatus.Passed)
 	smartData.DiskName = data.Device.Name
 	smartData.DiskType = data.Device.Type
+	if deviceType != "" {
+		smartData.DiskType = deviceType
+	}
 
 	// nvme attributes does not follow the same format as ata attributes,
 	// so we manually map each field to SmartAttributes

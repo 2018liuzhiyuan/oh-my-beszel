@@ -61,7 +61,6 @@ func (am *AlertManager) SampleGpuFreeAlerts(systemID string, data *system.Combin
 	}
 
 	alertsData := am.alertsCache.GetAlertsExcludingNames(systemID, "Status")
-	slog.Info("gpu free sample", "system", systemID[:6], "alerts", len(alertsData), "states", len(am.gpuFree.states))
 	am.gpuFree.mu.Lock()
 	defer am.gpuFree.mu.Unlock()
 	now := time.Now()
@@ -73,7 +72,6 @@ func (am *AlertManager) SampleGpuFreeAlerts(systemID string, data *system.Combin
 		seen[ad.Id] = struct{}{}
 		st, ok := am.gpuFree.states[ad.Id]
 		if !ok {
-			slog.Info("gpu free tracker created", "alert", ad.Id[:6], "threshold", ad.Value, "window", ad.Min)
 			st = &gpuFreeState{}
 			am.gpuFree.states[ad.Id] = st
 		}
@@ -107,10 +105,14 @@ func (am *AlertManager) SampleGpuFreeAlerts(systemID string, data *system.Combin
 			st.cnt = 0
 		}
 	}
-	// drop trackers whose alert records no longer exist
-	for id := range am.gpuFree.states {
-		if _, ok := seen[id]; !ok {
-			delete(am.gpuFree.states, id)
+	// drop trackers of THIS system whose alert records no longer exist.
+	// Trackers of other systems are owned by their own evaluations — the
+	// states map is shared across all systems.
+	for id, st := range am.gpuFree.states {
+		if st.systemID == systemID {
+			if _, ok := seen[id]; !ok {
+				delete(am.gpuFree.states, id)
+			}
 		}
 	}
 }
@@ -120,10 +122,8 @@ func (am *AlertManager) SampleGpuFreeAlerts(systemID string, data *system.Combin
 func (s *gpuFreeSampler) dropSystem(systemID string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	slog.Info("dropSystem called", "system", systemID[:6], "states", len(s.states))
 	for id, st := range s.states {
 		if st.systemID == systemID {
-			slog.Info("dropSystem deleting", "alert", id[:6])
 			delete(s.states, id)
 		}
 	}

@@ -90,20 +90,23 @@ export function SystemsTableColumns(viewMode: "table" | "grid"): ColumnDef<Syste
 
 				// match filter value against name or translated status
 				return (row, _, newFilterInput) => {
-					const { name, status } = row.original
+					const sys = row.original
+					if (sys.host.includes(newFilterInput) || sys.info.v?.includes(newFilterInput)) {
+						return true
+					}
 					if (newFilterInput !== filterInput) {
 						filterInput = newFilterInput
 						filterInputLower = newFilterInput.toLowerCase()
 					}
-					let nameLower = nameCache.get(name)
+					let nameLower = nameCache.get(sys.name)
 					if (nameLower === undefined) {
-						nameLower = name.toLowerCase()
-						nameCache.set(name, nameLower)
+						nameLower = sys.name.toLowerCase()
+						nameCache.set(sys.name, nameLower)
 					}
 					if (nameLower.includes(filterInputLower)) {
 						return true
 					}
-					const statusLower = statusTranslations[status as keyof typeof statusTranslations]
+					const statusLower = statusTranslations[sys.status as keyof typeof statusTranslations]
 					return statusLower?.includes(filterInputLower) || false
 				}
 			})(),
@@ -395,7 +398,7 @@ function TableCellWithMeter(info: CellContext<SystemRecord, unknown>) {
 			STATUS_COLORS.down
 	)
 	return (
-		<div className="flex gap-2 items-center tabular-nums tracking-tight w-full">
+		<div className="flex gap-2 items-center tabular-nums tracking-tight w-full min-w-0">
 			<span className="min-w-8 shrink-0">{decimalString(val, val >= 10 ? 1 : 2)}%</span>
 			<span className="flex-1 min-w-8 grid bg-muted h-[1em] rounded-sm overflow-hidden">
 				<span className={meterClass} style={{ width: `${val}%` }}></span>

@@ -22,7 +22,8 @@ const sshDialTimeout = 10 * time.Second
 // all handled by ssh itself.
 func (sm *SystemManager) DialAgent(host, port string) (net.Conn, error) {
 	if isDirectHost(host) {
-		conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, port), sshDialTimeout)
+		dialer := net.Dialer{Timeout: sshDialTimeout, KeepAlive: sshKeepAliveInterval}
+		conn, err := dialer.Dial("tcp", net.JoinHostPort(host, port))
 		if err != nil {
 			return nil, err
 		}
@@ -36,6 +37,8 @@ func (sm *SystemManager) DialAgent(host, port string) (net.Conn, error) {
 		"-o", "BatchMode=yes",
 		"-o", "StrictHostKeyChecking=accept-new",
 		"-o", "ConnectTimeout=8",
+		"-o", "ServerAliveInterval=30",
+		"-o", "ServerAliveCountMax=3",
 	)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -101,11 +104,11 @@ func (c *sshPipeConn) Close() error {
 	return nil
 }
 
-func (c *sshPipeConn) LocalAddr() net.Addr                { return pipeAddr{} }
-func (c *sshPipeConn) RemoteAddr() net.Addr               { return pipeAddr{} }
-func (c *sshPipeConn) SetDeadline(time.Time) error         { return nil }
-func (c *sshPipeConn) SetReadDeadline(time.Time) error     { return nil }
-func (c *sshPipeConn) SetWriteDeadline(time.Time) error    { return nil }
+func (c *sshPipeConn) LocalAddr() net.Addr              { return pipeAddr{} }
+func (c *sshPipeConn) RemoteAddr() net.Addr             { return pipeAddr{} }
+func (c *sshPipeConn) SetDeadline(time.Time) error      { return nil }
+func (c *sshPipeConn) SetReadDeadline(time.Time) error  { return nil }
+func (c *sshPipeConn) SetWriteDeadline(time.Time) error { return nil }
 
 type pipeAddr struct{}
 

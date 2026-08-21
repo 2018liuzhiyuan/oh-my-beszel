@@ -63,21 +63,8 @@ func (am *AlertManager) HandleSystemAlerts(systemRecord *core.Record, data *syst
 			unit = ""
 		case "GPU":
 			val = data.Info.GpuPct
-		case "GpuMemoryFree":
-			// current max free VRAM across all GPUs (GB)
-			maxFree := 0.0
-			for _, gpu := range data.Stats.GPUData {
-				if gpu.MemoryTotal > 0 {
-					free := (gpu.MemoryTotal - gpu.MemoryUsed) / 1024
-					if free > maxFree {
-						maxFree = free
-					}
-				}
-			}
-			val = maxFree
-			unit = " GB"
 		case "Battery":
-			if data.Stats.Battery[0] == 0 {
+			if !hasRepresentativeBattery(data.Stats.Battery, data.Stats.Batteries) {
 				continue
 			}
 			val = float64(data.Stats.Battery[0])
@@ -181,6 +168,7 @@ func (am *AlertManager) HandleSystemAlerts(systemRecord *core.Record, data *syst
 		stat := systemStats[i]
 		// subtract 10 seconds to give a small time buffer
 		systemStatsCreation := stat.Created.Time().Add(-time.Second * 10)
+		stats = SystemAlertStats{}
 		if err := json.Unmarshal(stat.Stats, &stats); err != nil {
 			return err
 		}
@@ -248,22 +236,10 @@ func (am *AlertManager) HandleSystemAlerts(systemRecord *core.Record, data *syst
 					}
 				}
 				alert.val += maxUsage
-			case "GpuMemoryFree":
-				// track the minimum free VRAM within the window: a "sustained"
-				// alert only fires when every sample stays above the threshold
-				maxFree := 0.0
-				for _, gpu := range stats.GPU {
-					if gpu.MemoryTotal > 0 {
-						free := (gpu.MemoryTotal - gpu.MemoryUsed) / 1024
-						if free > maxFree {
-							maxFree = free
-						}
-					}
-				}
-				if alert.count == 0 || maxFree < alert.val {
-					alert.val = maxFree
-				}
 			case "Battery":
+				if !hasRepresentativeBattery(stats.Battery, stats.Batteries) {
+					continue
+				}
 				alert.val += float64(stats.Battery[0])
 			default:
 				continue
@@ -294,9 +270,6 @@ func (am *AlertManager) HandleSystemAlerts(systemRecord *core.Record, data *syst
 				}
 			}
 			alert.val = float64(maxTemp)
-		case "GpuMemoryFree":
-			// keep the window minimum (strict "sustained" semantics); no averaging
-			alert.descriptor = "Free VRAM"
 		default:
 			alert.val = alert.val / float64(alert.count)
 		}
@@ -327,6 +300,10 @@ func (am *AlertManager) HandleSystemAlerts(systemRecord *core.Record, data *syst
 		}
 	}
 	return nil
+}
+
+func hasRepresentativeBattery(legacy [2]uint8, batteries map[string]uint8) bool {
+	return legacy != [2]uint8{} || len(batteries) > 0
 }
 
 func (am *AlertManager) sendSystemAlert(alert SystemAlertData) {
