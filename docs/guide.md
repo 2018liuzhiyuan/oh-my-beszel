@@ -278,6 +278,12 @@ The UI's inherited “Copy Linux command” and Docker buttons still reference u
 
 <a id="operations"></a>
 
+## System page addresses
+
+System links use the display name, for example `/system/16.7` or `/system/Pro6000_2`. Case, letters, numbers, dots, underscores, and hyphens are preserved; Unicode is normalized and spaces or URL delimiters become hyphens. Browsers encode non-ASCII characters when needed.
+
+Names that collide after conversion, match a record ID, or exceed 80 Unicode characters receive a `~recordID` suffix; long names keep their first 80 characters. Empty or purely unsupported names use `system~recordID`. Existing record-ID links and addresses ending in `~recordID` still work after renames or collision changes and redirect to the current name. Renaming a system changes its name-based address, so use the record-ID address for a bookmark that must survive future renames.
+
 ## Data, restart, and upgrades
 
 | Item | Location / action |

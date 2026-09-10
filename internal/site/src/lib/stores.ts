@@ -49,13 +49,17 @@ export const $maxValues = atom(false)
 // 	unitDisk: v.optional(v.enum(Unit)),
 // })
 
+export function getDefaultUserSettings(email = ""): UserSettings {
+	return {
+		chartTime: "1h",
+		emails: [email],
+		unitNet: Unit.Bytes,
+		unitTemp: Unit.Celsius,
+	}
+}
+
 /** User settings */
-export const $userSettings = map<UserSettings>({
-	chartTime: "1h",
-	emails: [pb.authStore.record?.email || ""],
-	unitNet: Unit.Bytes,
-	unitTemp: Unit.Celsius,
-})
+export const $userSettings = map<UserSettings>(getDefaultUserSettings(pb.authStore.record?.email))
 // update chart time on change
 listenKeys($userSettings, ["chartTime"], ({ chartTime }) => $chartTime.set(chartTime))
 

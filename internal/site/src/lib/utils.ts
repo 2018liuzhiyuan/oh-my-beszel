@@ -97,7 +97,6 @@ const formatDay = (timestamp: string) => {
 
 export const updateFavicon = (() => {
 	let prevDownCount = 0
-	let previousUrl: string | undefined
 	return (downCount = 0) => {
 		if (downCount === prevDownCount) {
 			return
@@ -121,18 +120,8 @@ export const updateFavicon = (() => {
 	}
 </svg>
 	`
-		const blob = new Blob([svg], { type: "image/svg+xml" })
-		const url = URL.createObjectURL(blob)
 		const favicon = document.querySelector<HTMLLinkElement>("link[rel='icon']")
-		if (!favicon) {
-			URL.revokeObjectURL(url)
-			return
-		}
-		favicon.href = url
-		if (previousUrl) {
-			URL.revokeObjectURL(previousUrl)
-		}
-		previousUrl = url
+		if (favicon) favicon.href = `data:image/svg+xml,${encodeURIComponent(svg)}`
 	}
 })()
 

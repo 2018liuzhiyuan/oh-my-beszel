@@ -1,3 +1,4 @@
+import { getSystemPath } from "@/lib/system-links"
 import { t } from "@lingui/core/macro"
 import { Trans } from "@lingui/react/macro"
 import { getPagePath } from "@nanostores/router"
@@ -61,7 +62,7 @@ export default memo(function CommandPalette({ open, setOpen }: { open: boolean; 
 									<CommandItem
 										key={system.id}
 										onSelect={() => {
-											navigate(getPagePath($router, "system", { id: system.id }))
+											navigate(getSystemPath(system.id))
 											setOpen(false)
 										}}
 									>

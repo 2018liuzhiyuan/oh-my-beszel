@@ -1,3 +1,4 @@
+import { getSystemPath } from "@/lib/system-links"
 import { alertInfo } from "@/lib/alerts"
 import {
 	alertSnoozeKey,
@@ -16,10 +17,9 @@ import type { AlertRecord } from "@/types"
 import { t } from "@lingui/core/macro"
 import { Plural, Trans } from "@lingui/react/macro"
 import { useStore } from "@nanostores/react"
-import { getPagePath } from "@nanostores/router"
 import { useEffect, useMemo, useState } from "react"
 import { AlertDismissButton } from "./alert-dismiss-button"
-import { $router, Link } from "./router"
+import { Link } from "./router"
 import { Alert, AlertTitle, AlertDescription } from "./ui/alert"
 import { Card, CardHeader, CardTitle, CardContent } from "./ui/card"
 
@@ -131,7 +131,7 @@ export const ActiveAlerts = () => {
 										)}
 									</AlertDescription>
 									<Link
-										href={getPagePath($router, "system", { id: systems[alert.system]?.id })}
+										href={getSystemPath(alert.system)}
 										className="absolute inset-0 w-full h-full"
 										aria-label="View system"
 									></Link>

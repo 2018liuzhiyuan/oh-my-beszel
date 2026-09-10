@@ -1,3 +1,4 @@
+import { useSystemRouteId } from "@/lib/system-links"
 import { memo, useState } from "react"
 import { Trans } from "@lingui/react/macro"
 import { compareSemVer, parseSemVer } from "@/lib/utils"
@@ -20,7 +21,8 @@ import ContainersTable from "../containers-table/containers-table"
 const SEMVER_0_14_0 = parseSemVer("0.14.0")
 const SEMVER_0_15_0 = parseSemVer("0.15.0")
 
-export default memo(function SystemDetail({ id }: { id: string }) {
+export default memo(function SystemDetail({ id: routeId }: { id: string }) {
+	const id = useSystemRouteId(routeId)
 	const systemData = useSystemData(id)
 
 	const {

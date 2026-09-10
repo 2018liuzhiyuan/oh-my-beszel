@@ -1,6 +1,6 @@
+import { getSystemPath } from "@/lib/system-links"
 import { Trans, useLingui } from "@lingui/react/macro"
 import { useStore } from "@nanostores/react"
-import { getPagePath } from "@nanostores/router"
 import {
 	type Column,
 	type ColumnDef,
@@ -48,7 +48,7 @@ import { $downSystems, $pausedSystems, $systems, $upSystems, $userSettings } fro
 import { cn, runOnce, useBrowserStorage } from "@/lib/utils"
 import type { SystemRecord } from "@/types"
 import AlertButton from "../alerts/alert-button"
-import { $router, Link } from "../router"
+import { Link } from "../router"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
 import { SystemsTableColumns, ActionsButton, IndicatorDot } from "./systems-table-columns"
 import { moveColumn, pinColumnsToEnd } from "./column-order"
@@ -575,7 +575,11 @@ const SystemCard = memo(
 						})}
 					</div>
 				</CardContent>
-				<Link href={getPagePath($router, "system", { id: row.original.id })} className="inset-0 absolute w-full h-full">
+				<Link
+					data-system-id={row.original.id}
+					href={getSystemPath(row.original.id)}
+					className="inset-0 absolute w-full h-full"
+				>
 					<span className="sr-only">{row.original.name}</span>
 				</Link>
 			</Card>

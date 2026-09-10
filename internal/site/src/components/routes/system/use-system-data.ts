@@ -1,5 +1,5 @@
+import { getSystemPath } from "@/lib/system-links"
 import { useStore } from "@nanostores/react"
-import { getPagePath } from "@nanostores/router"
 import { subscribeKeys } from "nanostores"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useContainerChartConfigs } from "@/components/charts/hooks"
@@ -25,7 +25,7 @@ import type {
 	SystemStats,
 	SystemStatsRecord,
 } from "@/types"
-import { $router, navigate } from "../../router"
+import { navigate } from "../../router"
 import { appendData, cache, getStats, getTimeData, makeContainerData, makeContainerPoint } from "./chart-data"
 
 export type SystemData = ReturnType<typeof useSystemData>
@@ -281,14 +281,14 @@ export function useSystemData(id: string) {
 				persistChartTime.current = true
 				setActiveTabRaw("core")
 				setMountedTabs(new Set(["core"]))
-				return navigate(getPagePath($router, "system", { id: systems[prevIndex].id }))
+				return navigate(getSystemPath(systems[prevIndex].id))
 			}
 			if (isRight) {
 				const nextIndex = (currentIndex + 1) % systems.length
 				persistChartTime.current = true
 				setActiveTabRaw("core")
 				setMountedTabs(new Set(["core"]))
-				return navigate(getPagePath($router, "system", { id: systems[nextIndex].id }))
+				return navigate(getSystemPath(systems[nextIndex].id))
 			}
 		}
 		return listen(document, "keyup", handleKeyUp)

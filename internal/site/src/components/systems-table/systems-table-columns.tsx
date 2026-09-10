@@ -1,8 +1,8 @@
 /** biome-ignore-all lint/correctness/useHookAtTopLevel: Hooks live inside memoized column definitions */
+import { getSystemPath } from "@/lib/system-links"
 import { t } from "@lingui/core/macro"
 import { Trans, useLingui } from "@lingui/react/macro"
 import { useStore } from "@nanostores/react"
-import { getPagePath } from "@nanostores/router"
 import type { CellContext, ColumnDef, HeaderContext } from "@tanstack/react-table"
 import type { ClassValue } from "clsx"
 import {
@@ -31,7 +31,7 @@ import { $userSettings } from "@/lib/stores"
 import { cn, copyToClipboard, decimalString, formatBytes, formatTemperature, secondsToUptimeString } from "@/lib/utils"
 import type { SystemRecord } from "@/types"
 import AlertButton from "../alerts/alert-button"
-import { $router, Link } from "../router"
+import { Link } from "../router"
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -109,7 +109,7 @@ export function SystemsTableColumns(viewMode: "table" | "grid"): ColumnDef<Syste
 			Icon: ServerIcon,
 			cell: (info) => {
 				const { name, id } = info.row.original
-				const linkUrl = getPagePath($router, "system", { id })
+				const linkUrl = getSystemPath(id)
 
 				return (
 					<>
@@ -319,7 +319,7 @@ export function SystemsTableColumns(viewMode: "table" | "grid"): ColumnDef<Syste
 				}
 				return (
 					<Link
-						href={getPagePath($router, "system", { id: system.id })}
+						href={getSystemPath(system.id)}
 						className={cn(
 							"flex gap-1.5 items-center md:pe-5 tabular-nums relative z-10",
 							viewMode === "table" && "ps-0.5"
@@ -458,11 +458,7 @@ function DiskCellWithMultiple(info: CellContext<SystemRecord, unknown>) {
 	return (
 		<Tooltip>
 			<TooltipTrigger asChild>
-				<Link
-					href={getPagePath($router, "system", { id })}
-					tabIndex={-1}
-					className="flex flex-col gap-0.5 w-full relative z-10"
-				>
+				<Link href={getSystemPath(id)} tabIndex={-1} className="flex flex-col gap-0.5 w-full relative z-10">
 					<div className="flex gap-2 items-center tabular-nums tracking-tight">
 						<span className="min-w-8 shrink-0">{decimalString(rootDiskPct, rootDiskPct >= 10 ? 1 : 2)}%</span>
 						<span className="flex-1 min-w-8 flex items-center gap-0.5 px-1 justify-end bg-muted h-[1em] rounded-sm overflow-hidden relative">

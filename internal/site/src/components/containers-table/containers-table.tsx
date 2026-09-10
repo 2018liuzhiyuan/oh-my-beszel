@@ -1,4 +1,5 @@
 /** biome-ignore-all lint/security/noDangerouslySetInnerHtml: html comes directly from docker via agent */
+import { getSystemPath } from "@/lib/system-links"
 import { t } from "@lingui/core/macro"
 import { Trans } from "@lingui/react/macro"
 import {
@@ -29,9 +30,8 @@ import { Button } from "@/components/ui/button"
 import { $allSystemsById } from "@/lib/stores"
 import { LoaderCircleIcon, MaximizeIcon, RefreshCwIcon, XIcon } from "lucide-react"
 import { Separator } from "../ui/separator"
-import { $router, Link } from "../router"
+import { Link } from "../router"
 import { listenKeys } from "nanostores"
-import { getPagePath } from "@nanostores/router"
 
 const syntaxTheme = "github-dark-dimmed"
 
@@ -257,13 +257,13 @@ const AllContainersTable = memo(function AllContainersTable({
 							<TableRow>
 								<TableCell colSpan={colLength} className="h-37 p-0 pointer-events-none">
 									<div className="sticky start-0 flex w-[min(100%,calc(100vw-4rem))] justify-center px-4">
-									{data ? (
-										<span>
-											<Trans>No results.</Trans>
-										</span>
-									) : (
-										<LoaderCircleIcon className="animate-spin size-10 opacity-60 mx-auto" />
-									)}
+										{data ? (
+											<span>
+												<Trans>No results.</Trans>
+											</span>
+										) : (
+											<LoaderCircleIcon className="animate-spin size-10 opacity-60 mx-auto" />
+										)}
 									</div>
 								</TableCell>
 							</TableRow>
@@ -391,7 +391,7 @@ function ContainerSheet({
 					<SheetHeader>
 						<SheetTitle>{container.name}</SheetTitle>
 						<SheetDescription className="flex flex-wrap items-center gap-x-2 gap-y-1">
-							<Link className="hover:underline" href={getPagePath($router, "system", { id: container.system })}>
+							<Link className="hover:underline" href={getSystemPath(container.system)}>
 								{$allSystemsById.get()[container.system]?.name ?? ""}
 							</Link>
 							<Separator orientation="vertical" className="h-2.5 bg-muted-foreground opacity-70" />

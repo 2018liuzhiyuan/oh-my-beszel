@@ -2,8 +2,15 @@ import { t } from "@lingui/core/macro"
 import PocketBase from "pocketbase"
 import { basePath } from "@/components/router"
 import { toast } from "@/components/ui/use-toast"
-import type { ChartTimes, UserSettings } from "@/types"
-import { $alerts, $alertsLoaded, $allSystemsById, $allSystemsByName, $userSettings } from "./stores"
+import type { ChartTimes } from "@/types"
+import {
+	$alerts,
+	$alertsLoaded,
+	$allSystemsById,
+	$allSystemsByName,
+	$userSettings,
+	getDefaultUserSettings,
+} from "./stores"
 import { chartTimeData } from "./utils"
 
 /** PocketBase JS Client */
@@ -31,7 +38,7 @@ export function logOut() {
 	$allSystemsById.set({})
 	$alerts.set({})
 	$alertsLoaded.set(false)
-	$userSettings.set({} as UserSettings)
+	$userSettings.set(getDefaultUserSettings())
 	sessionStorage.setItem("lo", "t") // prevent auto login on logout
 	pb.authStore.clear()
 	pb.realtime.unsubscribe()
