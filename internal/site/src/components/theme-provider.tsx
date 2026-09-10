@@ -1,16 +1,16 @@
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
 
 type Theme = "dark" | "light" | "system"
 
 type ThemeProviderProps = {
-	children: React.ReactNode
-	defaultTheme?: Theme
-	storageKey?: string
+	readonly children: React.ReactNode
+	readonly defaultTheme?: Theme
+	readonly storageKey?: string
 }
 
 type ThemeProviderState = {
-	theme: Theme
-	setTheme: (theme: Theme) => void
+	readonly theme: Theme
+	readonly setTheme: (theme: Theme) => void
 }
 
 const initialState: ThemeProviderState = {
@@ -26,7 +26,10 @@ export function ThemeProvider({
 	storageKey = "ui-theme",
 	...props
 }: ThemeProviderProps) {
-	const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem(storageKey) as Theme) || defaultTheme)
+	const [theme, setTheme] = useState<Theme>(() => {
+		const storedTheme = localStorage.getItem(storageKey)
+		return storedTheme === "dark" || storedTheme === "light" || storedTheme === "system" ? storedTheme : defaultTheme
+	})
 
 	useEffect(() => {
 		const root = window.document.documentElement
@@ -43,13 +46,14 @@ export function ThemeProvider({
 		root.classList.add(theme)
 	}, [theme])
 
-	const value = {
-		theme,
-		setTheme: (theme: Theme) => {
-			localStorage.setItem(storageKey, theme)
-			setTheme(theme)
+	const updateTheme = useCallback(
+		(nextTheme: Theme) => {
+			localStorage.setItem(storageKey, nextTheme)
+			setTheme(nextTheme)
 		},
-	}
+		[storageKey]
+	)
+	const value = useMemo(() => ({ theme, setTheme: updateTheme }), [theme, updateTheme])
 
 	return (
 		<ThemeProviderContext.Provider {...props} value={value}>

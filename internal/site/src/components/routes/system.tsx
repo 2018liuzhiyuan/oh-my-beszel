@@ -12,7 +12,6 @@ import { BandwidthChart, ContainerNetworkChart } from "./system/charts/network-c
 import { TemperatureChart, FanChart, BatteryChart } from "./system/charts/sensor-charts"
 import { GpuPowerChart, GpuDetailCharts } from "./system/charts/gpu-charts"
 import { LazyContainersTable, LazySmartTable, LazySystemdTable } from "./system/lazy-tables"
-import { LoadAverageChart } from "./system/charts/load-average-chart"
 import { ContainerIcon, CpuIcon, HardDriveIcon, TerminalSquareIcon } from "lucide-react"
 import { GpuIcon } from "../ui/icons"
 import SystemdTable from "../systemd-table/systemd-table"
@@ -119,15 +118,13 @@ export default memo(function SystemDetail({ id }: { id: string }) {
 
 					<SwapChart chartData={chartData} grid={grid} dataEmpty={dataEmpty} systemStats={systemStats} />
 
-					<LoadAverageChart chartData={chartData} grid={grid} dataEmpty={dataEmpty} />
+					{hasGpuPowerData && <GpuPowerChart chartData={chartData} grid={grid} dataEmpty={dataEmpty} />}
 
 					<TemperatureChart {...coreProps} />
 
 					<FanChart {...coreProps} />
 
 					<BatteryChart system={system} {...coreProps} />
-
-					{hasGpuPowerData && <GpuPowerChart chartData={chartData} grid={grid} dataEmpty={dataEmpty} />}
 				</div>
 
 				{hasGpuData && lastGpus && (
@@ -187,7 +184,6 @@ export default memo(function SystemDetail({ id }: { id: string }) {
 					<div className="grid xl:grid-cols-2 gap-4">
 						<CpuChart {...coreProps} />
 						<MemoryChart {...coreProps} />
-						<LoadAverageChart chartData={chartData} grid={grid} dataEmpty={dataEmpty} />
 						<BandwidthChart {...coreProps} systemStats={systemStats} />
 						<TemperatureChart {...coreProps} setPageBottomExtraMargin={setPageBottomExtraMargin} />
 						<FanChart {...coreProps} />

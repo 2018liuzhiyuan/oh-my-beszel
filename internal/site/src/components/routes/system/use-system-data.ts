@@ -97,7 +97,8 @@ export function useSystemData(id: string) {
 		}
 		pb.collection<SystemDetailsRecord>("system_details")
 			.getOne(system.id, {
-				fields: "hostname,kernel,cores,threads,cpu,os,os_name,arch,memory,podman,ip_addrs,nic_count,nic_speed_mbps,bios_version,bmc_version,sel_entries",
+				fields:
+					"hostname,kernel,cores,threads,cpu,os,os_name,arch,memory,podman,ip_addrs,nic_count,nic_speed_mbps,bios_version,bmc_version,sel_entries",
 				headers: {
 					"Cache-Control": "public, max-age=60",
 				},
@@ -107,7 +108,8 @@ export function useSystemData(id: string) {
 
 	// subscribe to realtime metrics if chart time is 1m
 	useEffect(() => {
-		let unsub = () => {}
+		let active = true
+		let unsubscribe: (() => void) | undefined
 		if (!system.id || chartTime !== "1m") {
 			return
 		}
@@ -133,18 +135,20 @@ export function useSystemData(id: string) {
 						setContainerData(containerPoint ? [containerPoint] : [])
 						return
 					}
-					setSystemStats((prev) => appendData(prev, [statsPoint], 1000, 60))
+					setSystemStats((prev) => appendData(prev, [statsPoint], 60))
 					if (containerPoint) {
-						setContainerData((prev) => appendData(prev, [containerPoint], 1000, 60))
+						setContainerData((prev) => appendData(prev, [containerPoint], 60))
 					}
 				},
 				{ query: { system: system.id } }
 			)
-			.then((us) => {
-				unsub = us
+			.then((stopSubscription) => {
+				if (active) unsubscribe = stopSubscription
+				else stopSubscription()
 			})
 		return () => {
-			unsub?.()
+			active = false
+			unsubscribe?.()
 		}
 	}, [chartTime, system.id])
 
@@ -213,14 +217,14 @@ export function useSystemData(id: string) {
 			// make new system stats
 			let systemData = (cache.get(ss_cache_key) || []) as SystemStatsRecord[]
 			if (systemStats.status === "fulfilled" && systemStats.value.length) {
-				systemData = appendData(systemData, systemStats.value, expectedInterval, 100)
+				systemData = appendData(systemData, systemStats.value, 100)
 				cache.set(ss_cache_key, systemData)
 			}
 			setSystemStats(systemData)
 			// make new container stats
 			let containerData = (cache.get(cs_cache_key) || []) as ChartData["containerData"]
 			if (containerStats.status === "fulfilled" && containerStats.value.length) {
-				containerData = appendData(containerData, makeContainerData(containerStats.value), expectedInterval, 100)
+				containerData = appendData(containerData, makeContainerData(containerStats.value), 100)
 				cache.set(cs_cache_key, containerData)
 			}
 			setContainerData(containerData)

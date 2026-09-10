@@ -2,10 +2,15 @@ import type { JSX } from "react"
 import { useLingui } from "@lingui/react/macro"
 import * as React from "react"
 import * as RechartsPrimitive from "recharts"
+import type { NameType, Payload, ValueType } from "recharts/types/component/DefaultTooltipContent"
+import type { AxisDomain } from "recharts/types/util/types"
 import { chartTimeData, cn } from "@/lib/utils"
 import type { ChartData } from "@/types"
 import { Separator } from "./separator"
-import { AxisDomain } from "recharts/types/util/types"
+import { sortTooltipItems, type TooltipItemComparator } from "./sort-tooltip-items"
+
+type TooltipPayload = Payload<ValueType, NameType>
+type ChartTooltipItemComparator = TooltipItemComparator<TooltipPayload>
 
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: "", dark: ".dark" } as const
@@ -93,7 +98,7 @@ const ChartTooltip = RechartsPrimitive.Tooltip
 
 const ChartTooltipContent = React.forwardRef<
 	HTMLDivElement,
-	React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
+	Omit<React.ComponentProps<typeof RechartsPrimitive.Tooltip>, "itemSorter"> &
 		React.ComponentProps<"div"> & {
 			hideLabel?: boolean
 			indicator?: "line" | "dot" | "dashed"
@@ -101,7 +106,8 @@ const ChartTooltipContent = React.forwardRef<
 			labelKey?: string
 			unit?: string
 			filter?: string
-			contentFormatter?: (item: any, key: string) => React.ReactNode | string
+			itemSorter?: ChartTooltipItemComparator
+			contentFormatter?: (item: TooltipPayload, key: string) => React.ReactNode | string
 			truncate?: boolean
 			showTotal?: boolean
 			totalLabel?: React.ReactNode
@@ -137,32 +143,33 @@ const ChartTooltipContent = React.forwardRef<
 		const totalLabelNode = totalLabel ?? t`Total`
 		const totalName = typeof totalLabelNode === "string" ? totalLabelNode : t`Total`
 
-		React.useMemo(() => {
+		const visiblePayload = React.useMemo(() => {
+			let items = payload
 			if (filter) {
 				const filterTerms = filter
 					.toLowerCase()
 					.split(" ")
 					.filter((term) => term.length > 0)
-				payload = payload?.filter((item) => {
-					const itemName = (item.name as string)?.toLowerCase()
+				items = items?.filter((item) => {
+					const itemName = typeof item.name === "string" ? item.name.toLowerCase() : ""
 					return filterTerms.some((term) => itemName?.includes(term))
 				})
 			}
-			if (itemSorter) {
-				// @ts-expect-error
-				payload?.sort(itemSorter)
+			if (itemSorter && items) {
+				items = sortTooltipItems(items, itemSorter)
 			}
-		}, [itemSorter, payload])
+			return items
+		}, [filter, itemSorter, payload])
 
 		const totalValueDisplay = React.useMemo(() => {
-			if (!showTotal || !payload?.length) {
+			if (!showTotal || !visiblePayload?.length) {
 				return null
 			}
 
 			let totalValue = 0
 			let hasNumericValue = false
 
-			for (const item of payload) {
+			for (const item of visiblePayload) {
 				const numericValue = typeof item.value === "number" ? item.value : Number(item.value)
 				if (Number.isFinite(numericValue)) {
 					totalValue += numericValue
@@ -175,7 +182,7 @@ const ChartTooltipContent = React.forwardRef<
 			}
 
 			const totalKey = "__total__"
-			const totalItem: any = {
+			const totalItem: TooltipPayload = {
 				value: totalValue,
 				name: totalName,
 				dataKey: totalKey,
@@ -183,11 +190,11 @@ const ChartTooltipContent = React.forwardRef<
 			}
 
 			if (content) {
-				totalItem.payload = payload[0]?.payload
+				totalItem.payload = visiblePayload[0]?.payload
 			}
 
 			if (typeof formatter === "function") {
-				return formatter(totalValue, totalName, totalItem, payload.length, totalItem.payload ?? payload[0]?.payload)
+				return formatter(totalValue, totalName, totalItem, visiblePayload.length, visiblePayload)
 			}
 
 			if (content) {
@@ -195,20 +202,20 @@ const ChartTooltipContent = React.forwardRef<
 			}
 
 			return `${totalValue.toLocaleString()}${unit ?? ""}`
-		}, [color, content, formatter, nameKey, payload, showTotal, totalName, unit])
+		}, [color, content, formatter, showTotal, totalName, unit, visiblePayload])
 
 		const tooltipLabel = React.useMemo(() => {
-			if (hideLabel || !payload?.length) {
+			if (hideLabel || !visiblePayload?.length) {
 				return null
 			}
 
-			const [item] = payload
+			const [item] = visiblePayload
 			const key = `${labelKey || item.name || "value"}`
 			const itemConfig = getPayloadConfigFromPayload(config, item, key)
 			const value = !labelKey && typeof label === "string" ? label : itemConfig?.label
 
 			if (labelFormatter) {
-				return <div className={cn("font-medium", labelClassName)}>{labelFormatter(value, payload)}</div>
+				return <div className={cn("font-medium", labelClassName)}>{labelFormatter(value, visiblePayload)}</div>
 			}
 
 			if (!value) {
@@ -216,9 +223,9 @@ const ChartTooltipContent = React.forwardRef<
 			}
 
 			return <div className={cn("font-medium", labelClassName)}>{value}</div>
-		}, [label, labelFormatter, payload, hideLabel, labelClassName, config, labelKey])
+		}, [label, labelFormatter, visiblePayload, hideLabel, labelClassName, config, labelKey])
 
-		if (!active || !payload?.length) {
+		if (!active || !visiblePayload?.length) {
 			return null
 		}
 
@@ -235,7 +242,7 @@ const ChartTooltipContent = React.forwardRef<
 			>
 				{!nestLabel ? tooltipLabel : null}
 				<div className="grid gap-1.5">
-					{payload.map((item, index) => {
+					{visiblePayload.map((item, index) => {
 						const key = `${nameKey || item.name || item.dataKey || "value"}`
 						const itemConfig = getPayloadConfigFromPayload(config, item, key)
 						const indicatorColor = color || item.payload.fill || item.color
@@ -249,7 +256,7 @@ const ChartTooltipContent = React.forwardRef<
 								)}
 							>
 								{formatter && item?.value !== undefined && item.name ? (
-									formatter(item.value, item.name, item, index, item.payload)
+									formatter(item.value, item.name, item, index, visiblePayload)
 								) : (
 									<>
 										{itemConfig?.icon ? (

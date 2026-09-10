@@ -65,6 +65,16 @@
 	},
 	"overrides": [
 		{
+			"includes": ["**/*.css"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noUnknownAtRules": "off"
+					}
+				}
+			}
+		},
+		{
 			"includes": ["**/*.jsx", "**/*.tsx"],
 			"linter": {
 				"rules": {

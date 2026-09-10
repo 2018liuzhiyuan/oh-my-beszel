@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/henrygd/beszel"
+	"github.com/henrygd/beszel/internal/beszel"
 	"github.com/henrygd/beszel/internal/hub/utils"
 )
 

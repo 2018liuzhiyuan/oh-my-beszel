@@ -6,6 +6,7 @@ import { Unit } from "@/lib/enums"
 import { cn, decimalString, formatBytes, toFixedFloat } from "@/lib/utils"
 import type { ChartData, GPUData, SystemStatsRecord } from "@/types"
 import { ChartCard } from "../chart-card"
+import { GpuSummaryCharts } from "./gpu-summary-charts"
 
 /** GPU power draw chart for the main grid */
 export function GpuPowerChart({
@@ -112,6 +113,7 @@ export function GpuDetailCharts({
 }) {
 	return (
 		<div className="grid xl:grid-cols-2 gap-4">
+			<GpuSummaryCharts chartData={chartData} grid={grid} dataEmpty={dataEmpty} lastGpus={lastGpus} />
 			{hasGpuEnginesData && (
 				<ChartCard
 					legend={true}
@@ -193,7 +195,7 @@ function GpuEnginesChart({ chartData }: { chartData: ChartData }) {
 		if (!gpus) continue
 		for (const id in gpus) {
 			if (gpus[id].e) {
-				enginesKey = id + "\0" + Object.keys(gpus[id].e).sort().join("\0")
+				enginesKey = `${id}\0${Object.keys(gpus[id].e).sort().join("\0")}`
 				break
 			}
 		}

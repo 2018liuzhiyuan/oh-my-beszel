@@ -151,6 +151,7 @@ func (sm *SystemManager) fetchRealtimeDataAndNotify() {
 			if err != nil {
 				return
 			}
+			system.setData(data)
 			bytes, err := json.Marshal(data)
 			if err == nil {
 				notify(sm.hub, info.subscription, bytes)

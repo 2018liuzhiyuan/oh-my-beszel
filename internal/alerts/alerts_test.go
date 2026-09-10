@@ -167,6 +167,7 @@ func TestSetAlertTriggered(t *testing.T) {
 	})
 
 	am := alerts.NewAlertManager(hub)
+	defer am.Stop()
 
 	var alert alerts.CachedAlertData
 	alert.PopulateFromRecord(alertRecord)

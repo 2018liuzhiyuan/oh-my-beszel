@@ -15,7 +15,7 @@ import {
 	UserIcon,
 	UsersIcon,
 } from "lucide-react"
-import { lazy, Suspense, useState } from "react"
+import { lazy, Suspense, useEffect, useState } from "react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
 	DropdownMenu,
@@ -30,40 +30,55 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { isAdmin, isReadOnlyUser, logOut, pb } from "@/lib/api"
-import { cn, runOnce } from "@/lib/utils"
-import { AddSystemDialog } from "./add-system"
+import { cn, listen, runOnce } from "@/lib/utils"
 import { LangToggle } from "./lang-toggle"
 import { Logo } from "./logo"
 import { ModeToggle } from "./mode-toggle"
-import { $router, basePath, Link, navigate, prependBasePath } from "./router"
+import { $router, Link, navigate, prependBasePath } from "./router"
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip"
 
 const CommandPalette = lazy(() => import("./command-palette"))
+const AddSystemDialog = lazy(() => import("./add-system").then(({ AddSystemDialog }) => ({ default: AddSystemDialog })))
 
 const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0
 
 export default function Navbar() {
 	const [addSystemDialogOpen, setAddSystemDialogOpen] = useState(false)
 	const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
-
-	const AdminLinks = AdminDropdownGroup()
+	useEffect(
+		() =>
+			listen(document, "keydown", (event: KeyboardEvent) => {
+				if (event.key === "k" && (event.metaKey || event.ctrlKey)) {
+					event.preventDefault()
+					setCommandPaletteOpen((currentOpen) => !currentOpen)
+				}
+			}),
+		[]
+	)
 
 	const systemTranslation = t`System`
 
 	return (
 		<div className="flex items-center h-14 md:h-16 bg-card px-4 pe-3 sm:px-6 border border-border/60 bt-0 rounded-md my-4">
-			<Suspense>
-				<CommandPalette open={commandPaletteOpen} setOpen={setCommandPaletteOpen} />
-			</Suspense>
-			<AddSystemDialog open={addSystemDialogOpen} setOpen={setAddSystemDialogOpen} />
+			{commandPaletteOpen && (
+				<Suspense>
+					<CommandPalette open setOpen={setCommandPaletteOpen} />
+				</Suspense>
+			)}
+			{addSystemDialogOpen && (
+				<Suspense>
+					<AddSystemDialog open setOpen={setAddSystemDialogOpen} />
+				</Suspense>
+			)}
 
 			<Link
-				href={basePath}
+				href={getPagePath($router, "home")}
 				aria-label="Home"
 				className="p-2 ps-0 me-3 group"
 				onMouseEnter={runOnce(() => import("@/components/routes/home"))}
 			>
-				<Logo className="h-[1.2rem] md:h-5 fill-foreground" />
+				<span className="sr-only">oh-my-beszel</span>
+				<Logo wordmark className="h-6 lg:h-7 w-auto fill-foreground" />
 			</Link>
 			<Button
 				variant="outline"
@@ -122,7 +137,9 @@ export default function Navbar() {
 										<UserIcon className="h-4 w-4 me-2.5" />
 										<Trans>Admin</Trans>
 									</DropdownMenuSubTrigger>
-									<DropdownMenuSubContent>{AdminLinks}</DropdownMenuSubContent>
+									<DropdownMenuSubContent>
+										<AdminDropdownGroup />
+									</DropdownMenuSubContent>
 								</DropdownMenuSub>
 							)}
 							{!isReadOnlyUser() && (
@@ -207,7 +224,7 @@ export default function Navbar() {
 						<DropdownMenuSeparator />
 						{isAdmin() && (
 							<>
-								{AdminLinks}
+								<AdminDropdownGroup />
 								<DropdownMenuSeparator />
 							</>
 						)}
@@ -240,7 +257,7 @@ function AdminDropdownGroup() {
 	return (
 		<DropdownMenuGroup>
 			<DropdownMenuItem asChild>
-				<a href={prependBasePath("/_/")} target="_blank">
+				<a href={prependBasePath("/_/")} target="_blank" rel="noopener noreferrer">
 					<UsersIcon className="me-2.5 h-4 w-4" />
 					<span>
 						<Trans>Users</Trans>
@@ -248,7 +265,7 @@ function AdminDropdownGroup() {
 				</a>
 			</DropdownMenuItem>
 			<DropdownMenuItem asChild>
-				<a href={prependBasePath("/_/#/collections?collection=systems")} target="_blank">
+				<a href={prependBasePath("/_/#/collections?collection=systems")} target="_blank" rel="noopener noreferrer">
 					<ServerIcon className="me-2.5 h-4 w-4" />
 					<span>
 						<Trans>Systems</Trans>
@@ -256,7 +273,7 @@ function AdminDropdownGroup() {
 				</a>
 			</DropdownMenuItem>
 			<DropdownMenuItem asChild>
-				<a href={prependBasePath("/_/#/logs")} target="_blank">
+				<a href={prependBasePath("/_/#/logs")} target="_blank" rel="noopener noreferrer">
 					<LogsIcon className="me-2.5 h-4 w-4" />
 					<span>
 						<Trans>Logs</Trans>
@@ -264,7 +281,7 @@ function AdminDropdownGroup() {
 				</a>
 			</DropdownMenuItem>
 			<DropdownMenuItem asChild>
-				<a href={prependBasePath("/_/#/settings/backups")} target="_blank">
+				<a href={prependBasePath("/_/#/settings/backups")} target="_blank" rel="noopener noreferrer">
 					<DatabaseBackupIcon className="me-2.5 h-4 w-4" />
 					<span>
 						<Trans>Backups</Trans>
@@ -274,3 +291,4 @@ function AdminDropdownGroup() {
 		</DropdownMenuGroup>
 	)
 }
+

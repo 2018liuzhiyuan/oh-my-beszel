@@ -22,6 +22,10 @@ type hubLike interface {
 type AlertManager struct {
 	hub           hubLike
 	stopOnce      sync.Once
+	lifecycleMu   sync.Mutex
+	lifecycleWG   sync.WaitGroup
+	activeWork    int
+	stopped       bool
 	pendingAlerts sync.Map
 	alertsCache   *AlertsCache
 	gpuFree       gpuFreeSampler
@@ -49,6 +53,7 @@ type SystemAlertFsStats struct {
 // Values pulled from system_stats.stats that are relevant to alerts.
 type SystemAlertStats struct {
 	Cpu          float64                       `json:"cpu"`
+	CpuBreakdown []float64                     `json:"cpub"`
 	Mem          float64                       `json:"mp"`
 	Disk         float64                       `json:"dp"`
 	Bandwidth    [2]uint64                     `json:"b"`
@@ -115,6 +120,10 @@ func (am *AlertManager) bindEvents() {
 	am.hub.OnRecordAfterUpdateSuccess("alerts").BindFunc(updateHistoryOnAlertUpdate)
 	am.hub.OnRecordAfterDeleteSuccess("alerts").BindFunc(resolveHistoryOnAlertDelete)
 	am.hub.OnRecordAfterUpdateSuccess("smart_devices").BindFunc(am.handleSmartDeviceAlert)
+	am.hub.OnTerminate().BindFunc(func(e *core.TerminateEvent) error {
+		am.Stop()
+		return e.Next()
+	})
 
 	am.hub.OnServe().BindFunc(func(e *core.ServeEvent) error {
 		// Populate all alerts into cache on startup
@@ -128,6 +137,28 @@ func (am *AlertManager) bindEvents() {
 		}
 		return e.Next()
 	})
+}
+
+func (am *AlertManager) runAsync(task func()) bool {
+	am.lifecycleMu.Lock()
+	defer am.lifecycleMu.Unlock()
+	if am.stopped {
+		return false
+	}
+	am.activeWork++
+	am.lifecycleWG.Add(1)
+	go func() {
+		defer am.finishAsync()
+		task()
+	}()
+	return true
+}
+
+func (am *AlertManager) finishAsync() {
+	am.lifecycleMu.Lock()
+	am.activeWork--
+	am.lifecycleMu.Unlock()
+	am.lifecycleWG.Done()
 }
 
 // IsNotificationSilenced checks if a notification should be silenced based on configured quiet hours

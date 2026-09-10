@@ -23,10 +23,10 @@ export default function ConfigYaml() {
 			setIsLoading(true)
 			const { config } = await pb.send<{ config: string }>("/api/beszel/config-yaml", {})
 			setConfigContent(config)
-		} catch (error: any) {
+		} catch (error: unknown) {
 			toast({
 				title: t`Error`,
-				description: error.message,
+				description: error instanceof Error ? error.message : t`Unable to load configuration`,
 				variant: "destructive",
 			})
 		} finally {

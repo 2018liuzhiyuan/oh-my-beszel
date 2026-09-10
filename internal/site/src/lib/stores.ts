@@ -24,6 +24,7 @@ export const $systems: ReadableAtom<SystemRecord[]> = computed($allSystemsById, 
 
 /** Map of alert records by system id and alert name */
 export const $alerts = map<AlertMap>({})
+export const $alertsLoaded = atom(false)
 
 /** SSH public key */
 export const $publicKey = atom("")

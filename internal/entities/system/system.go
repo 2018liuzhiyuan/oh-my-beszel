@@ -135,18 +135,18 @@ type Info struct {
 	KernelVersion string `json:"k,omitempty" cbor:"1,keyasint,omitempty"` // deprecated - moved to Details struct
 	Cores         int    `json:"c,omitzero" cbor:"2,keyasint,omitzero"`   // deprecated - moved to Details struct
 	// Threads is needed in Info struct to calculate load average thresholds
-	Threads       int     `json:"t,omitempty" cbor:"3,keyasint,omitempty"`
-	CpuModel      string  `json:"m,omitempty" cbor:"4,keyasint,omitempty"` // deprecated - moved to Details struct
-	Uptime        uint64  `json:"u" cbor:"5,keyasint"`
-	Cpu           float64 `json:"cpu" cbor:"6,keyasint"`
-	MemPct        float64 `json:"mp" cbor:"7,keyasint"`
-	DiskPct       float64 `json:"dp" cbor:"8,keyasint"`
-	Bandwidth     float64 `json:"b,omitzero" cbor:"9,keyasint"` // deprecated in favor of BandwidthBytes
-	AgentVersion  string  `json:"v" cbor:"10,keyasint"`
-	Podman        bool    `json:"p,omitempty" cbor:"11,keyasint,omitempty"` // deprecated - moved to Details struct
-	GpuPct        float64 `json:"g,omitempty" cbor:"12,keyasint,omitempty"`
-	DashboardTemp float64 `json:"dt,omitempty" cbor:"13,keyasint,omitempty"`
-	Os            Os      `json:"os,omitempty" cbor:"14,keyasint,omitempty"` // deprecated - moved to Details struct
+	Threads       int      `json:"t,omitempty" cbor:"3,keyasint,omitempty"`
+	CpuModel      string   `json:"m,omitempty" cbor:"4,keyasint,omitempty"` // deprecated - moved to Details struct
+	Uptime        uint64   `json:"u" cbor:"5,keyasint"`
+	Cpu           float64  `json:"cpu" cbor:"6,keyasint"`
+	MemPct        float64  `json:"mp" cbor:"7,keyasint"`
+	DiskPct       float64  `json:"dp" cbor:"8,keyasint"`
+	Bandwidth     float64  `json:"b,omitzero" cbor:"9,keyasint"` // deprecated in favor of BandwidthBytes
+	AgentVersion  string   `json:"v" cbor:"10,keyasint"`
+	Podman        bool     `json:"p,omitempty" cbor:"11,keyasint,omitempty"` // deprecated - moved to Details struct
+	GpuPct        *float64 `json:"g,omitempty" cbor:"12,keyasint,omitempty"`
+	DashboardTemp float64  `json:"dt,omitempty" cbor:"13,keyasint,omitempty"`
+	Os            Os       `json:"os,omitempty" cbor:"14,keyasint,omitempty"` // deprecated - moved to Details struct
 	// LoadAvg1       float64 `json:"l1,omitempty" cbor:"15,keyasint,omitempty"`  // deprecated - use `la` array instead
 	// LoadAvg5       float64 `json:"l5,omitempty" cbor:"16,keyasint,omitempty"`  // deprecated - use `la` array instead
 	// LoadAvg15      float64 `json:"l15,omitempty" cbor:"17,keyasint,omitempty"` // deprecated - use `la` array instead
@@ -163,6 +163,7 @@ type Info struct {
 	LargestGpuFreeGb uint16 `json:"gf,omitempty" cbor:"26,keyasint,omitempty"`
 	// total VRAM (GB, floored) of the largest GPU on the system
 	GpuTotalGb uint16 `json:"gt,omitempty" cbor:"27,keyasint,omitempty"`
+	MaxTemp    *int16 `json:"mt,omitempty" cbor:"28,keyasint,omitempty"`
 }
 
 // Data that does not change during process lifetime and is not needed in All Systems table

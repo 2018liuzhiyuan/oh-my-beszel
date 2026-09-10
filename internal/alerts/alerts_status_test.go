@@ -221,6 +221,7 @@ func TestHandleStatusAlertsDoesNotSendRecoveryWhileDownIsOnlyPending(t *testing.
 
 	initialEmailCount := hub.TestMailer.TotalSend()
 	am := alerts.NewTestAlertManagerWithoutWorker(hub)
+	defer am.Stop()
 
 	require.NoError(t, am.HandleStatusAlerts("down", system))
 	assert.Equal(t, 1, am.GetPendingAlertsCount(), "down transition should register a pending alert immediately")
@@ -266,6 +267,7 @@ func TestStatusAlertTimerCancellationPreventsBoundaryDelivery(t *testing.T) {
 
 		initialEmailCount := hub.TestMailer.TotalSend()
 		am := alerts.NewTestAlertManagerWithoutWorker(hub)
+		defer am.Stop()
 
 		require.NoError(t, am.HandleStatusAlerts("down", system))
 		assert.Equal(t, 1, am.GetPendingAlertsCount(), "down transition should register a pending alert immediately")
@@ -317,6 +319,7 @@ func TestStatusAlertDownFiresAfterDelayExpires(t *testing.T) {
 
 	initialEmailCount := hub.TestMailer.TotalSend()
 	am := alerts.NewTestAlertManagerWithoutWorker(hub)
+	defer am.Stop()
 
 	require.NoError(t, am.HandleStatusAlerts("down", system))
 	assert.Equal(t, 1, am.GetPendingAlertsCount(), "alert should be pending after system goes down")
@@ -543,6 +546,7 @@ func TestStatusAlertDuplicateDownCallIsIdempotent(t *testing.T) {
 	require.NoError(t, hub.Save(alert))
 
 	am := alerts.NewTestAlertManagerWithoutWorker(hub)
+	defer am.Stop()
 
 	require.NoError(t, am.HandleStatusAlerts("down", system))
 	require.NoError(t, am.HandleStatusAlerts("down", system))
@@ -567,6 +571,7 @@ func TestStatusAlertNoAlertRecord(t *testing.T) {
 	// No Status alert record created for this system
 	initialEmailCount := hub.TestMailer.TotalSend()
 	am := alerts.NewTestAlertManagerWithoutWorker(hub)
+	defer am.Stop()
 
 	require.NoError(t, am.HandleStatusAlerts("down", system))
 	assert.Equal(t, 0, am.GetPendingAlertsCount(), "no pending alert when no alert record exists")
@@ -600,6 +605,7 @@ func TestRestorePendingStatusAlertsRequeuesDownSystemsAfterRestart(t *testing.T)
 
 	initialEmailCount := hub.TestMailer.TotalSend()
 	am := alerts.NewTestAlertManagerWithoutWorker(hub)
+	defer am.Stop()
 
 	require.NoError(t, am.RestorePendingStatusAlerts())
 	assert.Equal(t, 1, am.GetPendingAlertsCount(), "startup restore should requeue a pending down alert for a system still marked down")
@@ -660,6 +666,7 @@ func TestRestorePendingStatusAlertsSkipsNonDownOrAlreadyTriggeredAlerts(t *testi
 	require.NoError(t, err)
 
 	am := alerts.NewTestAlertManagerWithoutWorker(hub)
+	defer am.Stop()
 	require.NoError(t, am.RestorePendingStatusAlerts())
 	assert.Equal(t, 1, am.GetPendingAlertsCount(), "only untriggered alerts for currently down systems should be restored")
 }
@@ -682,6 +689,7 @@ func TestRestorePendingStatusAlertsIsIdempotent(t *testing.T) {
 	require.NoError(t, err)
 
 	am := alerts.NewTestAlertManagerWithoutWorker(hub)
+	defer am.Stop()
 	require.NoError(t, am.RestorePendingStatusAlerts())
 	require.NoError(t, am.RestorePendingStatusAlerts())
 
@@ -994,6 +1002,7 @@ func TestCancelPendingStatusAlertsClearsAllAlertsForSystem(t *testing.T) {
 	require.NoError(t, hub.Save(alert2))
 
 	am := alerts.NewTestAlertManagerWithoutWorker(hub)
+	defer am.Stop()
 	initialEmailCount := hub.TestMailer.TotalSend()
 
 	// Both systems go down

@@ -380,9 +380,6 @@ func testOld(t *testing.T, hub *tests.TestHub) {
 		// Cancel the context
 		originalCancel()
 
-		// Wait a short time for cancellation to propagate
-		time.Sleep(10 * time.Millisecond)
-
 		// Verify the context is done
 		select {
 		case <-originalCtx.Done():
@@ -417,7 +414,7 @@ func testOld(t *testing.T, hub *tests.TestHub) {
 		assert.NoError(t, err)
 		assert.NotNil(t, newCtx, "New system context should not be nil")
 		assert.NotNil(t, newCancel, "New system cancel function should not be nil")
-		assert.NotEqual(t, originalCtx, newCtx, "New context should be different from original")
+		assert.False(t, originalCtx == newCtx, "New context should be different from original")
 
 		// Clean up
 		err = sm.RemoveSystem(record.Id)

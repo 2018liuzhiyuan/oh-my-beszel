@@ -3,11 +3,10 @@ import * as React from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import type { InputProps } from "./input"
 
-type InputTagsProps = Omit<InputProps, "value" | "onChange"> & {
-	value: string[]
-	onChange: React.Dispatch<React.SetStateAction<string[]>>
+type InputTagsProps = Omit<React.ComponentProps<"input">, "value" | "onChange"> & {
+	readonly value: readonly string[]
+	readonly onChange: React.Dispatch<React.SetStateAction<string[]>>
 }
 
 const InputTags = React.forwardRef<HTMLInputElement, InputTagsProps>(

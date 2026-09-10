@@ -1,4 +1,4 @@
-# Beszel 本地监控面板 — Windows 一键包
+# oh-my-beszel — Windows 便携包
 
 纯 Go 静态编译，单目录绿色部署：`beszel.exe`（Hub，内嵌 Web UI）+ `Monitor.exe`（启动器/任务运行器）+ `config.json`。默认只监听 `127.0.0.1:8090`，数据保存在同目录 `beszel_data\`。
 
@@ -16,13 +16,28 @@
 
 1. **构建**（或直接使用发布包，跳到 2）：仓库根目录运行
    ```powershell
-   powershell -ExecutionPolicy Bypass -File deploy\windows\build.ps1
+   bun install --cwd ./internal/site --frozen-lockfile
+   bun run --cwd ./internal/site build
+   pwsh -NoLogo -NoProfile -File ./deploy/windows/build.ps1
    ```
-   产物在 `build\windows\`。需要 Go 1.26+；UI 已预构建时无需 Node.js。
-2. **改配置**：编辑 `config.json`（首次从 `config.example.json` 复制），至少改掉 `hub.userPassword`。
+   产物在 `build\windows\`。构建需要 Go 1.26.1+，前端使用 Bun 和 Node.js 22.12+；运行便携包需要 PowerShell 7，不需要这些构建工具。
+2. **改配置**：编辑便携目录的 `config.json`（缺失时从 `config.example.json` 复制），设置自己的 `hub.userEmail` 和 `hub.userPassword`。模板默认开启免登录；需要密码登录时将 `hub.autoLogin` 改为 `""`。
 3. **启动**（二选一）：
-   - 双击 `Monitor.exe`：启动 Hub、等面板就绪、自动开浏览器；
-   - 运行 `install-task.ps1`：注册计划任务 `Beszel Hub`，开机自动启动（`uninstall-task.ps1` 可卸载）。
+   - 持久运行：用 PowerShell 7 执行 `install-task.ps1`，注册并启动 `Beszel Hub` 任务，此后在当前用户登录时自动启动；再双击 `Monitor.exe` 打开面板。Monitor 不会注册缺失的任务。
+   - 前台试运行：用 PowerShell 7 执行 `run-hub.ps1`，保持终端开启，手动访问 `http://127.0.0.1:8090`。
+
+源仓库的 `docs/guide.md`（英文）和 `docs/guide.zh-CN.md`（中文）提供完整配置、SSH 部署和故障排查步骤。
+
+## 修改网页端口
+
+编辑实际运行的 `Monitor.exe` 同目录下的 `config.json`，将顶层 `"port": 8090` 改为未占用的端口，例如 `"port": 8091`，保留其他配置。无需重新编译。使用计划任务时，在 PowerShell 中重启 Hub：
+
+```powershell
+Stop-ScheduledTask -TaskName 'Beszel Hub'
+Start-ScheduledTask -TaskName 'Beszel Hub'
+```
+
+如果自定义了任务名，请替换为实际名称；如果通过 `run-hub.ps1` 前台运行，按 Ctrl+C 后重新运行脚本。只重新打开 Monitor 不会重启已运行的任务。随后访问 `http://127.0.0.1:8091`，Monitor 下次启动也会打开新地址。同步修改指向旧网页端口的书签、代理或隧道；Agent 端口 `45876` 和 SSH 端口无需更改。
 
 ## config.json 字段
 
@@ -33,16 +48,19 @@
 | startupTimeoutSeconds | 45 | Monitor 等待面板就绪的超时 |
 | tasks | ["Beszel Hub"] | Monitor 启动时要拉起的计划任务名 |
 | hub.userEmail / userPassword | — | **首次启动**创建的登录账号（改密码对已有库无效，需走 UI） |
-| hub.autoLogin | "" | 填邮箱则本机免登录直达面板；留空则每次输密码 |
-| hub.checkUpdates | false | 是否允许联网检查上游更新 |
+| hub.autoLogin | admin@beszel.local | 模板填写了邮箱，启用以该用户身份免密码访问；需要认证时清空，并避免继承 AUTO_LOGIN / BESZEL_HUB_AUTO_LOGIN 环境变量 |
+| hub.checkUpdates | false | 传给 Hub 的保留字段 CHECK_UPDATES，不是本分支的安装器或更新渠道 |
 | sshConfigPath | "" | 可选，宿主机 `~/.ssh/config` 路径，用于 SSH 地址别名解析 |
 
 ## 添加被监控机器（Linux 节点）
 
-在节点上部署 beszel-agent（见 `deploy/linux/`，Linux 分支），然后在面板 UI 中手动添加；或参考 `configure-example.ps1` 用脚本批量注册（name/host/port/token）。
+在“添加系统 → SSH”中选择 Hub 运行账号可读取的 OpenSSH config，再选择主机并导入。该操作会为 pending/down 的 SSH 节点安排 Agent 自动部署，需要免交互 SSH 和目标机 root 或免密码 sudo 权限。便携包的 `agents/` 目录提供 Linux amd64 / arm64 程序；Agent 默认监听目标机的 `127.0.0.1:45876`，与操作系统 SSH 端口区分。
+
+也可以手动复制本分支的 Agent，使用面板公钥配置 KEY，并在“二进制”页签填写节点 IP 与 Agent 端口。界面沿用的下载脚本和 Docker 镜像指向上游，不包含本分支改动。
 
 ## 运维
 
 - 日志：`hub.log`（Hub）、`launcher.log`（Monitor 启动失败原因）。
-- 备份/迁移：整个目录拷走即可，历史数据都在 `beszel_data\`。
-- 内存占用：Hub 常驻约 50 MB，Monitor 任务态约 8 MB/进程。
+- 修改配置后重启对应 Hub 实例；初始账号字段不能重置已有数据库中的密码。
+- 备份/迁移：先停止 Hub，再复制完整的 `beszel_data\`，并保留配置与 SSH 设置。
+- `uninstall-task.ps1` 只注销任务，不删除数据，也不保证已运行的 Hub 停止；移动便携目录前需停止对应实例。

@@ -1,33 +1,27 @@
 import { createRouter } from "@nanostores/router"
 
-const routes = {
-	home: "/",
-	containers: "/containers",
-	smart: "/smart",
-	system: `/system/:id`,
-	settings: `/settings/:name?`,
-	forgot_password: `/forgot-password`,
-	request_otp: `/request-otp`,
-} as const
-
 /**
  * The base path of the application.
  * This is used to prepend the base path to all routes.
  */
-export const basePath = BESZEL?.BASE_PATH || ""
+export const basePath = globalThis.BESZEL?.BASE_PATH || ""
 
 /**
  * Prepends the base path to the given path.
  * @param path The path to prepend the base path to.
  * @returns The path with the base path prepended.
  */
-export const prependBasePath = (path: string) => (basePath + path).replaceAll("//", "/")
+export const prependBasePath = <Path extends string>(path: Path): Path => (basePath + path).replaceAll("//", "/") as Path
 
-// prepend base path to routes
-for (const route in routes) {
-	// @ts-expect-error need as const above to get nanostores to parse types properly
-	routes[route] = prependBasePath(routes[route])
-}
+const routes = {
+	home: prependBasePath("/"),
+	containers: prependBasePath("/containers"),
+	smart: prependBasePath("/smart"),
+	system: prependBasePath("/system/:id"),
+	settings: prependBasePath("/settings/:name?"),
+	forgot_password: prependBasePath("/forgot-password"),
+	request_otp: prependBasePath("/request-otp"),
+} as const
 
 export const $router = createRouter(routes, { links: false })
 
@@ -39,18 +33,28 @@ export const navigate = (urlString: string) => {
 }
 
 export function Link(props: React.AnchorHTMLAttributes<HTMLAnchorElement>) {
+	const { href, onClick, ...anchorProps } = props
 	return (
 		<a
-			{...props}
-			onClick={(e) => {
-				e.preventDefault()
-				const href = props.href || ""
-				if (e.ctrlKey || e.metaKey) {
-					window.open(href, "_blank")
-				} else {
-					navigate(href)
-					props.onClick?.(e)
+			{...anchorProps}
+			href={href}
+			onClick={(event) => {
+				onClick?.(event)
+				if (
+					event.defaultPrevented ||
+					event.button !== 0 ||
+					event.metaKey ||
+					event.ctrlKey ||
+					event.shiftKey ||
+					event.altKey ||
+					!href ||
+					(anchorProps.target && anchorProps.target !== "_self") ||
+					anchorProps.download
+				) {
+					return
 				}
+				event.preventDefault()
+				navigate(href)
 			}}
 		></a>
 	)

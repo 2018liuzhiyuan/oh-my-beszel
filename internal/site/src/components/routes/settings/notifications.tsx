@@ -12,6 +12,12 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { toast } from "@/components/ui/use-toast"
 import { isAdmin, pb } from "@/lib/api"
+import {
+	MAX_ALERT_SNOOZE_MINUTES,
+	alertSnoozeMinutesStorageKey,
+	readAlertSnoozeMinutes,
+	writeAlertSnoozeMinutes,
+} from "@/lib/alert-snooze"
 import type { UserSettings } from "@/types"
 import { saveSettings } from "./layout"
 import { QuietHours } from "./quiet-hours"
@@ -27,10 +33,15 @@ const NotificationSchema = v.object({
 	emails: v.array(v.pipe(v.string(), v.rfcEmail())),
 	webhooks: v.array(v.pipe(v.string(), v.url())),
 })
+const AlertSnoozeMinutesSchema = v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(MAX_ALERT_SNOOZE_MINUTES))
 
 const SettingsNotificationsPage = ({ userSettings }: { userSettings: UserSettings }) => {
 	const [webhooks, setWebhooks] = useState(userSettings.webhooks ?? [])
 	const [emails, setEmails] = useState<string[]>(userSettings.emails ?? [])
+	const alertSnoozeStorageKey = alertSnoozeMinutesStorageKey(pb.authStore.record?.id)
+	const [alertSnoozeMinutes, setAlertSnoozeMinutes] = useState(() =>
+		String(readAlertSnoozeMinutes(localStorage, alertSnoozeStorageKey))
+	)
 	const [isLoading, setIsLoading] = useState(false)
 
 	// update values when userSettings changes
@@ -38,6 +49,9 @@ const SettingsNotificationsPage = ({ userSettings }: { userSettings: UserSetting
 		setWebhooks(userSettings.webhooks ?? [])
 		setEmails(userSettings.emails ?? [])
 	}, [userSettings])
+	useEffect(() => {
+		setAlertSnoozeMinutes(String(readAlertSnoozeMinutes(localStorage, alertSnoozeStorageKey)))
+	}, [alertSnoozeStorageKey])
 
 	function addWebhook() {
 		setWebhooks([...webhooks, ""])
@@ -59,7 +73,9 @@ const SettingsNotificationsPage = ({ userSettings }: { userSettings: UserSetting
 		setIsLoading(true)
 		try {
 			const parsedData = v.parse(NotificationSchema, { emails, webhooks })
+			const parsedSnoozeMinutes = v.parse(AlertSnoozeMinutesSchema, Number(alertSnoozeMinutes))
 			await saveSettings(parsedData)
+			writeAlertSnoozeMinutes(localStorage, alertSnoozeStorageKey, parsedSnoozeMinutes)
 		} catch (e: unknown) {
 			toast({
 				title: t`Failed to save settings`,
@@ -118,6 +134,37 @@ const SettingsNotificationsPage = ({ userSettings }: { userSettings: UserSetting
 					/>
 					<p className="text-[0.8rem] text-muted-foreground">
 						<Trans>Save address using enter key or comma. Leave blank to disable email notifications.</Trans>
+					</p>
+				</div>
+				<Separator />
+				<div className="grid gap-2">
+					<div>
+						<h3 className="mb-1 text-lg font-medium">
+							<Trans>Dismissed alert reminder</Trans>
+						</h3>
+						<p className="text-sm text-muted-foreground leading-relaxed">
+							<Trans>
+								After you dismiss an alert on the home page, the same alert for the same system can appear again after
+								this interval.
+							</Trans>
+						</p>
+					</div>
+					<Label htmlFor="alert-snooze-minutes">
+						<Trans>Interval in minutes</Trans>
+					</Label>
+					<Input
+						id="alert-snooze-minutes"
+						type="number"
+						inputMode="numeric"
+						min={1}
+						max={MAX_ALERT_SNOOZE_MINUTES}
+						step={1}
+						className="max-w-40"
+						value={alertSnoozeMinutes}
+						onChange={(event) => setAlertSnoozeMinutes(event.target.value)}
+					/>
+					<p className="text-[0.8rem] text-muted-foreground">
+						<Trans>Default: 60 minutes.</Trans>
 					</p>
 				</div>
 				<Separator />

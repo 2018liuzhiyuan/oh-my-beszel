@@ -14,7 +14,7 @@ interface SidebarNavProps extends React.HTMLAttributes<HTMLElement> {
 		icon?: React.FC<React.SVGProps<SVGSVGElement>>
 		admin?: boolean
 		noReadOnly?: boolean
-		preload?: () => Promise<{ default: React.ComponentType<any> }>
+		preload?: () => Promise<unknown>
 	}[]
 }
 

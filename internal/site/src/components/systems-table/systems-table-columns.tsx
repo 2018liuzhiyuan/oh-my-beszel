@@ -19,17 +19,17 @@ import {
 	PlayCircleIcon,
 	ServerIcon,
 	TerminalSquareIcon,
+	ThermometerIcon,
 	Trash2Icon,
 	WifiIcon,
 } from "lucide-react"
-import { memo, useMemo, useRef, useState } from "react"
+import { lazy, memo, Suspense, useMemo, useState } from "react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip"
 import { isReadOnlyUser, pb } from "@/lib/api"
 import { ConnectionType, connectionTypeLabels, MeterState, SystemStatus } from "@/lib/enums"
-import { $longestSystemNameLen, $userSettings } from "@/lib/stores"
-import { cn, copyToClipboard, decimalString, formatBytes, secondsToUptimeString } from "@/lib/utils"
+import { $userSettings } from "@/lib/stores"
+import { cn, copyToClipboard, decimalString, formatBytes, formatTemperature, secondsToUptimeString } from "@/lib/utils"
 import type { SystemRecord } from "@/types"
-import { SystemDialog } from "../add-system"
 import AlertButton from "../alerts/alert-button"
 import { $router, Link } from "../router"
 import {
@@ -52,24 +52,18 @@ import {
 	DropdownMenuTrigger,
 } from "../ui/dropdown-menu"
 import { EthernetIcon, GpuIcon, WebSocketIcon } from "../ui/icons"
+import { ColumnDragHandle } from "./column-drag-handle"
+import { getGpuUtilization } from "./systems-table-gpu-value"
+import { STATUS_COLORS, TableCellWithMeter, getMeterStateByThresholds } from "./systems-table-meter"
 
-const STATUS_COLORS = {
-	[SystemStatus.Up]: "bg-green-500",
-	[SystemStatus.Down]: "bg-red-500",
-	[SystemStatus.Paused]: "bg-primary/40",
-	[SystemStatus.Pending]: "bg-yellow-500",
-} as const
-
-function getMeterStateByThresholds(value: number, warn = 65, crit = 90): MeterState {
-	return value >= crit ? MeterState.Crit : value >= warn ? MeterState.Warn : MeterState.Good
-}
+const SystemDialog = lazy(() => import("../add-system").then(({ SystemDialog }) => ({ default: SystemDialog })))
 
 /**
  * @param viewMode - "table" or "grid"
  * @returns - Column definitions for the systems table
  */
 export function SystemsTableColumns(viewMode: "table" | "grid"): ColumnDef<SystemRecord>[] {
-	const columns = [
+	const columns: SystemTableColumnDefinition[] = [
 		{
 			// size: 200,
 			size: 100,
@@ -115,18 +109,16 @@ export function SystemsTableColumns(viewMode: "table" | "grid"): ColumnDef<Syste
 			Icon: ServerIcon,
 			cell: (info) => {
 				const { name, id } = info.row.original
-				const longestName = useStore($longestSystemNameLen)
 				const linkUrl = getPagePath($router, "system", { id })
 
 				return (
 					<>
-						<span className="flex gap-2 items-center font-medium text-sm text-nowrap md:ps-1">
+						<span className="flex w-full min-w-0 gap-0.5 items-center font-medium text-sm text-nowrap">
 							<IndicatorDot system={info.row.original} />
 							<Link
 								href={linkUrl}
 								tabIndex={-1}
-								className="truncate z-10 relative"
-								style={{ width: `${longestName / 1.05}ch` }}
+								className="min-w-0 flex-1 truncate z-10 relative"
 								onMouseEnter={(e) => {
 									// set title on hover if text is truncated to show full name
 									const a = e.currentTarget
@@ -173,7 +165,7 @@ export function SystemsTableColumns(viewMode: "table" | "grid"): ColumnDef<Syste
 			header: sortableHeader,
 		},
 		{
-			accessorFn: ({ info }) => info.g,
+			accessorFn: ({ info }) => getGpuUtilization(info),
 			id: "gpu",
 			name: () => t({ message: "GPU_util", comment: "GPU utilization, systems table column" }),
 			cell: TableCellWithMeter,
@@ -187,6 +179,26 @@ export function SystemsTableColumns(viewMode: "table" | "grid"): ColumnDef<Syste
 			cell: TableCellWithMeter,
 			Icon: MemoryStickIcon,
 			header: sortableHeader,
+		},
+		{
+			accessorFn: ({ info }) => info.mt ?? info.dt,
+			id: "temperature",
+			name: () => t`Temperature`,
+			Icon: ThermometerIcon,
+			header: sortableHeader,
+			sortUndefined: "last",
+			cell(info) {
+				const temperature = info.getValue()
+				if (typeof temperature !== "number") return null
+				const userSettings = useStore($userSettings, { keys: ["unitTemp"] })
+				const formatted = formatTemperature(temperature, userSettings.unitTemp)
+				return (
+					<span className="tabular-nums whitespace-nowrap">
+						{Math.round(formatted.value)}
+						{formatted.unit}
+					</span>
+				)
+			},
 		},
 		{
 			accessorFn: ({ info }) => (info.gi === undefined ? undefined : (info.gf ?? 0)),
@@ -330,22 +342,22 @@ export function SystemsTableColumns(viewMode: "table" | "grid"): ColumnDef<Syste
 		},
 		{
 			id: "actions",
-			// @ts-expect-error
 			name: () => t({ message: "Actions", comment: "Table column" }),
-			size: 50,
+			header: () => <span className="sr-only">{t`Actions`}</span>,
 			cell: ({ row }) => (
-				<div className="relative z-10 flex justify-end items-center gap-1 -ms-3">
+				<div className="relative z-10 flex items-center justify-center gap-0.5 [&_button]:size-9">
 					<AlertButton system={row.original} />
 					<ActionsButton system={row.original} />
 				</div>
 			),
 		},
-	] as ColumnDef<SystemRecord>[]
+	]
 
 	const preferredOrder = [
 		"system",
 		"gpu",
 		"vram",
+		"temperature",
 		"gpuFree",
 		"cpu",
 		"memory",
@@ -364,45 +376,49 @@ export function SystemsTableColumns(viewMode: "table" | "grid"): ColumnDef<Syste
 	})
 }
 
-function sortableHeader(context: HeaderContext<SystemRecord, unknown>) {
-	const { column } = context
-	// @ts-expect-error
-	const { Icon, hideSort, name }: { Icon: React.ElementType; name: () => string; hideSort: boolean } = column.columnDef
-	const isSorted = column.getIsSorted()
-	return (
-		<Button
-			variant="ghost"
-			className={cn("h-9 px-3 flex duration-50", isSorted && "bg-accent/70 light:bg-accent text-accent-foreground/90")}
-			onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-		>
-			{Icon && <Icon className="me-2 size-4" />}
-			{name()}
-			{hideSort || <ArrowUpDownIcon className="ms-2 size-4" />}
-		</Button>
-	)
+type SortableHeaderDefinition = ColumnDef<SystemRecord, unknown> & {
+	readonly Icon?: React.ElementType
+	readonly hideSort?: boolean
+	readonly name: () => string
 }
 
-function TableCellWithMeter(info: CellContext<SystemRecord, unknown>) {
-	const { colorWarn = 65, colorCrit = 90 } = useStore($userSettings, { keys: ["colorWarn", "colorCrit"] })
-	const rawValue = info.getValue()
-	if (rawValue === undefined || rawValue === null) {
-		return null
-	}
-	const val = Number(rawValue) || 0
-	const threshold = getMeterStateByThresholds(val, colorWarn, colorCrit)
-	const meterClass = cn(
-		"h-full",
-		(info.row.original.status !== SystemStatus.Up && STATUS_COLORS.paused) ||
-			(threshold === MeterState.Good && STATUS_COLORS.up) ||
-			(threshold === MeterState.Warn && STATUS_COLORS.pending) ||
-			STATUS_COLORS.down
-	)
+type SystemTableColumnDefinition = SortableHeaderDefinition
+
+function isSortableHeaderDefinition(
+	columnDef: ColumnDef<SystemRecord, unknown>
+): columnDef is SortableHeaderDefinition {
+	return "name" in columnDef && typeof columnDef.name === "function"
+}
+
+function sortableHeader(context: HeaderContext<SystemRecord, unknown>) {
+	const { column } = context
+	if (!isSortableHeaderDefinition(column.columnDef)) return null
+	const { Icon, hideSort = false, name } = column.columnDef
+	const isSorted = column.getIsSorted()
 	return (
-		<div className="flex gap-2 items-center tabular-nums tracking-tight w-full min-w-0">
-			<span className="min-w-8 shrink-0">{decimalString(val, val >= 10 ? 1 : 2)}%</span>
-			<span className="flex-1 min-w-8 grid bg-muted h-[1em] rounded-sm overflow-hidden">
-				<span className={meterClass} style={{ width: `${val}%` }}></span>
+		<div
+			className={cn(
+				"flex h-12 min-w-0 items-center ps-1.5 pe-1 text-sm duration-50",
+				isSorted && "bg-accent/70 light:bg-accent text-accent-foreground/90"
+			)}
+		>
+			<ColumnDragHandle label={t`Drag to reorder`} />
+			{Icon && <Icon className="ms-1 me-1 size-3.5 shrink-0" />}
+			<span className="min-w-0 flex-1 truncate" title={name()}>
+				{name()}
 			</span>
+			{hideSort || (
+				<Button
+					variant="ghost"
+					size="icon"
+					className="ms-0.5 size-6 shrink-0"
+					aria-label={name()}
+					title={name()}
+					onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+				>
+					<ArrowUpDownIcon className="size-3.5" />
+				</Button>
+			)}
 		</div>
 	)
 }
@@ -513,7 +529,6 @@ export function IndicatorDot({ system, className }: { system: SystemRecord; clas
 export const ActionsButton = memo(({ system }: { system: SystemRecord }) => {
 	const [deleteOpen, setDeleteOpen] = useState(false)
 	const [editOpen, setEditOpen] = useState(false)
-	const editOpened = useRef(false)
 	const { t } = useLingui()
 	const { id, status, host, name } = system
 
@@ -531,12 +546,7 @@ export const ActionsButton = memo(({ system }: { system: SystemRecord }) => {
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end">
 						{!isReadOnlyUser() && (
-							<DropdownMenuItem
-								onSelect={() => {
-									editOpened.current = true
-									setEditOpen(true)
-								}}
-							>
+							<DropdownMenuItem onSelect={() => setEditOpen(true)}>
 								<PenBoxIcon className="me-2.5 size-4" />
 								<Trans>Edit</Trans>
 							</DropdownMenuItem>
@@ -577,9 +587,13 @@ export const ActionsButton = memo(({ system }: { system: SystemRecord }) => {
 					</DropdownMenuContent>
 				</DropdownMenu>
 				{/* edit dialog */}
-				<Dialog open={editOpen} onOpenChange={setEditOpen}>
-					{editOpened.current && <SystemDialog system={system} setOpen={setEditOpen} />}
-				</Dialog>
+				{editOpen && (
+					<Dialog open onOpenChange={setEditOpen}>
+						<Suspense>
+							<SystemDialog system={system} setOpen={setEditOpen} />
+						</Suspense>
+					</Dialog>
+				)}
 				{/* deletion dialog */}
 				<AlertDialog open={deleteOpen} onOpenChange={(open) => setDeleteOpen(open)}>
 					<AlertDialogContent>

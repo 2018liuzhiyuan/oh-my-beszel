@@ -4,13 +4,15 @@ package agent
 
 import (
 	"crypto/ed25519"
+	"io/fs"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/henrygd/beszel"
+	"github.com/henrygd/beszel/internal/beszel"
 
 	"github.com/henrygd/beszel/internal/common"
 
@@ -462,13 +464,12 @@ func TestGetToken(t *testing.T) {
 	})
 
 	t.Run("error when TOKEN_FILE points to non-existent file", func(t *testing.T) {
-		// Set TOKEN_FILE to a non-existent file
-		t.Setenv("TOKEN_FILE", "/non/existent/file.txt")
+		t.Setenv("TOKEN_FILE", filepath.Join(t.TempDir(), "missing-token.txt"))
 
 		token, err := getToken()
 		assert.Error(t, err)
 		assert.Equal(t, "", token)
-		assert.Contains(t, err.Error(), "no such file or directory")
+		assert.ErrorIs(t, err, fs.ErrNotExist)
 	})
 
 	t.Run("handles empty token file", func(t *testing.T) {

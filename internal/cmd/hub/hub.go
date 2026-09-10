@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/henrygd/beszel"
+	"github.com/henrygd/beszel/internal/beszel"
 	"github.com/henrygd/beszel/internal/hub"
 	_ "github.com/henrygd/beszel/internal/migrations"
 

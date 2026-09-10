@@ -154,5 +154,5 @@ func (am *AlertManager) finishGpuFree(st *gpuFreeState, val float64, triggered b
 		min:          max(1, st.window),
 		descriptor:   "Free VRAM",
 	}
-	go am.sendSystemAlert(alert)
+	am.dispatchSystemAlert(alert)
 }

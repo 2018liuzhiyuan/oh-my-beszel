@@ -6,10 +6,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/henrygd/beszel"
 	"github.com/henrygd/beszel/agent"
 	"github.com/henrygd/beszel/agent/health"
 	"github.com/henrygd/beszel/agent/utils"
+	"github.com/henrygd/beszel/internal/beszel"
 	"github.com/spf13/pflag"
 	"golang.org/x/crypto/ssh"
 )

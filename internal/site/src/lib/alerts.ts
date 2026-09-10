@@ -2,7 +2,7 @@ import { t } from "@lingui/core/macro"
 import { CpuIcon, HardDriveIcon, MemoryStickIcon, ServerIcon } from "lucide-react"
 import type { RecordSubscription } from "pocketbase"
 import { EthernetIcon, GpuIcon } from "@/components/ui/icons"
-import { $alerts } from "@/lib/stores"
+import { $alerts, $alertsLoaded } from "@/lib/stores"
 import type { AlertInfo, AlertRecord } from "@/types"
 import { pb } from "./api"
 import { ThermometerIcon, BatteryMediumIcon, HourglassIcon } from "@/components/ui/icons"
@@ -22,6 +22,18 @@ export const alertInfo: Record<string, AlertInfo> = {
 		unit: "%",
 		icon: CpuIcon,
 		desc: () => t`Triggers when CPU usage exceeds a threshold`,
+	},
+	CPUIOWait: {
+		name: () => t`CPU I/O Wait`,
+		unit: "%",
+		icon: CpuIcon,
+		desc: () => t`Triggers when CPU I/O wait exceeds a threshold`,
+	},
+	CPUSteal: {
+		name: () => t`CPU Steal Time`,
+		unit: "%",
+		icon: CpuIcon,
+		desc: () => t`Triggers when CPU steal time exceeds a threshold`,
 	},
 	Memory: {
 		name: () => t`Memory Usage`,
@@ -176,6 +188,7 @@ export const alertManager = (() => {
 	async function refresh() {
 		const records = await fetchAlerts()
 		add(records)
+		$alertsLoaded.set(true)
 	}
 
 	return {

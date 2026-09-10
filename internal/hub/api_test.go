@@ -927,9 +927,7 @@ func TestTrustedHeaderMiddleware(t *testing.T) {
 	}
 }
 
-func TestUpdateEndpoint(t *testing.T) {
-	t.Setenv("CHECK_UPDATES", "true")
-
+func TestUpdateEndpointDisabled(t *testing.T) {
 	hub, _ := beszelTests.NewTestHub(t.TempDir())
 	defer hub.Cleanup()
 	hub.StartHub()
@@ -945,25 +943,14 @@ func TestUpdateEndpoint(t *testing.T) {
 
 	scenarios := []beszelTests.ApiScenario{
 		{
-			Name:            "update endpoint shouldn't work without auth",
-			Method:          http.MethodGet,
-			URL:             "/api/beszel/update",
-			ExpectedStatus:  401,
-			ExpectedContent: []string{"requires valid"},
-			TestAppFactory:  testAppFactory,
+			Name:               "removed update endpoint falls back to SPA",
+			Method:             http.MethodGet,
+			URL:                "/api/beszel/update",
+			ExpectedStatus:     200,
+			ExpectedContent:    []string{"<div id=\"app\"></div>", "globalThis.BESZEL"},
+			NotExpectedContent: []string{"\"v\":"},
+			TestAppFactory:     testAppFactory,
 		},
-		// leave this out for now since it actually makes a request to github
-		// {
-		// 	Name:   "GET /update - with valid auth should succeed",
-		// 	Method: http.MethodGet,
-		// 	URL:    "/api/beszel/update",
-		// 	Headers: map[string]string{
-		// 		"Authorization": userToken,
-		// 	},
-		// 	ExpectedStatus:  200,
-		// 	ExpectedContent: []string{`"v":`},
-		// 	TestAppFactory:  testAppFactory,
-		// },
 	}
 
 	for _, scenario := range scenarios {

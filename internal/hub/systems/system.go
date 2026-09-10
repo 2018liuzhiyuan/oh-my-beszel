@@ -25,7 +25,7 @@ import (
 	"github.com/henrygd/beszel/internal/entities/system"
 	"github.com/henrygd/beszel/internal/entities/systemd"
 
-	"github.com/henrygd/beszel"
+	"github.com/henrygd/beszel/internal/beszel"
 
 	"github.com/blang/semver"
 	"github.com/fxamacker/cbor/v2"
@@ -36,23 +36,27 @@ import (
 )
 
 type System struct {
-	Id             string                  `db:"id"`
-	Host           string                  `db:"host"`
-	Port           string                  `db:"port"`
-	Status         string                  `db:"status"`
-	manager        *SystemManager          // Manager that this system belongs to
-	client         *ssh.Client             // SSH client for fetching data
-	sshTransport   *transport.SSHTransport // SSH transport for requests
-	data           *system.CombinedData    // system data from agent
-	dataMu         sync.RWMutex            // Guards reads/writes of data (sampler reads it every second)
-	ctx            context.Context         // Context for stopping the updater
-	cancel         context.CancelFunc      // Stops and removes system from updater
-	WsConn         *ws.WsConn              // Handler for agent WebSocket connection
-	agentVersion   semver.Version          // Agent version
-	updateTicker   *time.Ticker            // Ticker for updating the system
-	detailsFetched atomic.Bool             // True if static system details have been fetched and saved
-	smartFetching  atomic.Bool             // True if SMART devices are currently being fetched
-	smartInterval  time.Duration           // Interval for periodic SMART data updates
+	Id             string `db:"id"`
+	Host           string `db:"host"`
+	Port           string `db:"port"`
+	SSHConfigPath  string `db:"ssh_config"`
+	Status         string `db:"status"`
+	stateMu        sync.RWMutex
+	manager        *SystemManager             // Manager that this system belongs to
+	client         atomic.Pointer[ssh.Client] // SSH client for fetching data
+	sshTransport   *transport.SSHTransport    // SSH transport for requests
+	data           *system.CombinedData       // system data from agent
+	dataMu         sync.RWMutex               // Guards reads/writes of data (sampler reads it every second)
+	ctx            context.Context            // Context for stopping the updater
+	cancel         context.CancelFunc         // Stops and removes system from updater
+	WsConn         *ws.WsConn                 // Handler for agent WebSocket connection
+	agentVersion   semver.Version             // Agent version
+	updateTicker   *time.Ticker               // Ticker for updating the system
+	updaterMu      sync.RWMutex
+	updaterDone    <-chan struct{}
+	detailsFetched atomic.Bool   // True if static system details have been fetched and saved
+	smartFetching  atomic.Bool   // True if SMART devices are currently being fetched
+	smartInterval  time.Duration // Interval for periodic SMART data updates
 }
 
 func (sm *SystemManager) NewSystem(systemId string) *System {
@@ -62,6 +66,33 @@ func (sm *SystemManager) NewSystem(systemId string) *System {
 	}
 	system.ctx, system.cancel = system.getContext(sm.ctx)
 	return system
+}
+
+func (sys *System) statusValue() string {
+	sys.stateMu.RLock()
+	defer sys.stateMu.RUnlock()
+	return sys.Status
+}
+
+func (sys *System) setStatus(status string) {
+	sys.stateMu.Lock()
+	defer sys.stateMu.Unlock()
+	sys.Status = status
+}
+
+func (sys *System) setUpdaterDone(done <-chan struct{}) {
+	sys.updaterMu.Lock()
+	sys.updaterDone = done
+	sys.updaterMu.Unlock()
+}
+
+func (sys *System) waitForUpdater() {
+	sys.updaterMu.RLock()
+	done := sys.updaterDone
+	sys.updaterMu.RUnlock()
+	if done != nil {
+		<-done
+	}
 }
 
 // pollBackoff is the retry schedule after a failed poll. A failed system is
@@ -108,7 +139,7 @@ func (sys *System) StartUpdater() {
 			sys.updateTicker.Reset(time.Duration(interval) * time.Millisecond)
 		}
 	}
-	if sys.Status != paused && sys.ctx.Err() == nil {
+	if sys.statusValue() != paused && sys.ctx.Err() == nil {
 		if err := sys.update(); err != nil {
 			failures++
 			_ = sys.setDown(err)
@@ -152,7 +183,7 @@ func (sys *System) StartUpdater() {
 
 // update updates the system data and records.
 func (sys *System) update() error {
-	if sys.Status == paused {
+	if sys.statusValue() == paused {
 		sys.handlePaused()
 		return nil
 	}
@@ -171,6 +202,9 @@ func (sys *System) update() error {
 
 	// ensure deprecated fields from older agents are migrated to current fields
 	migrateDeprecatedFields(data, !sys.detailsFetched.Load())
+	setDashboardGpuInfo(data)
+	setDashboardMaxTemperature(data)
+	sys.setData(data)
 
 	// create system records
 	_, err = sys.createRecords(data)
@@ -224,7 +258,6 @@ func (sys *System) createRecords(data *system.CombinedData) (*core.Record, error
 	if err != nil {
 		return nil, err
 	}
-	setDashboardGpuInfo(data)
 	hub := sys.manager.hub
 	err = hub.RunInTransaction(func(txApp core.App) error {
 		// add system_stats record
@@ -323,6 +356,22 @@ func setDashboardGpuInfo(data *system.CombinedData) {
 	data.Info.GpuTotalGb = uint16(math.Floor(largestTotal / 1024))
 	gpuMemPct := math.Round(memoryUsed/memoryTotal*10000) / 100
 	data.Info.GpuMemPct = &gpuMemPct
+}
+
+func setDashboardMaxTemperature(data *system.CombinedData) {
+	data.Info.MaxTemp = nil
+	var maxTemp float64
+	hasTemperature := false
+	for _, temperature := range data.Stats.Temperatures {
+		if !hasTemperature || temperature > maxTemp {
+			maxTemp = temperature
+			hasTemperature = true
+		}
+	}
+	if hasTemperature {
+		roundedMaxTemp := int16(math.Round(maxTemp))
+		data.Info.MaxTemp = &roundedMaxTemp
+	}
 }
 
 // gpuIdLess orders numeric GPU ids numerically ("2" before "10") and falls
@@ -474,7 +523,8 @@ func (sys *System) HasUser(app core.App, user *core.Record) bool {
 // encountered during the process of updating the system status.
 // It is a no-op if the system's context has been cancelled.
 func (sys *System) setDown(originalError error) error {
-	if sys.Status == down || sys.Status == paused {
+	status := sys.statusValue()
+	if status == down || status == paused {
 		return nil
 	}
 	// the updater can race shutdown, and the app may already be disposed by the
@@ -523,7 +573,7 @@ func (sys *System) request(ctx context.Context, action common.WebSocketAction, r
 	err := sys.sshTransport.RequestWithRetry(ctx, action, req, dest, 1)
 	// Keep legacy SSH client/version fields in sync for other code paths.
 	if sys.sshTransport != nil {
-		sys.client = sys.sshTransport.GetClient()
+		sys.client.Store(sys.sshTransport.GetClient())
 		sys.agentVersion = sys.sshTransport.GetAgentVersion()
 	}
 	return err
@@ -565,8 +615,8 @@ func (sys *System) ensureSSHTransport() error {
 		})
 	}
 	// Sync client state with transport
-	if sys.client != nil {
-		sys.sshTransport.SetClient(sys.client)
+	if client := sys.client.Load(); client != nil {
+		sys.sshTransport.SetClient(client)
 		sys.sshTransport.SetAgentVersion(sys.agentVersion)
 	}
 	return nil
@@ -601,7 +651,6 @@ func (sys *System) fetchDataViaWebSocket(options common.DataRequestOptions) (*sy
 	if err != nil {
 		return nil, err
 	}
-	sys.setData(data)
 	return data, nil
 }
 
@@ -676,7 +725,6 @@ func makeStableHashId(strings ...string) string {
 
 // fetchDataViaSSH handles fetching data using SSH.
 // This function encapsulates the original SSH logic.
-// It updates sys.data via setData upon successful fetch.
 func (sys *System) fetchDataViaSSH(options common.DataRequestOptions) (*system.CombinedData, error) {
 	// decode into a fresh object so the data lock is never held during I/O
 	data := &system.CombinedData{}
@@ -728,7 +776,6 @@ func (sys *System) fetchDataViaSSH(options common.DataRequestOptions) (*system.C
 		return nil, err
 	}
 
-	sys.setData(data)
 	return data, nil
 }
 
@@ -736,7 +783,7 @@ func (sys *System) fetchDataViaSSH(options common.DataRequestOptions) (*system.C
 // The operation can request a retry by returning true as the first return value.
 func (sys *System) runSSHOperation(timeout time.Duration, retries int, operation func(*ssh.Session) (bool, error)) error {
 	for attempt := 0; attempt <= retries; attempt++ {
-		if sys.client == nil || sys.Status == down {
+		if sys.client.Load() == nil || sys.statusValue() == down {
 			if err := sys.createSSHClient(); err != nil {
 				return err
 			}
@@ -825,6 +872,7 @@ func (s *System) createSSHClient() error {
 			return err
 		}
 	}
+	var client *ssh.Client
 	if strings.HasPrefix(s.Host, "/") {
 		conn, err := net.Dial("unix", s.Host)
 		if err != nil {
@@ -835,11 +883,11 @@ func (s *System) createSSHClient() error {
 			conn.Close()
 			return err
 		}
-		s.client = ssh.NewClient(c, chans, reqs)
+		client = ssh.NewClient(c, chans, reqs)
 	} else {
 		// resolve through the user's ssh config: aliases, renumbered IPs and
 		// ProxyJump chains reflect the current file on every poll
-		conn, err := s.manager.DialAgent(s.Host, s.Port)
+		conn, err := s.manager.DialAgent(s.Host, s.Port, s.SSHConfigPath)
 		if err != nil {
 			return err
 		}
@@ -851,12 +899,10 @@ func (s *System) createSSHClient() error {
 		}
 		// clear the dial deadline; the connection is long-lived from here on
 		_ = conn.SetDeadline(time.Time{})
-		s.client = ssh.NewClient(c, chans, reqs)
+		client = ssh.NewClient(c, chans, reqs)
 	}
-	if s.client == nil {
-		return fmt.Errorf("client not initialized")
-	}
-	s.agentVersion, _ = extractAgentVersion(string(s.client.Conn.ServerVersion()))
+	s.client.Store(client)
+	s.agentVersion, _ = extractAgentVersion(string(client.Conn.ServerVersion()))
 	s.manager.resetFailedSmartFetchState(s.Id)
 	return nil
 }
@@ -872,7 +918,8 @@ const sshKeepAliveInterval = 30 * time.Second
 // createSessionWithTimeout creates a new SSH session with a timeout to avoid hanging
 // in case of network issues
 func (sys *System) createSessionWithTimeout(timeout time.Duration) (*ssh.Session, error) {
-	if sys.client == nil {
+	client := sys.client.Load()
+	if client == nil {
 		return nil, fmt.Errorf("client not initialized")
 	}
 
@@ -883,7 +930,7 @@ func (sys *System) createSessionWithTimeout(timeout time.Duration) (*ssh.Session
 	errChan := make(chan error, 1)
 
 	go func() {
-		if session, err := sys.client.NewSession(); err != nil {
+		if session, err := client.NewSession(); err != nil {
 			errChan <- err
 		} else {
 			sessionChan <- session
@@ -905,9 +952,8 @@ func (sys *System) closeSSHConnection() {
 	if sys.sshTransport != nil {
 		sys.sshTransport.Close()
 	}
-	if sys.client != nil {
-		sys.client.Close()
-		sys.client = nil
+	if client := sys.client.Swap(nil); client != nil {
+		client.Close()
 	}
 }
 

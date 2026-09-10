@@ -19,19 +19,26 @@ type sshHost struct {
 	HostName string `json:"hostName"`
 }
 
+type sshHostsResponse struct {
+	Path  string    `json:"path"`
+	Hosts []sshHost `json:"hosts"`
+}
+
 func getSSHHosts(e *core.RequestEvent) error {
-	hosts, err := readLocalSSHHosts()
+	requestedPath := strings.TrimSpace(e.Request.URL.Query().Get("path"))
+	path := resolveSSHConfigPath(requestedPath)
+	hosts, err := readSSHHosts(path)
 	if err != nil {
 		return e.InternalServerError("Unable to read the local SSH config.", nil)
 	}
-	return e.JSON(http.StatusOK, map[string][]sshHost{"hosts": hosts})
+	return e.JSON(http.StatusOK, sshHostsResponse{Path: path, Hosts: hosts})
 }
 
 func readLocalSSHHosts() ([]sshHost, error) {
-	// explicit override for deployments where the config lives elsewhere
-	if path := strings.TrimSpace(os.Getenv("SSH_CONFIG_PATH")); path != "" {
-		return readSSHHosts(path)
-	}
+	return readSSHHosts(resolveSSHConfigPath(""))
+}
+
+func resolveSSHConfigPath(requestedPath string) string {
 	homes := make([]string, 0, 5)
 	if home, err := os.UserHomeDir(); err == nil {
 		homes = append(homes, home)
@@ -49,6 +56,19 @@ func readLocalSSHHosts() ([]sshHost, error) {
 			homes = append(homes, filepath.Join(systemDrive+string(os.PathSeparator), "Users", username))
 		}
 	}
+	home := ""
+	for _, candidate := range homes {
+		if strings.TrimSpace(candidate) != "" {
+			home = candidate
+			break
+		}
+	}
+	if requestedPath != "" {
+		return expandSSHConfigPath(requestedPath, home)
+	}
+	if configuredPath := strings.TrimSpace(os.Getenv("SSH_CONFIG_PATH")); configuredPath != "" {
+		return expandSSHConfigPath(configuredPath, home)
+	}
 
 	seen := make(map[string]struct{})
 	for _, home := range homes {
@@ -62,10 +82,23 @@ func readLocalSSHHosts() ([]sshHost, error) {
 		}
 		seen[lookup] = struct{}{}
 		if info, err := os.Stat(path); err == nil && info.Mode().IsRegular() {
-			return readSSHHosts(path)
+			return path
 		}
 	}
-	return []sshHost{}, nil
+	if home == "" {
+		return ""
+	}
+	return filepath.Join(home, ".ssh", "config")
+}
+
+func expandSSHConfigPath(path, home string) string {
+	path = os.ExpandEnv(strings.TrimSpace(path))
+	if path == "~" {
+		path = home
+	} else if strings.HasPrefix(path, "~/") || strings.HasPrefix(path, `~\`) {
+		path = filepath.Join(home, path[2:])
+	}
+	return filepath.Clean(path)
 }
 
 func readSSHHosts(path string) ([]sshHost, error) {

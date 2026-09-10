@@ -66,10 +66,11 @@ const SettingsFingerprintsPage = memo(() => {
 
 	// Subscribe to fingerprint updates
 	useEffect(() => {
+		let active = true
 		let unsubscribe: (() => void) | undefined
-		;(async () => {
-			// subscribe to fingerprint updates
-			unsubscribe = await pb.collection("fingerprints").subscribe(
+		// subscribe to fingerprint updates
+		pb.collection("fingerprints")
+			.subscribe(
 				"*",
 				(res) => {
 					setFingerprints((currentFingerprints) => {
@@ -92,9 +93,18 @@ const SettingsFingerprintsPage = memo(() => {
 				},
 				pbFingerprintOptions
 			)
-		})()
+			.then((stopSubscription) => {
+				if (active) {
+					unsubscribe = stopSubscription
+				} else {
+					stopSubscription()
+				}
+			})
 		// unsubscribe on unmount
-		return () => unsubscribe?.()
+		return () => {
+			active = false
+			unsubscribe?.()
+		}
 	}, [])
 
 	// Update token map whenever fingerprints change
@@ -322,17 +332,17 @@ const SectionTable = memo(({ fingerprints = [] }: { fingerprints: FingerprintRec
 			{
 				label: t`System`,
 				Icon: ServerIcon,
-				w: "11em",
+				className: "min-w-20 lg:min-w-44",
 			},
 			{
 				label: t`Token`,
 				Icon: KeyIcon,
-				w: "20em",
+				className: "min-w-20 lg:min-w-80",
 			},
 			{
 				label: t`Fingerprint`,
 				Icon: FingerprintIcon,
-				w: "20em",
+				className: "min-w-24 lg:min-w-80",
 			},
 		],
 		[t]
@@ -343,7 +353,7 @@ const SectionTable = memo(({ fingerprints = [] }: { fingerprints: FingerprintRec
 				<TableHeader>
 					<tr className="border-border/50">
 						{headerCols.map((col) => (
-							<TableHead key={col.label} style={{ minWidth: col.w }}>
+							<TableHead key={col.label} className={col.className}>
 								<span className="flex items-center gap-2">
 									<col.Icon className="size-4" />
 									{col.label}

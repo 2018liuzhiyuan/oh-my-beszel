@@ -18,6 +18,8 @@ type alertInfo struct {
 // Stop cancels all pending status alert timers.
 func (am *AlertManager) Stop() {
 	am.stopOnce.Do(func() {
+		am.lifecycleMu.Lock()
+		am.stopped = true
 		am.pendingAlerts.Range(func(key, value any) bool {
 			info := value.(*alertInfo)
 			if info.timer != nil {
@@ -26,6 +28,11 @@ func (am *AlertManager) Stop() {
 			am.pendingAlerts.Delete(key)
 			return true
 		})
+		shouldWait := am.activeWork > 0
+		am.lifecycleMu.Unlock()
+		if shouldWait {
+			am.lifecycleWG.Wait()
+		}
 	})
 }
 
@@ -60,6 +67,12 @@ func (am *AlertManager) handleSystemDown(systemName string, alerts []CachedAlert
 // schedulePendingStatusAlert sets up a timer to send a "down" alert after the specified delay if the system is still down.
 // It returns true if the alert was scheduled, or false if an alert was already pending for the given alert record.
 func (am *AlertManager) schedulePendingStatusAlert(systemName string, alertData CachedAlertData, delay time.Duration) bool {
+	am.lifecycleMu.Lock()
+	defer am.lifecycleMu.Unlock()
+	if am.stopped {
+		return false
+	}
+
 	alert := &alertInfo{
 		systemName: systemName,
 		alertData:  alertData,
@@ -73,7 +86,9 @@ func (am *AlertManager) schedulePendingStatusAlert(systemName string, alertData 
 
 	stored := storedAlert.(*alertInfo)
 	stored.timer = time.AfterFunc(time.Until(stored.expireTime), func() {
-		am.processPendingAlert(alertData.Id)
+		am.runAsync(func() {
+			am.processPendingAlert(alertData.Id)
+		})
 	})
 	return true
 }

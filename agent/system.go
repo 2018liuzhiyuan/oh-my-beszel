@@ -9,10 +9,10 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/henrygd/beszel"
 	"github.com/henrygd/beszel/agent/battery"
 	"github.com/henrygd/beszel/agent/utils"
 	"github.com/henrygd/beszel/agent/zfs"
+	"github.com/henrygd/beszel/internal/beszel"
 	"github.com/henrygd/beszel/internal/entities/container"
 	"github.com/henrygd/beszel/internal/entities/system"
 
@@ -220,11 +220,11 @@ func (a *Agent) getSystemStats(cacheTimeMs uint16) system.Stats {
 
 	// GPU data
 	if a.gpuManager != nil {
-		// reset high gpu percent
-		a.systemInfo.GpuPct = 0
+		a.systemInfo.GpuPct = nil
 		// get current GPU data
 		if gpuData := a.gpuManager.GetCurrentData(cacheTimeMs); len(gpuData) > 0 {
 			systemStats.GPUData = gpuData
+			highestGpuPct := 0.0
 
 			// add temperatures
 			if systemStats.Temperatures == nil {
@@ -242,8 +242,9 @@ func (a *Agent) getSystemStats(cacheTimeMs uint16) system.Stats {
 					}
 				}
 				// update high gpu percent for dashboard
-				a.systemInfo.GpuPct = max(a.systemInfo.GpuPct, gpu.Usage)
+				highestGpuPct = max(highestGpuPct, gpu.Usage)
 			}
+			a.systemInfo.GpuPct = &highestGpuPct
 			// use highest temp for dashboard temp if dashboard temp is unset
 			if a.systemInfo.DashboardTemp == 0 {
 				a.systemInfo.DashboardTemp = highestTemp
@@ -252,7 +253,7 @@ func (a *Agent) getSystemStats(cacheTimeMs uint16) system.Stats {
 	}
 
 	// update system info
-	a.systemInfo.ConnectionType = a.connectionManager.ConnectionType
+	a.systemInfo.ConnectionType = a.connectionManager.connectionTypeValue()
 	a.systemInfo.Cpu = systemStats.Cpu
 	a.systemInfo.LoadAvg = systemStats.LoadAvg
 	a.systemInfo.MemPct = systemStats.MemPct

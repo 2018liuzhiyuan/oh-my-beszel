@@ -34,7 +34,7 @@ func (sm *SystemManager) GetSystemStatusFromStore(systemID string) string {
 	if !ok {
 		return ""
 	}
-	return sys.Status
+	return sys.statusValue()
 }
 
 // TESTING ONLY: GetSystemContextFromStore returns the context and cancel function for a system
@@ -73,7 +73,7 @@ func (sm *SystemManager) GetSystemData(systemID string) *entities.CombinedData {
 	if !ok {
 		return nil
 	}
-	return sys.data
+	return sys.dataSnapshot()
 }
 
 // TESTING ONLY: GetSystemHostPort returns the host and port for a system with the given ID
@@ -120,14 +120,20 @@ func (sm *SystemManager) RemoveAllSystems() {
 
 // ResetContextForTesting replaces the manager context for a new synctest bubble.
 func (sm *SystemManager) ResetContextForTesting() {
+	sm.lifecycleMu.Lock()
 	sm.ctx, sm.cancel = context.WithCancel(context.Background())
+	sm.stopped = false
+	sm.lifecycleMu.Unlock()
 }
 
 func (s *System) StopUpdater() {
 	s.cancel()
+	s.waitForUpdater()
 }
 
 func (s *System) CreateRecords(data *entities.CombinedData) (*core.Record, error) {
-	s.data = data
+	setDashboardGpuInfo(data)
+	setDashboardMaxTemperature(data)
+	s.setData(data)
 	return s.createRecords(data)
 }

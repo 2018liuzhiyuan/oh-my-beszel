@@ -30,6 +30,16 @@ msgstr "{0} 可用"
 msgid "{0} of {1} row(s) selected."
 msgstr "已選擇 {1} 個項目中的 {0} 個"
 
+#. placeholder {0}: updatePathSystems.length
+#: src/components/ssh-host-manager.tsx
+msgid "{0} SSH config paths updated."
+msgstr ""
+
+#. placeholder {0}: actionTargets.deleteSystems.length
+#: src/components/ssh-host-manager.tsx
+#~ msgid "{0} systems deleted."
+#~ msgstr ""
+
 #: src/components/routes/system/info-bar.tsx
 msgid "{cores, plural, one {# core} other {# cores}}"
 msgstr "{cores, plural, one {# 核心} other {# 核心}}"
@@ -45,6 +55,19 @@ msgstr "{count, plural, one {{countString} 小時} other {{countString} 小時}}
 #: src/lib/utils.ts
 msgid "{count, plural, one {{countString} minute} few {{countString} minutes} many {{countString} minutes} other {{countString} minutes}}"
 msgstr "{count, plural, one {{countString} 分鐘} few {{countString} 分鐘} many {{countString} 分鐘} other {{countString} 分鐘}}"
+
+#. placeholder {0}: failedHosts.length
+#: src/components/ssh-host-manager.tsx
+msgid "{imported} imported, {0} failed."
+msgstr ""
+
+#: src/components/ssh-host-import.tsx
+#~ msgid "{imported} imported, {failed} failed."
+#~ msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+msgid "{imported} systems imported."
+msgstr ""
 
 #: src/components/routes/system/info-bar.tsx
 msgid "{threads, plural, one {# thread} other {# threads}}"
@@ -105,21 +128,23 @@ msgid "Active"
 msgstr "啟用中"
 
 #: src/components/active-alerts.tsx
-msgid "Active Alerts"
-msgstr "活動警報"
+#~ msgid "Active Alerts"
+#~ msgstr "活動警報"
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Active state"
 msgstr "活動狀態"
 
 #: src/components/add-system.tsx
-#: src/components/add-system.tsx
 #: src/components/navbar.tsx
-#: src/components/navbar.tsx
-#: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Add {foo}"
 msgstr "新增 {foo}"
+
+#: src/components/new-system-dialog.tsx
+#: src/components/system-agent-form.tsx
+msgid "Add System"
+msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Add URL"
@@ -134,7 +159,6 @@ msgid "Adjust the width of the main layout"
 msgstr "調整主版面寬度"
 
 #: src/components/command-palette.tsx
-#: src/components/command-palette.tsx
 #: src/components/navbar.tsx
 msgid "Admin"
 msgstr "管理員"
@@ -147,6 +171,10 @@ msgstr "之後"
 msgid "After setting the environment variables, restart your Beszel hub for changes to take effect."
 msgstr "設置環境變數後，請重新啟動 Beszel hub 以使更改生效。"
 
+#: src/components/routes/settings/notifications.tsx
+msgid "After you dismiss an alert on the home page, the same alert for the same system can appear again after this interval."
+msgstr ""
+
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Agent"
 msgstr "客户端"
@@ -157,6 +185,7 @@ msgstr "客户端"
 msgid "Alert History"
 msgstr "警報歷史"
 
+#: src/components/active-alerts.tsx
 #: src/components/alerts/alert-button.tsx
 #: src/components/alerts/alerts-sheet.tsx
 msgid "Alerts"
@@ -164,7 +193,6 @@ msgstr "警報"
 
 #: src/components/command-palette.tsx
 #: src/components/containers-table/containers-table.tsx
-#: src/components/navbar.tsx
 #: src/components/navbar.tsx
 #: src/components/routes/containers.tsx
 msgid "All Containers"
@@ -175,9 +203,12 @@ msgstr "所有容器"
 #: src/components/routes/home.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/systems-table/systems-table.tsx
-#: src/components/systems-table/systems-table.tsx
 msgid "All Systems"
 msgstr "所有系統"
+
+#: src/components/ssh-host-import.tsx
+#~ msgid "Already added"
+#~ msgstr ""
 
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Are you sure you want to delete {name}?"
@@ -246,7 +277,6 @@ msgid "Bandwidth"
 msgstr "帶寬"
 
 #: src/components/routes/system/charts/sensor-charts.tsx
-#: src/components/routes/system/charts/sensor-charts.tsx
 #: src/lib/alerts.ts
 msgid "Battery"
 msgstr "電池"
@@ -270,6 +300,10 @@ msgstr "之前"
 msgid "Below {0}{1} in last {2, plural, one {# minute} other {# minutes}}"
 msgstr "在過去的{2, plural, one {# 分鐘} other {# 分鐘}}中低於{0}{1}"
 
+#: src/components/ssh-host-manager.tsx
+msgid "Beszel agent port"
+msgstr ""
+
 #: src/components/login/auth-form.tsx
 msgid "Beszel supports OpenID Connect and many OAuth2 authentication providers."
 msgstr "Beszel支持OpenID Connect和許多OAuth2認證提供者。"
@@ -279,6 +313,7 @@ msgid "Beszel uses <0>Shoutrrr</0> to integrate with popular notification servic
 msgstr "Beszel 使用 <0>Shoutrrr</0> 與流行的通知服務集成。"
 
 #: src/components/add-system.tsx
+#: src/components/new-system-dialog.tsx
 msgid "Binary"
 msgstr "執行檔"
 
@@ -286,7 +321,6 @@ msgstr "執行檔"
 msgid "BIOS version"
 msgstr ""
 
-#: src/components/routes/settings/general.tsx
 #: src/components/routes/settings/general.tsx
 msgid "Bits (Kbps, Mbps, Gbps)"
 msgstr "位元 (Kbps, Mbps, Gbps)"
@@ -299,7 +333,6 @@ msgstr ""
 msgid "Boot state"
 msgstr "啟動狀態"
 
-#: src/components/routes/settings/general.tsx
 #: src/components/routes/settings/general.tsx
 msgid "Bytes (KB/s, MB/s, GB/s)"
 msgstr "位元組 (KB/s, MB/s, GB/s)"
@@ -383,8 +416,13 @@ msgstr "檢查您的監控服務"
 msgid "Check your notification service"
 msgstr "檢查您的通知服務"
 
+#: src/components/new-system-dialog.tsx
+msgid "Choose how to add or connect a Beszel system."
+msgstr ""
+
 #: src/components/containers-table/containers-table.tsx
 #: src/components/routes/system/smart-table.tsx
+#: src/components/ssh-host-list.tsx
 #: src/components/systems-table/systems-table.tsx
 msgid "Clear"
 msgstr "清除"
@@ -406,7 +444,6 @@ msgid "Click to copy"
 msgstr "點擊以複製"
 
 #: src/components/login/forgot-pass-form.tsx
-#: src/components/login/forgot-pass-form.tsx
 msgid "Command line instructions"
 msgstr "命令行指令"
 
@@ -414,7 +451,6 @@ msgstr "命令行指令"
 msgid "Configure how you receive alert notifications."
 msgstr "配置您接收警報通知的方式。"
 
-#: src/components/login/auth-form.tsx
 #: src/components/login/auth-form.tsx
 msgid "Confirm password"
 msgstr "確認密碼"
@@ -442,12 +478,14 @@ msgstr "已複製到剪貼板"
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgctxt "Button to copy docker compose file content"
 msgid "Copy docker compose"
 msgstr "複製 docker compose"
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgctxt "Button to copy docker run command"
 msgid "Copy docker run"
 msgstr "複製 docker run"
@@ -468,6 +506,7 @@ msgstr "複製主機"
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgid "Copy Linux command"
 msgstr "複製 Linux 指令"
 
@@ -482,6 +521,14 @@ msgstr ""
 #: src/components/copy-to-clipboard.tsx
 msgid "Copy text"
 msgstr "複製文本"
+
+#: src/components/system-agent-form.tsx
+msgid "Copy the <0>docker-compose.yml</0> content for the agent below, or register agents automatically with a <1/>."
+msgstr ""
+
+#: src/components/system-agent-form.tsx
+msgid "Copy the installation command for the agent below, or register agents automatically with a <0/>."
+msgstr ""
 
 #: src/components/add-system.tsx
 msgid "Copy the installation command for the agent below, or register agents automatically with a <0>universal token</0>."
@@ -510,9 +557,17 @@ msgstr "處理器"
 msgid "CPU Cores"
 msgstr "CPU 核心"
 
+#: src/lib/alerts.ts
+msgid "CPU I/O Wait"
+msgstr ""
+
 #: src/components/systemd-table/systemd-table-columns.tsx
 msgid "CPU Peak"
 msgstr "CPU 峰值"
+
+#: src/lib/alerts.ts
+msgid "CPU Steal Time"
+msgstr ""
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "CPU time"
@@ -522,7 +577,6 @@ msgstr "CPU 時間"
 msgid "CPU Time Breakdown"
 msgstr "CPU 時間細分"
 
-#: src/components/routes/system/charts/cpu-charts.tsx
 #: src/components/routes/system/charts/cpu-charts.tsx
 #: src/components/routes/system/cpu-sheet.tsx
 #: src/lib/alerts.ts
@@ -557,7 +611,6 @@ msgstr "累計上傳"
 #. Context: Battery state
 #. Context: Battery state
 #: src/components/routes/system/charts/sensor-charts.tsx
-#: src/components/routes/system/charts/sensor-charts.tsx
 msgid "Current state"
 msgstr "目前狀態"
 
@@ -566,7 +619,6 @@ msgstr "目前狀態"
 msgid "Cycles"
 msgstr "週期"
 
-#: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Daily"
 msgstr "每日"
@@ -580,6 +632,10 @@ msgstr "預設"
 msgid "Default time period"
 msgstr "預設時間段"
 
+#: src/components/routes/settings/notifications.tsx
+msgid "Default: 60 minutes."
+msgstr ""
+
 #: src/components/routes/settings/alerts-history-data-table.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/system/smart-table.tsx
@@ -590,6 +646,18 @@ msgstr "刪除"
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Delete fingerprint"
 msgstr "刪除指紋"
+
+#: src/components/ssh-host-manager.tsx
+#~ msgid "Delete selected"
+#~ msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+#~ msgid "Delete selected SSH systems?"
+#~ msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+#~ msgid "Delete systems"
+#~ msgstr ""
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Description"
@@ -622,7 +690,6 @@ msgid "Disk unit"
 msgstr "磁碟單位"
 
 #: src/components/routes/system/charts/disk-charts.tsx
-#: src/components/routes/system/charts/disk-charts.tsx
 #: src/lib/alerts.ts
 msgid "Disk Usage"
 msgstr "磁碟使用"
@@ -630,6 +697,14 @@ msgstr "磁碟使用"
 #: src/components/routes/system/charts/disk-charts.tsx
 msgid "Disk usage of {extraFsName}"
 msgstr "{extraFsName} 的磁碟使用量"
+
+#: src/components/active-alerts.tsx
+msgid "Dismiss alert"
+msgstr ""
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Dismissed alert reminder"
+msgstr ""
 
 #: src/components/routes/system/info-bar.tsx
 msgctxt "Layout display options"
@@ -669,6 +744,15 @@ msgstr "中斷 ({downSystemsLength})"
 msgid "Download"
 msgstr "下載"
 
+#: src/components/systems-table/visible-columns-menu.tsx
+msgid "Drag or use arrows to reorder."
+msgstr ""
+
+#: src/components/systems-table/systems-table-columns.tsx
+#: src/components/systems-table/visible-columns-menu.tsx
+msgid "Drag to reorder"
+msgstr ""
+
 #: src/components/alerts-history-columns.tsx
 msgid "Duration"
 msgstr "持續時間"
@@ -699,7 +783,6 @@ msgid "Empty"
 msgstr "空電"
 
 #: src/components/routes/settings/quiet-hours.tsx
-#: src/components/routes/settings/quiet-hours.tsx
 msgid "End Time"
 msgstr "結束時間"
 
@@ -710,6 +793,10 @@ msgstr "端點 URL"
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Endpoint URL to ping (required)"
 msgstr "要 ping 的端點 URL (必填)"
+
+#: src/components/ssh-host-manager.tsx
+msgid "Enter a valid agent port between 1 and 65535."
+msgstr ""
 
 #: src/components/login/login.tsx
 msgid "Enter email address to reset password"
@@ -730,10 +817,7 @@ msgstr "臨時"
 #: src/components/routes/settings/alerts-history-data-table.tsx
 #: src/components/routes/settings/config-yaml.tsx
 #: src/components/routes/settings/heartbeat.tsx
-#: src/components/routes/settings/heartbeat.tsx
-#: src/components/routes/settings/heartbeat.tsx
 #: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/systemd-table/systemd-table.tsx
@@ -784,6 +868,7 @@ msgid "Fahrenheit (°F)"
 msgstr "華氏 (°F)"
 
 #: src/components/systems-table/systems-table-columns.tsx
+#: src/components/systems-table/systems-table.tsx
 msgid "Failed"
 msgstr "失敗"
 
@@ -794,6 +879,10 @@ msgstr "失敗屬性："
 #: src/lib/api.ts
 msgid "Failed to authenticate"
 msgstr "認證失敗"
+
+#: src/components/active-alerts.tsx
+#~ msgid "Failed to dismiss alert"
+#~ msgstr ""
 
 #: src/components/routes/settings/layout.tsx
 #: src/components/routes/settings/notifications.tsx
@@ -853,6 +942,7 @@ msgstr ""
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgctxt "Button to copy install command"
 msgid "FreeBSD command"
 msgstr "FreeBSD 指令"
@@ -885,9 +975,14 @@ msgstr "GPU 引擎"
 msgid "GPU Power Draw"
 msgstr "GPU 功耗"
 
+#: src/components/routes/system/charts/gpu-summary-charts.tsx
 #: src/lib/alerts.ts
 msgid "GPU Usage"
 msgstr "GPU 使用率"
+
+#: src/components/routes/system/charts/gpu-summary-charts.tsx
+msgid "GPU VRAM"
+msgstr ""
 
 #. GPU utilization, systems table column
 #: src/components/systems-table/systems-table-columns.tsx
@@ -921,11 +1016,13 @@ msgstr "Heartbeat 發送成功"
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgctxt "Button to copy install command"
 msgid "Homebrew command"
 msgstr "Homebrew 指令"
 
 #: src/components/add-system.tsx
+#: src/components/system-agent-form.tsx
 msgid "Host / IP"
 msgstr "主機 / IP"
 
@@ -966,6 +1063,22 @@ msgctxt "Docker image"
 msgid "Image"
 msgstr "鏡像"
 
+#: src/components/ssh-host-manager.tsx
+msgid "Import selected"
+msgstr ""
+
+#: src/components/ssh-host-import.tsx
+#~ msgid "Import SSH config"
+#~ msgstr ""
+
+#: src/components/ssh-host-import.tsx
+#~ msgid "Import systems from SSH config"
+#~ msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+msgid "Importing..."
+msgstr ""
+
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Inactive"
 msgstr "未啟用"
@@ -973,6 +1086,10 @@ msgstr "未啟用"
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Interval"
 msgstr "間隔"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Interval in minutes"
+msgstr ""
 
 #: src/components/login/auth-form.tsx
 msgid "Invalid email address."
@@ -1000,7 +1117,6 @@ msgid "Lifecycle"
 msgstr "生命週期"
 
 #: src/components/systemd-table/systemd-table.tsx
-#: src/components/systemd-table/systemd-table.tsx
 msgid "limit"
 msgstr "限制"
 
@@ -1024,12 +1140,15 @@ msgstr "5分鐘平均負載"
 msgid "Load state"
 msgstr "載入狀態"
 
+#: src/components/ssh-host-list.tsx
+msgid "Loading SSH hosts..."
+msgstr ""
+
 #: src/components/add-system.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Loading..."
 msgstr "載入中..."
 
-#: src/components/navbar.tsx
 #: src/components/navbar.tsx
 msgid "Log Out"
 msgstr "登出"
@@ -1062,8 +1181,8 @@ msgid "Manage display and notification preferences."
 msgstr "管理顯示和通知偏好。"
 
 #: src/components/add-system.tsx
-#: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgid "Manual setup instructions"
 msgstr "手動設定說明"
 
@@ -1094,6 +1213,10 @@ msgstr "記憶體峰值"
 msgid "Memory Usage"
 msgstr "記憶體使用"
 
+#: src/components/routes/system/charts/gpu-summary-charts.tsx
+msgid "Memory usage of all GPUs"
+msgstr ""
+
 #: src/components/routes/system/charts/memory-charts.tsx
 msgid "Memory usage of docker containers"
 msgstr "Docker 容器的記憶體使用量"
@@ -1103,13 +1226,30 @@ msgstr "Docker 容器的記憶體使用量"
 msgid "Model"
 msgstr "型號"
 
+#: src/components/system-install-actions.tsx
+msgid "More options"
+msgstr ""
+
+#: src/components/systems-table/visible-columns-menu.tsx
+msgid "Move column down"
+msgstr ""
+
+#: src/components/systems-table/visible-columns-menu.tsx
+msgid "Move column up"
+msgstr ""
+
 #: src/components/add-system.tsx
 #: src/components/alerts-history-columns.tsx
 #: src/components/containers-table/containers-table-columns.tsx
+#: src/components/system-agent-form.tsx
 #: src/components/systemd-table/systemd-table-columns.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Name"
 msgstr "名稱"
+
+#: src/components/ssh-host-list.tsx
+msgid "Name already used"
+msgstr ""
 
 #: src/components/containers-table/containers-table-columns.tsx
 #: src/components/systems-table/systems-table-columns.tsx
@@ -1126,8 +1266,6 @@ msgstr "Docker 容器的網絡流量"
 
 #: src/components/routes/system/charts/network-charts.tsx
 #: src/components/routes/system/network-sheet.tsx
-#: src/components/routes/system/network-sheet.tsx
-#: src/components/routes/system/network-sheet.tsx
 msgid "Network traffic of public interfaces"
 msgstr "公共接口的網絡流量"
 
@@ -1137,10 +1275,12 @@ msgid "Network unit"
 msgstr "網路單位"
 
 #: src/components/systemd-table/systemd-table.tsx
-#: src/components/systemd-table/systemd-table.tsx
-#: src/components/systemd-table/systemd-table.tsx
 msgid "No"
 msgstr "否"
+
+#: src/components/ssh-host-list.tsx
+msgid "No concrete hosts found."
+msgstr ""
 
 #: src/components/add-system.tsx
 #: src/components/command-palette.tsx
@@ -1148,8 +1288,6 @@ msgstr "否"
 msgid "No results found."
 msgstr "未找到結果。"
 
-#: src/components/containers-table/containers-table.tsx
-#: src/components/containers-table/containers-table.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
 #: src/components/routes/system/smart-table.tsx
@@ -1162,9 +1300,12 @@ msgid "No S.M.A.R.T. attributes available for this device."
 msgstr "此裝置沒有可用的 S.M.A.R.T. 屬性。"
 
 #: src/components/systems-table/systems-table.tsx
-#: src/components/systems-table/systems-table.tsx
 msgid "No systems found."
 msgstr "未找到系統。"
+
+#: src/components/ssh-host-list.tsx
+#~ msgid "Not in config"
+#~ msgstr ""
 
 #: src/components/command-palette.tsx
 #: src/components/routes/settings/layout.tsx
@@ -1181,7 +1322,6 @@ msgid "On each restart, systems in the database will be updated to match the sys
 msgstr "每次重新啟動時，將會以檔案中的系統定義更新資料庫。"
 
 #: src/components/routes/settings/quiet-hours.tsx
-#: src/components/routes/settings/quiet-hours.tsx
 msgid "One-time"
 msgstr "一次性"
 
@@ -1189,8 +1329,11 @@ msgstr "一次性"
 msgid "One-time password"
 msgstr "一次性密碼"
 
+#: src/components/ssh-host-manager.tsx
+#~ msgid "Only administrators can change this path."
+#~ msgstr ""
+
 #: src/components/routes/settings/quiet-hours.tsx
-#: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/routes/system/smart-table.tsx
 #: src/components/systems-table/systems-table-columns.tsx
@@ -1210,8 +1353,6 @@ msgid "Overwrite existing alerts"
 msgstr "覆蓋現有警報"
 
 #: src/components/command-palette.tsx
-#: src/components/command-palette.tsx
-#: src/components/command-palette.tsx
 msgid "Page"
 msgstr "頁面"
 
@@ -1225,7 +1366,6 @@ msgstr "第 {0} 頁，共 {1} 頁"
 msgid "Pages / Settings"
 msgstr "頁面 / 設定"
 
-#: src/components/login/auth-form.tsx
 #: src/components/login/auth-form.tsx
 msgid "Password"
 msgstr "密碼"
@@ -1262,7 +1402,6 @@ msgstr "已暫停 ({pausedSystemsLength})"
 msgid "Payload format"
 msgstr "負載 (Payload) 格式"
 
-#: src/components/routes/system/cpu-sheet.tsx
 #: src/components/routes/system/cpu-sheet.tsx
 msgid "Per-core average utilization"
 msgstr "每個核心的平均使用率"
@@ -1317,6 +1456,7 @@ msgid "Please sign in to your account"
 msgstr "請登入您的帳號"
 
 #: src/components/add-system.tsx
+#: src/components/system-agent-form.tsx
 msgid "Port"
 msgstr "端口"
 
@@ -1348,7 +1488,9 @@ msgid "Public key"
 msgstr ""
 
 #. Use 'Key' if your language requires many more characters
+#. Use 'Key' if your language requires many more characters
 #: src/components/add-system.tsx
+#: src/components/system-agent-form.tsx
 msgid "Public Key"
 msgstr "公鑰"
 
@@ -1364,18 +1506,18 @@ msgstr "靜音時段"
 #. Disk read
 #: src/components/routes/system/charts/disk-charts.tsx
 #: src/components/routes/system/disk-io-sheet.tsx
-#: src/components/routes/system/disk-io-sheet.tsx
-#: src/components/routes/system/disk-io-sheet.tsx
 msgid "Read"
 msgstr "讀取"
+
+#: src/components/ssh-host-manager.tsx
+msgid "Read-only users cannot change this path."
+msgstr ""
 
 #: src/components/routes/system/charts/network-charts.tsx
 msgid "Received"
 msgstr "接收"
 
 #: src/components/add-system.tsx
-#: src/components/add-system.tsx
-#: src/components/containers-table/containers-table.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/routes/system/smart-table.tsx
 msgid "Refresh"
@@ -1384,6 +1526,22 @@ msgstr "重新整理"
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Relationships"
 msgstr "關係"
+
+#: src/components/ssh-host-manager.tsx
+msgid "Reload SSH config"
+msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+msgid "Reload the SSH config after changing its path."
+msgstr ""
+
+#: src/components/ssh-host-list.tsx
+msgid "Remote hosts"
+msgstr ""
+
+#: src/components/systems-table/visible-columns-menu.tsx
+msgid "Reorder column"
+msgstr ""
 
 #: src/components/login/login.tsx
 msgid "Request a one-time password"
@@ -1405,7 +1563,6 @@ msgstr "需要"
 msgid "Reset Password"
 msgstr "重設密碼"
 
-#: src/components/alerts-history-columns.tsx
 #: src/components/alerts-history-columns.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
 msgid "Resolved"
@@ -1457,6 +1614,10 @@ msgstr "使用回車鍵或逗號保存地址。留空以禁用電子郵件通知
 msgid "Save Settings"
 msgstr "儲存設定"
 
+#: src/components/system-agent-form.tsx
+msgid "Save System"
+msgstr ""
+
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Saved in the database and does not expire until you disable it."
 msgstr "儲存在資料庫中，在您停用之前不會過期。"
@@ -1493,9 +1654,17 @@ msgstr "查看<0>通知設置</0>以配置您接收警報的方式。"
 msgid "Select {foo}"
 msgstr "選擇 {foo}"
 
+#: src/components/ssh-host-list.tsx
+msgid "Select all"
+msgstr ""
+
 #: src/components/add-system.tsx
 msgid "Select an SSH Host from your local SSH config."
 msgstr ""
+
+#: src/components/ssh-host-import.tsx
+#~ msgid "Select remote hosts to add as Beszel systems."
+#~ msgstr ""
 
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Send a single heartbeat ping to verify your endpoint is working."
@@ -1535,10 +1704,7 @@ msgid "Set the following environment variables on your Beszel hub to enable hear
 msgstr "在您的 Beszel hub 上設置以下環境變數以啟用 heartbeat 監控："
 
 #: src/components/command-palette.tsx
-#: src/components/command-palette.tsx
 #: src/components/navbar.tsx
-#: src/components/navbar.tsx
-#: src/components/routes/settings/layout.tsx
 #: src/components/routes/settings/layout.tsx
 #: src/components/routes/system/info-bar.tsx
 msgid "Settings"
@@ -1560,11 +1726,18 @@ msgstr "SMTP設置"
 msgid "Sort By"
 msgstr "排序依據"
 
+#: src/components/ssh-host-manager.tsx
+msgid "SSH config path"
+msgstr ""
+
 #: src/components/add-system.tsx
 msgid "SSH Host not found in ~/.ssh/config."
 msgstr ""
 
-#: src/components/routes/settings/quiet-hours.tsx
+#: src/components/ssh-host-list.tsx
+msgid "SSH system"
+msgstr ""
+
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Start Time"
 msgstr "開始時間"
@@ -1597,17 +1770,13 @@ msgid "Swap Usage"
 msgstr "交換使用"
 
 #: src/components/mode-toggle.tsx
-#: src/components/mode-toggle.tsx
 msgid "Switch theme"
-msgstr ""
+msgstr "切換主題"
 
 #: src/components/add-system.tsx
 #: src/components/alerts-history-columns.tsx
 #: src/components/containers-table/containers-table-columns.tsx
 #: src/components/navbar.tsx
-#: src/components/routes/settings/quiet-hours.tsx
-#: src/components/routes/settings/quiet-hours.tsx
-#: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/routes/system/smart-table.tsx
@@ -1654,6 +1823,7 @@ msgid "Temp"
 msgstr "溫度"
 
 #: src/components/routes/system/charts/sensor-charts.tsx
+#: src/components/systems-table/systems-table-columns.tsx
 #: src/lib/alerts.ts
 msgid "Temperature"
 msgstr "溫度"
@@ -1690,6 +1860,10 @@ msgstr "然後登錄到後端並在用戶表中重置您的用戶帳戶密碼。
 msgid "This action cannot be undone. This will permanently delete all current records for {name} from the database."
 msgstr "此操作無法撤銷。這將永久刪除數據庫中{name}的所有當前記錄。"
 
+#: src/components/ssh-host-manager.tsx
+#~ msgid "This permanently deletes their monitoring records and configuration."
+#~ msgstr ""
+
 #: src/components/routes/settings/alerts-history-data-table.tsx
 msgid "This will permanently delete all selected records from the database."
 msgstr "這將從資料庫中永久刪除所有選定的記錄。"
@@ -1712,6 +1886,7 @@ msgstr "發送到電子郵件"
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-agent-form.tsx
 msgid "Token"
 msgstr "令牌"
 
@@ -1729,7 +1904,6 @@ msgstr "令牌允許代理程式連接和註冊。指紋是每個系統唯一的
 msgid "Tokens and fingerprints are used to authenticate WebSocket connections to the hub."
 msgstr "令牌和指紋用於驗證到中心的WebSocket連接。"
 
-#: src/components/ui/chart.tsx
 #: src/components/ui/chart.tsx
 msgid "Total"
 msgstr "總計"
@@ -1785,6 +1959,14 @@ msgid "Triggers when combined up/down exceeds a threshold"
 msgstr "當組合的上/下超過閾值時觸發"
 
 #: src/lib/alerts.ts
+msgid "Triggers when CPU I/O wait exceeds a threshold"
+msgstr ""
+
+#: src/lib/alerts.ts
+msgid "Triggers when CPU steal time exceeds a threshold"
+msgstr ""
+
+#: src/lib/alerts.ts
 msgid "Triggers when CPU usage exceeds a threshold"
 msgstr "當CPU使用率超過閾值時觸發"
 
@@ -1809,10 +1991,29 @@ msgid "Triggers when usage of any disk exceeds a threshold"
 msgstr "當任何磁碟的使用超過閾值時觸發"
 
 #: src/components/routes/settings/quiet-hours.tsx
-#: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/system/smart-table.tsx
 msgid "Type"
 msgstr "類型"
+
+#: src/components/ssh-host-manager.tsx
+#~ msgid "Unable to delete the selected systems."
+#~ msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+msgid "Unable to import the selected SSH hosts."
+msgstr ""
+
+#: src/components/routes/settings/config-yaml.tsx
+msgid "Unable to load configuration"
+msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+msgid "Unable to read the SSH config."
+msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+msgid "Unable to update the selected SSH config paths."
+msgstr ""
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Unit file"
@@ -1834,7 +2035,6 @@ msgid "Unknown"
 msgstr "未知"
 
 #: src/components/systemd-table/systemd-table.tsx
-#: src/components/systemd-table/systemd-table.tsx
 msgid "Unlimited"
 msgstr "無限制"
 
@@ -1852,6 +2052,10 @@ msgstr "上線 ({upSystemsLength})"
 msgid "Update"
 msgstr "更新"
 
+#: src/components/ssh-host-manager.tsx
+msgid "Update path"
+msgstr ""
+
 #: src/components/containers-table/containers-table-columns.tsx
 #: src/components/routes/system/smart-table.tsx
 #: src/components/systemd-table/systemd-table-columns.tsx
@@ -1861,6 +2065,10 @@ msgstr "已更新"
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Updated every 10 minutes."
 msgstr "每 10 分鐘更新一次。"
+
+#: src/components/ssh-host-manager.tsx
+msgid "Updating..."
+msgstr ""
 
 #: src/components/routes/system/network-sheet.tsx
 msgid "Upload"
@@ -1873,8 +2081,6 @@ msgstr "正常運行時間"
 
 #: src/components/routes/system/charts/disk-charts.tsx
 #: src/components/routes/system/charts/gpu-charts.tsx
-#: src/components/routes/system/charts/gpu-charts.tsx
-#: src/components/routes/system/charts/gpu-charts.tsx
 #: src/components/routes/system/cpu-sheet.tsx
 msgid "Usage"
 msgstr "使用"
@@ -1883,7 +2089,6 @@ msgstr "使用"
 msgid "Usage of root partition"
 msgstr "根分區的使用"
 
-#: src/components/routes/system/charts/memory-charts.tsx
 #: src/components/routes/system/charts/memory-charts.tsx
 msgid "Used"
 msgstr "已用"
@@ -1897,6 +2102,10 @@ msgstr "用戶"
 msgctxt "Disk I/O utilization"
 msgid "Utilization"
 msgstr "利用率"
+
+#: src/components/routes/system/charts/gpu-summary-charts.tsx
+msgid "Utilization of all GPUs"
+msgstr ""
 
 #: src/components/alerts-history-columns.tsx
 msgid "Value"
@@ -1964,14 +2173,13 @@ msgstr "使用 POST 時，每個 heartbeat 都包含一個 JSON 負載，其中�
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgctxt "Button to copy install command"
 msgid "Windows command"
 msgstr "Windows 指令"
 
 #. Disk write
 #: src/components/routes/system/charts/disk-charts.tsx
-#: src/components/routes/system/disk-io-sheet.tsx
-#: src/components/routes/system/disk-io-sheet.tsx
 #: src/components/routes/system/disk-io-sheet.tsx
 msgid "Write"
 msgstr "寫入"
@@ -1984,8 +2192,6 @@ msgstr "YAML配置"
 msgid "YAML Configuration"
 msgstr "YAML配置"
 
-#: src/components/systemd-table/systemd-table.tsx
-#: src/components/systemd-table/systemd-table.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Yes"
 msgstr "是"

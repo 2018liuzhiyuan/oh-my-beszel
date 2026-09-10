@@ -16,7 +16,7 @@ import {
 	SettingsIcon,
 	UsersIcon,
 } from "lucide-react"
-import { memo, useEffect, useMemo } from "react"
+import { memo, useMemo } from "react"
 import {
 	CommandDialog,
 	CommandEmpty,
@@ -29,20 +29,14 @@ import {
 } from "@/components/ui/command"
 import { isAdmin } from "@/lib/api"
 import { $systems } from "@/lib/stores"
-import { getHostDisplayValue, listen } from "@/lib/utils"
-import { $router, basePath, navigate, prependBasePath } from "./router"
+import { getHostDisplayValue } from "@/lib/utils"
+import { $router, navigate, prependBasePath } from "./router"
+
+const openAdminPage = (path: string) => {
+	window.open(prependBasePath(path), "_blank", "noopener,noreferrer")
+}
 
 export default memo(function CommandPalette({ open, setOpen }: { open: boolean; setOpen: (open: boolean) => void }) {
-	useEffect(() => {
-		const down = (e: KeyboardEvent) => {
-			if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
-				e.preventDefault()
-				setOpen(!open)
-			}
-		}
-		return listen(document, "keydown", down)
-	}, [open, setOpen])
-
 	return useMemo(() => {
 		const systems = $systems.get()
 		const SettingsShortcut = (
@@ -84,7 +78,7 @@ export default memo(function CommandPalette({ open, setOpen }: { open: boolean; 
 						<CommandItem
 							keywords={["home"]}
 							onSelect={() => {
-								navigate(basePath)
+								navigate(getPagePath($router, "home"))
 								setOpen(false)
 							}}
 						>
@@ -193,7 +187,7 @@ export default memo(function CommandPalette({ open, setOpen }: { open: boolean; 
 									keywords={["pocketbase"]}
 									onSelect={() => {
 										setOpen(false)
-										window.open(prependBasePath("/_/"), "_blank")
+										openAdminPage("/_/")
 									}}
 								>
 									<UsersIcon className="me-2 size-4" />
@@ -205,7 +199,7 @@ export default memo(function CommandPalette({ open, setOpen }: { open: boolean; 
 								<CommandItem
 									onSelect={() => {
 										setOpen(false)
-										window.open(prependBasePath("/_/#/logs"), "_blank")
+										openAdminPage("/_/#/logs")
 									}}
 								>
 									<LogsIcon className="me-2 size-4" />
@@ -217,7 +211,7 @@ export default memo(function CommandPalette({ open, setOpen }: { open: boolean; 
 								<CommandItem
 									onSelect={() => {
 										setOpen(false)
-										window.open(prependBasePath("/_/#/settings/backups"), "_blank")
+										openAdminPage("/_/#/settings/backups")
 									}}
 								>
 									<DatabaseBackupIcon className="me-2 size-4" />
@@ -230,7 +224,7 @@ export default memo(function CommandPalette({ open, setOpen }: { open: boolean; 
 									keywords={["email"]}
 									onSelect={() => {
 										setOpen(false)
-										window.open(prependBasePath("/_/#/settings/mail"), "_blank")
+										openAdminPage("/_/#/settings/mail")
 									}}
 								>
 									<MailIcon className="me-2 size-4" />
@@ -248,5 +242,5 @@ export default memo(function CommandPalette({ open, setOpen }: { open: boolean; 
 				</CommandList>
 			</CommandDialog>
 		)
-	}, [open])
+	}, [open, setOpen])
 })

@@ -79,7 +79,9 @@ func (am *AlertManager) ResetPendingAlertTimer(alertID string, delay time.Durati
 	}
 	info.expireTime = time.Now().Add(delay)
 	info.timer = time.AfterFunc(delay, func() {
-		am.processPendingAlert(alertID)
+		am.runAsync(func() {
+			am.processPendingAlert(alertID)
+		})
 	})
 	return true
 }

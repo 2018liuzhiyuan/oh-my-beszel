@@ -33,6 +33,7 @@ type Hub struct {
 	sm     *systems.SystemManager
 	hb     *heartbeat.Heartbeat
 	hbStop chan struct{}
+	ad     *agentDeploymentManager
 	pubKey string
 	signer ssh.Signer
 	appURL string
@@ -45,6 +46,8 @@ func NewHub(app core.App) *Hub {
 	hub.um = users.NewUserManager(hub)
 	hub.rm = records.NewRecordManager(hub)
 	hub.sm = systems.NewSystemManager(hub)
+	hub.ad = newAgentDeploymentManager(hub, func() string { return hub.pubKey })
+	hub.ad.bind()
 	hub.hb = heartbeat.New(app, utils.GetEnv)
 	if hub.hb != nil {
 		hub.hbStop = make(chan struct{})
@@ -95,6 +98,9 @@ func (h *Hub) StartHub() error {
 		}
 		// start system updates
 		if err := h.sm.Initialize(); err != nil {
+			return err
+		}
+		if err := h.ad.startExisting(); err != nil {
 			return err
 		}
 		// start heartbeat if configured

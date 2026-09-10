@@ -1,7 +1,24 @@
 // Measure heavy-system (8 GPUs) detail page + exit latency on the PRODUCTION hub.
+import { readFile } from "node:fs/promises";
 import { chromium } from "playwright-core";
 
-const BASE = "http://127.0.0.1:8090";
+const BASE = process.env.BESZEL_MEASURE_BASE_URL ?? "http://127.0.0.1:8090";
+const targetsFile = process.env.BESZEL_MEASURE_TARGETS_FILE ?? new URL("measure-targets.local.json", import.meta.url);
+const targets = JSON.parse(await readFile(targetsFile, "utf8"));
+if (
+  !Array.isArray(targets) ||
+  targets.length === 0 ||
+  targets.some(
+    (target) =>
+      typeof target !== "object" ||
+      target === null ||
+      typeof target.name !== "string" ||
+      typeof target.href !== "string" ||
+      !target.href.startsWith("/system/")
+  )
+) {
+  throw new Error("Measurement targets must be a non-empty JSON array of { name, href } objects.");
+}
 const browser = await chromium.launch({ channel: "chrome", headless: false, args: ["--start-minimized"] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 page.setDefaultTimeout(15000);
@@ -10,11 +27,6 @@ await page.goto(BASE + "/", { waitUntil: "domcontentloaded" });
 await page.waitForSelector("text=所有客户端", { timeout: 15000 });
 await page.waitForTimeout(3000);
 
-const targets = [
-  { name: "h100", href: "/system/1zxvt0tv3qo99el", heavy: true },
-  { name: "RoboDojo", href: "/system/af9ejtti0neph6v", heavy: false },
-  { name: "h101", href: "/system/z4xeh05a1mpvo31", heavy: false },
-];
 const comboVisible = page.locator("button[role='combobox']").first();
 const results = [];
 

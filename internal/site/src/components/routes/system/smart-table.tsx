@@ -353,48 +353,55 @@ export default function DisksTable({ systemId }: { systemId?: string }) {
 
 	// Subscribe to updates
 	useEffect(() => {
+		let active = true
 		let unsubscribe: (() => void) | undefined
 		const pbOptions = systemId
 			? { fields: SMART_DEVICE_FIELDS, filter: pb.filter("system = {:system}", { system: systemId }) }
 			: { fields: SMART_DEVICE_FIELDS }
 
-		;(async () => {
-			try {
-				unsubscribe = await pb.collection("smart_devices").subscribe(
-					"*",
-					(event) => {
-						const record = event.record as SmartDeviceRecord
-						setSmartDevices((currentDevices) => {
-							const devices = currentDevices ?? []
-							const matchesSystemScope = !systemId || record.system === systemId
+		pb.collection("smart_devices")
+			.subscribe(
+				"*",
+				(event) => {
+					const record = event.record as SmartDeviceRecord
+					setSmartDevices((currentDevices) => {
+						const devices = currentDevices ?? []
+						const matchesSystemScope = !systemId || record.system === systemId
 
-							if (event.action === "delete") {
-								return devices.filter((device) => device.id !== record.id)
-							}
+						if (event.action === "delete") {
+							return devices.filter((device) => device.id !== record.id)
+						}
 
-							if (!matchesSystemScope) {
-								// Record moved out of scope; ensure it disappears locally.
-								return devices.filter((device) => device.id !== record.id)
-							}
+						if (!matchesSystemScope) {
+							// Record moved out of scope; ensure it disappears locally.
+							return devices.filter((device) => device.id !== record.id)
+						}
 
-							const existingIndex = devices.findIndex((device) => device.id === record.id)
-							if (existingIndex === -1) {
-								return [record, ...devices]
-							}
+						const existingIndex = devices.findIndex((device) => device.id === record.id)
+						if (existingIndex === -1) {
+							return [record, ...devices]
+						}
 
-							const next = [...devices]
-							next[existingIndex] = record
-							return next
-						})
-					},
-					pbOptions
-				)
-			} catch (error) {
+						const next = [...devices]
+						next[existingIndex] = record
+						return next
+					})
+				},
+				pbOptions
+			)
+			.then((stopSubscription) => {
+				if (active) {
+					unsubscribe = stopSubscription
+				} else {
+					stopSubscription()
+				}
+			})
+			.catch((error: unknown) => {
 				console.error("Failed to subscribe to SMART device updates:", error)
-			}
-		})()
+			})
 
 		return () => {
+			active = false
 			unsubscribe?.()
 		}
 	}, [systemId])
@@ -622,13 +629,19 @@ const SmartDevicesTable = memo(function SmartDevicesTable({
 								return <SmartDeviceTableRow key={row.id} row={row} virtualRow={virtualRow} openSheet={openSheet} />
 							})
 						) : (
-							<TableCell colSpan={colLength} className="h-37 text-center pointer-events-none">
-								{data ? (
-									<Trans>No results.</Trans>
-								) : (
-									<LoaderCircleIcon className="animate-spin size-10 opacity-60 mx-auto" />
-								)}
-							</TableCell>
+							<TableRow>
+								<TableCell colSpan={colLength} className="h-37 p-0 pointer-events-none">
+									<div className="sticky start-0 flex w-[min(100%,calc(100vw-4rem))] justify-center px-4">
+										{data ? (
+											<span>
+												<Trans>No results.</Trans>
+											</span>
+										) : (
+											<LoaderCircleIcon className="animate-spin size-10 opacity-60 mx-auto" />
+										)}
+									</div>
+								</TableCell>
+							</TableRow>
 						)}
 					</TableBody>
 				</table>

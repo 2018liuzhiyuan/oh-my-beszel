@@ -3,12 +3,11 @@ import { i18n } from "@lingui/core"
 import { I18nProvider } from "@lingui/react"
 import { useStore } from "@nanostores/react"
 import { DirectionProvider } from "@radix-ui/react-direction"
-// import { Suspense, lazy, useEffect, StrictMode } from "react"
 import { lazy, memo, Suspense, useEffect } from "react"
 import ReactDOM from "react-dom/client"
+import { ClientResponseError } from "pocketbase"
 import Navbar from "@/components/navbar.tsx"
 import { $router } from "@/components/router.tsx"
-import Settings from "@/components/routes/settings/layout.tsx"
 import { ThemeProvider } from "@/components/theme-provider.tsx"
 import { Toaster } from "@/components/ui/toaster.tsx"
 import { alertManager } from "@/lib/alerts"
@@ -31,6 +30,7 @@ const Home = lazy(() => import("@/components/routes/home.tsx"))
 const Containers = lazy(() => import("@/components/routes/containers.tsx"))
 const Smart = lazy(() => import("@/components/routes/smart.tsx"))
 const SystemDetail = lazy(() => import("@/components/routes/system.tsx"))
+const Settings = lazy(() => import("@/components/routes/settings/layout.tsx"))
 const CopyToClipboardDialog = lazy(() => import("@/components/copy-to-clipboard.tsx"))
 
 const App = memo(() => {
@@ -103,6 +103,11 @@ const Layout = () => {
 					pb.authStore.save(res.token, res.record)
 					$authenticated.set(!!pb.authStore.isValid)
 				})
+				.catch((error: unknown) => {
+					if (!(error instanceof ClientResponseError && error.status === 401)) {
+						console.error("Failed to refresh authentication", error)
+					}
+				})
 		}
 	}, [])
 
@@ -146,10 +151,8 @@ const I18nApp = () => {
 	)
 }
 
-ReactDOM.createRoot(document.getElementById("app") as HTMLElement).render(
-	// strict mode in dev mounts / unmounts components twice
-	// and breaks the clipboard dialog
-	//<StrictMode>
-	<I18nApp />
-	//</StrictMode>
-)
+const app = document.getElementById("app")
+if (!app) {
+	throw new Error("Missing application root")
+}
+ReactDOM.createRoot(app).render(<I18nApp />)

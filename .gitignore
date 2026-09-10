@@ -25,6 +25,36 @@ dockerfile_agent_dev
 # local private deployment artifacts (never commit)
 local-hub/
 *.local.json
+.env
+.env.*
+!.env.example
+!.env.*.example
 hub.log
 launcher.log
 ssh-tunnels.config
+
+# local workspace and diagnostic state
+.tmp/
+.debug-journal.md
+docs/release-readiness.md
+
+.omo/
+test/.last-run.json
+test/artifacts/
+test/reports/
+test/e2e/test-results/
+
+# Local coding assistants and generated code indexes
+.kilo/
+.codegraph/
+.agents/
+.codex/
+
+# Local diagnostics, browser output, and compiler caches
+*.log
+*.tsbuildinfo
+coverage.out
+playwright-report/
+blob-report/
+.DS_Store
+Thumbs.db

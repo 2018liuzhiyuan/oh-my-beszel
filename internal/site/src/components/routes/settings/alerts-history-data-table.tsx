@@ -67,7 +67,7 @@ export default function AlertsHistoryDataTable() {
 	const [globalFilter, setGlobalFilter] = useState("")
 	const { toast } = useToast()
 	const [deleteOpen, setDeleteDialogOpen] = useState(false)
-	
+
 	// Store pagination preference in local storage
 	const [pagination, setPagination] = useBrowserStorage<PaginationState>("ah-pagination", {
 		pageIndex: 0,
@@ -75,6 +75,7 @@ export default function AlertsHistoryDataTable() {
 	})
 
 	useEffect(() => {
+		let active = true
 		let unsubscribe: (() => void) | undefined
 		const pbOptions = {
 			expand: "system",
@@ -86,11 +87,13 @@ export default function AlertsHistoryDataTable() {
 				...pbOptions,
 				sort: "-created",
 			})
-			.then(({ items }) => setData(items))
+			.then(({ items }) => {
+				if (active) setData(items)
+			})
 
 		// Subscribe to changes
-		;(async () => {
-			unsubscribe = await pb.collection("alerts_history").subscribe(
+		pb.collection("alerts_history")
+			.subscribe(
 				"*",
 				(e) => {
 					if (e.action === "create") {
@@ -105,9 +108,18 @@ export default function AlertsHistoryDataTable() {
 				},
 				pbOptions
 			)
-		})()
+			.then((stopSubscription) => {
+				if (active) {
+					unsubscribe = stopSubscription
+				} else {
+					stopSubscription()
+				}
+			})
 		// Unsubscribe on unmount
-		return () => unsubscribe?.()
+		return () => {
+			active = false
+			unsubscribe?.()
+		}
 	}, [])
 
 	const table = useReactTable({
@@ -304,8 +316,12 @@ export default function AlertsHistoryDataTable() {
 							))
 						) : (
 							<TableRow>
-								<TableCell colSpan={table.getAllColumns().length} className="h-24 text-center">
-									<Trans>No results.</Trans>
+								<TableCell colSpan={table.getAllColumns().length} className="h-24 p-0">
+									<div className="sticky start-0 flex w-[min(100%,calc(100vw-4rem))] justify-center px-4">
+										<span>
+											<Trans>No results.</Trans>
+										</span>
+									</div>
 								</TableCell>
 							</TableRow>
 						)}
@@ -327,7 +343,7 @@ export default function AlertsHistoryDataTable() {
 						<Select
 							value={`${table.getState().pagination.pageSize}`}
 							onValueChange={(value) => {
-								table.setPageSize(Number(value));
+								table.setPageSize(Number(value))
 							}}
 						>
 							<SelectTrigger className="w-18" id="rows-per-page">

@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/henrygd/beszel"
 	"github.com/henrygd/beszel/internal/alerts"
+	"github.com/henrygd/beszel/internal/beszel"
 	"github.com/henrygd/beszel/internal/hub/config"
 	"github.com/henrygd/beszel/internal/hub/systems"
 	"github.com/henrygd/beszel/internal/hub/utils"

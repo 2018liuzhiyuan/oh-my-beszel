@@ -33,7 +33,7 @@ var errNoBatteries = errors.New("no readable batteries")
 func normalizeBatteries(batteries []Battery) []Battery {
 	nameCounts := make(map[string]int, len(batteries))
 	for i := range batteries {
-		name := strings.TrimSpace(batteries[i].Name)
+		name := strings.TrimSpace(strings.ToValidUTF8(batteries[i].Name, ""))
 		if name == "" {
 			name = "Battery " + strconv.Itoa(i+1)
 		}

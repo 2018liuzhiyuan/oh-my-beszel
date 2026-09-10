@@ -29,25 +29,20 @@ import {
 	type DropdownItem,
 	InstallDropdown,
 } from "./install-dropdowns"
-import { $router, basePath, Link, navigate } from "./router"
+import { $router, Link, navigate } from "./router"
 import { DropdownMenu, DropdownMenuTrigger } from "./ui/dropdown-menu"
 import { AppleIcon, DockerIcon, FreeBsdIcon, TuxIcon, WindowsIcon } from "./ui/icons"
 import { InputCopy } from "./ui/input-copy"
+import { NewSystemDialog } from "./new-system-dialog"
 
-// To avoid a refactor of the dialog, we will just keep this function as a "skeleton" for the actual dialog
 export function AddSystemDialog({ open, setOpen }: { open: boolean; setOpen: (open: boolean) => void }) {
-	const opened = useRef(false)
-	if (open) {
-		opened.current = true
-	}
-
 	if (isReadOnlyUser()) {
 		return null
 	}
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
-			{opened.current && <SystemDialog setOpen={setOpen} open={open} />}
+			<NewSystemDialog setOpen={setOpen} />
 		</Dialog>
 	)
 }
@@ -93,25 +88,29 @@ export const SystemDialog = ({
 	const selectedSSHHost = sshHosts.find((host) => host.name.toLowerCase() === sshHostValue.trim().toLowerCase())
 	const sshHostNotFound = sshHostValue.trim() !== "" && !selectedSSHHost && !sshHostsLoading
 
-	const loadSSHHosts = useCallback(async () => {
+	const loadSSHHosts = useCallback(async (signal?: AbortSignal) => {
 		setSSHHostsLoading(true)
 		setSSHHostsError(false)
 		try {
-			const response = await pb.send<{ hosts: SSHHost[] }>("/api/beszel/ssh-hosts", {})
+			const response = await pb.send<{ hosts: SSHHost[] }>("/api/beszel/ssh-hosts", { signal })
+			if (signal?.aborted) return
 			setSSHHosts(response.hosts)
 			setSSHHostsError(response.hosts.length === 0)
 		} catch (error) {
+			if (signal?.aborted) return
 			console.error(error)
 			setSSHHosts([])
 			setSSHHostsError(true)
 		} finally {
-			setSSHHostsLoading(false)
+			if (!signal?.aborted) setSSHHostsLoading(false)
 		}
 	}, [])
 
 	useEffect(() => {
 		if (!system && open) {
-			loadSSHHosts().catch(console.error)
+			const controller = new AbortController()
+			loadSSHHosts(controller.signal).catch(console.error)
+			return () => controller.abort()
 		}
 	}, [loadSSHHosts, open, system])
 
@@ -124,29 +123,44 @@ export const SystemDialog = ({
 	}, [quickMode, selectedSSHHost])
 
 	useEffect(() => {
-		;(async () => {
-			// if no system, generate a new token
-			if (!system) {
-				nextSystemToken ||= generateToken()
-				return setToken(nextSystemToken)
-			}
-			// if system exists,get the token from the fingerprint record
-			if (tokenMap.has(system.id)) {
-				return setToken(tokenMap.get(system.id)!)
-			}
-			const { token } = await pb.collection("fingerprints").getFirstListItem(`system = "${system.id}"`, {
+		const systemId = system?.id
+		if (!systemId) {
+			nextSystemToken ||= generateToken()
+			setToken(nextSystemToken)
+			return
+		}
+		const cachedToken = tokenMap.get(systemId)
+		if (cachedToken !== undefined) {
+			setToken(cachedToken)
+			return
+		}
+		let active = true
+		pb.collection("fingerprints")
+			.getFirstListItem(`system = "${systemId}"`, {
 				fields: "token",
 			})
-			tokenMap.set(system.id, token)
-			setToken(token)
-		})()
-	}, [system?.id, nextSystemToken])
+			.then(({ token }) => {
+				if (!active) return
+				tokenMap.set(systemId, token)
+				setToken(token)
+			})
+			.catch((error: unknown) => {
+				if (active) console.error(error)
+			})
+		return () => {
+			active = false
+		}
+	}, [system?.id])
 
-	async function handleSubmit(e: SubmitEvent) {
+	async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
 		e.preventDefault()
-		const formData = new FormData(e.target as HTMLFormElement)
-		const data = Object.fromEntries(formData) as Record<string, any>
-		data.users = pb.authStore.record!.id
+		const userId = pb.authStore.record?.id
+		if (!userId) {
+			return
+		}
+		const formData = new FormData(e.currentTarget)
+		const data: Record<string, FormDataEntryValue | string> = Object.fromEntries(formData)
+		data.users = userId
 		try {
 			setOpen(false)
 			if (system) {
@@ -161,7 +175,7 @@ export const SystemDialog = ({
 				// creation so next system gets a new token
 				nextSystemToken = null
 			}
-			navigate(basePath)
+			navigate(getPagePath($router, "home"))
 		} catch (e) {
 			console.error(e)
 		}
@@ -240,7 +254,7 @@ export const SystemDialog = ({
 						</DialogDescription>
 					)}
 				</TabsContent>
-				<form onSubmit={handleSubmit as any}>
+				<form onSubmit={handleSubmit}>
 					{!system && (
 						<div className="flex justify-end -mb-1">
 							<Button type="button" variant="link" size="sm" onClick={() => setQuickMode((value) => !value)}>
@@ -261,7 +275,7 @@ export const SystemDialog = ({
 											list="ssh-host-options"
 											value={sshHostValue}
 											onChange={(event) => setSSHHostValue(event.target.value)}
-											placeholder="h102"
+											placeholder="gpu-node-a"
 											autoComplete="off"
 											aria-invalid={sshHostNotFound}
 											aria-describedby="ssh-host-status"
@@ -279,7 +293,7 @@ export const SystemDialog = ({
 											type="button"
 											variant="outline"
 											size="icon"
-											onClick={loadSSHHosts}
+								onClick={() => loadSSHHosts()}
 											disabled={sshHostsLoading}
 											aria-label={t`Refresh`}
 											title={t`Refresh`}
@@ -419,7 +433,7 @@ interface CopyButtonProps {
 	text: string
 	onClick: () => void
 	dropdownItems: DropdownItem[]
-	icon?: React.ReactElement<any>
+	icon?: React.ReactNode
 }
 
 const CopyButton = memo((props: CopyButtonProps) => {

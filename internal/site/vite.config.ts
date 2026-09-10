@@ -1,24 +1,26 @@
 import { defineConfig } from "vite"
-import path from "path"
+import path from "node:path"
 import tailwindcss from "@tailwindcss/vite"
-import react from "@vitejs/plugin-react-swc"
-import { lingui } from "@lingui/vite-plugin"
+import babel from "@rolldown/plugin-babel"
+import react from "@vitejs/plugin-react"
+import { lingui, linguiTransformerBabelPreset } from "@lingui/vite-plugin"
 
 export default defineConfig({
 	base: "./",
 	plugins: [
-		react({
-			plugins: [["@lingui/swc-plugin", {}]],
-		}),
+		react(),
 		lingui(),
+		babel({
+			presets: [linguiTransformerBabelPreset()],
+		}),
 		tailwindcss(),
 	],
-	esbuild: {
-		legalComments: "external",
+	build: {
+		license: true,
 	},
 	resolve: {
 		alias: {
-			"@": path.resolve(__dirname, "./src"),
+			"@": path.resolve(import.meta.dirname, "./src"),
 		},
 	},
 })

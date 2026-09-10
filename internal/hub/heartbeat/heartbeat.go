@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/henrygd/beszel"
+	"github.com/henrygd/beszel/internal/beszel"
 	"github.com/pocketbase/pocketbase/core"
 )
 

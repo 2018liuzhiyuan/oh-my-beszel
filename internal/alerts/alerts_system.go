@@ -32,6 +32,11 @@ func (am *AlertManager) HandleSystemAlerts(systemRecord *core.Record, data *syst
 		switch name {
 		case "CPU":
 			val = data.Info.Cpu
+		case "CPUIOWait", "CPUSteal":
+			var ok bool
+			if val, ok = cpuStateAlertValue(name, data.Stats.CpuBreakdown); !ok {
+				continue
+			}
 		case "Memory":
 			val = data.Info.MemPct
 		case "Bandwidth":
@@ -62,7 +67,10 @@ func (am *AlertManager) HandleSystemAlerts(systemRecord *core.Record, data *syst
 			val = data.Info.LoadAvg[2]
 			unit = ""
 		case "GPU":
-			val = data.Info.GpuPct
+			if data.Info.GpuPct == nil {
+				continue
+			}
+			val = *data.Info.GpuPct
 		case "Battery":
 			if !hasRepresentativeBattery(data.Stats.Battery, data.Stats.Batteries) {
 				continue
@@ -109,7 +117,7 @@ func (am *AlertManager) HandleSystemAlerts(systemRecord *core.Record, data *syst
 			} else {
 				alert.triggered = val > threshold
 			}
-			go am.sendSystemAlert(alert)
+			am.dispatchSystemAlert(alert)
 			continue
 		}
 
@@ -187,6 +195,12 @@ func (am *AlertManager) HandleSystemAlerts(systemRecord *core.Record, data *syst
 			switch alert.name {
 			case "CPU":
 				alert.val += stats.Cpu
+			case "CPUIOWait", "CPUSteal":
+				value, ok := cpuStateAlertValue(alert.name, stats.CpuBreakdown)
+				if !ok {
+					continue
+				}
+				alert.val += value
 			case "Memory":
 				alert.val += stats.Mem
 			case "Bandwidth":
@@ -249,6 +263,9 @@ func (am *AlertManager) HandleSystemAlerts(systemRecord *core.Record, data *syst
 	}
 	// sum up vals for each alert
 	for _, alert := range validAlerts {
+		if alert.count == 0 {
+			continue
+		}
 		switch alert.name {
 		case "Disk":
 			maxPct := float32(0)
@@ -283,18 +300,18 @@ func (am *AlertManager) HandleSystemAlerts(systemRecord *core.Record, data *syst
 			if lowAlert {
 				if !alert.triggered && alert.val < alert.threshold {
 					alert.triggered = true
-					go am.sendSystemAlert(alert)
+					am.dispatchSystemAlert(alert)
 				} else if alert.triggered && alert.val >= alert.threshold {
 					alert.triggered = false
-					go am.sendSystemAlert(alert)
+					am.dispatchSystemAlert(alert)
 				}
 			} else {
 				if !alert.triggered && alert.val > alert.threshold {
 					alert.triggered = true
-					go am.sendSystemAlert(alert)
+					am.dispatchSystemAlert(alert)
 				} else if alert.triggered && alert.val <= alert.threshold {
 					alert.triggered = false
-					go am.sendSystemAlert(alert)
+					am.dispatchSystemAlert(alert)
 				}
 			}
 		}
@@ -306,9 +323,19 @@ func hasRepresentativeBattery(legacy [2]uint8, batteries map[string]uint8) bool 
 	return legacy != [2]uint8{} || len(batteries) > 0
 }
 
+func (am *AlertManager) dispatchSystemAlert(alert SystemAlertData) {
+	if err := am.setAlertTriggered(alert.alertData, alert.triggered); err != nil {
+		return
+	}
+	am.runAsync(func() { am.sendSystemAlert(alert) })
+}
+
 func (am *AlertManager) sendSystemAlert(alert SystemAlertData) {
 	// log.Printf("Sending alert %s: val %f | count %d | threshold %f\n", alert.name, alert.val, alert.count, alert.threshold)
 	systemName := alert.systemRecord.GetString("name")
+	if state, ok := cpuStateAlerts[alert.name]; ok {
+		alert.name = state.label
+	}
 
 	// change Disk to Disk usage
 	if alert.name == "Disk" {
@@ -321,7 +348,7 @@ func (am *AlertManager) sendSystemAlert(alert SystemAlertData) {
 
 	// make title alert name lowercase if not CPU or GPU
 	titleAlertName := alert.name
-	if titleAlertName != "CPU" && titleAlertName != "GPU" {
+	if titleAlertName != "GPU" && !strings.HasPrefix(titleAlertName, "CPU") {
 		titleAlertName = strings.ToLower(titleAlertName)
 	}
 
@@ -349,10 +376,6 @@ func (am *AlertManager) sendSystemAlert(alert SystemAlertData) {
 	}
 	body := fmt.Sprintf("%s averaged %.2f%s for the previous %v %s.", alert.descriptor, alert.val, alert.unit, alert.min, minutesLabel)
 
-	if err := am.setAlertTriggered(alert.alertData, alert.triggered); err != nil {
-		// app.Logger().Error("failed to save alert record", "err", err)
-		return
-	}
 	am.SendAlert(AlertMessageData{
 		UserID:   alert.alertData.UserID,
 		SystemID: alert.systemRecord.Id,

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/blang/semver"
@@ -17,7 +18,7 @@ import (
 
 // SSHTransport implements Transport over SSH connections.
 type SSHTransport struct {
-	client       *ssh.Client
+	client       atomic.Pointer[ssh.Client]
 	config       *ssh.ClientConfig
 	host         string
 	port         string
@@ -51,7 +52,7 @@ func NewSSHTransport(cfg SSHTransportConfig) *SSHTransport {
 
 // SetClient sets the SSH client for reuse across requests.
 func (t *SSHTransport) SetClient(client *ssh.Client) {
-	t.client = client
+	t.client.Store(client)
 }
 
 // SetAgentVersion sets the agent version (extracted from SSH handshake).
@@ -61,7 +62,7 @@ func (t *SSHTransport) SetAgentVersion(version semver.Version) {
 
 // GetClient returns the current SSH client (for connection management).
 func (t *SSHTransport) GetClient() *ssh.Client {
-	return t.client
+	return t.client.Load()
 }
 
 // GetAgentVersion returns the agent version.
@@ -71,7 +72,7 @@ func (t *SSHTransport) GetAgentVersion() semver.Version {
 
 // Request sends a request to the agent via SSH and unmarshals the response.
 func (t *SSHTransport) Request(ctx context.Context, action common.WebSocketAction, req any, dest any) error {
-	if t.client == nil {
+	if t.client.Load() == nil {
 		if err := t.connect(); err != nil {
 			return err
 		}
@@ -121,14 +122,13 @@ func (t *SSHTransport) Request(ctx context.Context, action common.WebSocketActio
 
 // IsConnected returns true if the SSH connection is active.
 func (t *SSHTransport) IsConnected() bool {
-	return t.client != nil
+	return t.client.Load() != nil
 }
 
 // Close terminates the SSH connection.
 func (t *SSHTransport) Close() {
-	if t.client != nil {
-		t.client.Close()
-		t.client = nil
+	if client := t.client.Swap(nil); client != nil {
+		client.Close()
 	}
 }
 
@@ -150,7 +150,7 @@ func (t *SSHTransport) connect() error {
 	if err != nil {
 		return err
 	}
-	t.client = client
+	t.client.Store(client)
 
 	// Extract agent version from server version string
 	t.agentVersion, _ = extractAgentVersion(string(client.Conn.ServerVersion()))
@@ -159,7 +159,8 @@ func (t *SSHTransport) connect() error {
 
 // createSessionWithTimeout creates a new SSH session with a timeout.
 func (t *SSHTransport) createSessionWithTimeout(ctx context.Context) (*ssh.Session, error) {
-	if t.client == nil {
+	client := t.client.Load()
+	if client == nil {
 		return nil, errors.New("client not initialized")
 	}
 
@@ -170,7 +171,7 @@ func (t *SSHTransport) createSessionWithTimeout(ctx context.Context) (*ssh.Sessi
 	errChan := make(chan error, 1)
 
 	go func() {
-		session, err := t.client.NewSession()
+		session, err := client.NewSession()
 		if err != nil {
 			errChan <- err
 		} else {

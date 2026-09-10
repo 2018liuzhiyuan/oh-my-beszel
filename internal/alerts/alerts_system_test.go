@@ -166,7 +166,7 @@ func megabytesToBytes(mb uint64) uint64 {
 }
 
 func setGPUAlertValue(info *system.Info, stats *system.Stats, value float64) {
-	info.GpuPct = value
+	info.GpuPct = &value
 	stats.GPUData = map[string]system.GPUData{
 		"GPU0": {Usage: value},
 	}

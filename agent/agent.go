@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/gliderlabs/ssh"
-	"github.com/henrygd/beszel"
 	"github.com/henrygd/beszel/agent/deltatracker"
 	"github.com/henrygd/beszel/agent/utils"
+	"github.com/henrygd/beszel/internal/beszel"
 	"github.com/henrygd/beszel/internal/common"
 	"github.com/henrygd/beszel/internal/entities/system"
 	gossh "golang.org/x/crypto/ssh"
@@ -43,11 +43,12 @@ type Agent struct {
 	cache                     *systemDataCache                                      // Cache for system stats based on cache time
 	connectionManager         *ConnectionManager                                    // Channel to signal connection events
 	handlerRegistry           *HandlerRegistry                                      // Registry for routing incoming messages
-	server                    *ssh.Server                                           // SSH server
-	dataDir                   string                                                // Directory for persisting data
-	keys                      []gossh.PublicKey                                     // SSH public keys
-	smartManager              *SmartManager                                         // Manages SMART data
-	systemdManager            *systemdManager                                       // Manages systemd services
+	sshServerMu               sync.Mutex
+	server                    *ssh.Server       // SSH server
+	dataDir                   string            // Directory for persisting data
+	keys                      []gossh.PublicKey // SSH public keys
+	smartManager              *SmartManager     // Manages SMART data
+	systemdManager            *systemdManager   // Manages systemd services
 }
 
 // NewAgent creates a new agent with the given data directory for persisting data.

@@ -4,6 +4,7 @@ package agent
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -505,15 +506,16 @@ func TestAddConfiguredExtraFilesystems(t *testing.T) {
 }
 
 func TestAddExtraFilesystemFolders(t *testing.T) {
+	extraFilesystemsPath := filepath.Join(string(filepath.Separator), "extra-filesystems")
 	t.Run("adds missing folders and skips existing mountpoints", func(t *testing.T) {
 		agent := &Agent{fsStats: map[string]*system.FsStats{
-			"existing": {Mountpoint: "/extra-filesystems/existing"},
+			"existing": {Mountpoint: filepath.Join(extraFilesystemsPath, "existing")},
 		}}
 		discovery := diskDiscovery{
 			agent: agent,
 			ctx: fsRegistrationContext{
 				isWindows: false,
-				efPath:    "/extra-filesystems",
+				efPath:    extraFilesystemsPath,
 				diskIoCounters: map[string]disk.IOCountersStat{
 					"newdisk": {Name: "newdisk"},
 				},
@@ -525,18 +527,19 @@ func TestAddExtraFilesystemFolders(t *testing.T) {
 		assert.Len(t, agent.fsStats, 2)
 		stats, exists := agent.fsStats["newdisk"]
 		assert.True(t, exists)
-		assert.Equal(t, "/extra-filesystems/newdisk__Archive", stats.Mountpoint)
+		assert.Equal(t, filepath.Join(extraFilesystemsPath, "newdisk__Archive"), stats.Mountpoint)
 		assert.Equal(t, "Archive", stats.Name)
 	})
 }
 
 func TestAddPartitionExtraFs(t *testing.T) {
+	extraFilesystemsPath := filepath.Join(string(filepath.Separator), "extra-filesystems")
 	makeDiscovery := func(agent *Agent) diskDiscovery {
 		return diskDiscovery{
 			agent: agent,
 			ctx: fsRegistrationContext{
 				isWindows: false,
-				efPath:    "/extra-filesystems",
+				efPath:    extraFilesystemsPath,
 				diskIoCounters: map[string]disk.IOCountersStat{
 					"nvme0n1p1": {Name: "nvme0n1p1"},
 					"nvme1n1":   {Name: "nvme1n1"},
@@ -551,12 +554,12 @@ func TestAddPartitionExtraFs(t *testing.T) {
 
 		d.addPartitionExtraFs(disk.PartitionStat{
 			Device:     "/dev/nvme0n1p1",
-			Mountpoint: "/extra-filesystems/nvme0n1p1__caddy1-root",
+			Mountpoint: filepath.Join(extraFilesystemsPath, "nvme0n1p1__caddy1-root"),
 		})
 
 		stats, exists := agent.fsStats["nvme0n1p1"]
 		assert.True(t, exists)
-		assert.Equal(t, "/extra-filesystems/nvme0n1p1__caddy1-root", stats.Mountpoint)
+		assert.Equal(t, filepath.Join(extraFilesystemsPath, "nvme0n1p1__caddy1-root"), stats.Mountpoint)
 		assert.Equal(t, "caddy1-root", stats.Name)
 	})
 
@@ -567,10 +570,10 @@ func TestAddPartitionExtraFs(t *testing.T) {
 		// These simulate the virtual mounts that appear when host / is bind-mounted
 		// with disk.Partitions(all=true) — e.g. /proc, /sys, /dev visible under the mount.
 		for _, nested := range []string{
-			"/extra-filesystems/nvme0n1p1__caddy1-root/proc",
-			"/extra-filesystems/nvme0n1p1__caddy1-root/sys",
-			"/extra-filesystems/nvme0n1p1__caddy1-root/dev",
-			"/extra-filesystems/nvme0n1p1__caddy1-root/run",
+			filepath.Join(extraFilesystemsPath, "nvme0n1p1__caddy1-root", "proc"),
+			filepath.Join(extraFilesystemsPath, "nvme0n1p1__caddy1-root", "sys"),
+			filepath.Join(extraFilesystemsPath, "nvme0n1p1__caddy1-root", "dev"),
+			filepath.Join(extraFilesystemsPath, "nvme0n1p1__caddy1-root", "run"),
 		} {
 			d.addPartitionExtraFs(disk.PartitionStat{Device: "tmpfs", Mountpoint: nested})
 		}
@@ -583,11 +586,11 @@ func TestAddPartitionExtraFs(t *testing.T) {
 		d := makeDiscovery(agent)
 
 		partitions := []disk.PartitionStat{
-			{Device: "/dev/nvme0n1p1", Mountpoint: "/extra-filesystems/nvme0n1p1__caddy1-root"},
-			{Device: "/dev/nvme1n1", Mountpoint: "/extra-filesystems/nvme1n1__caddy1-docker"},
-			{Device: "proc", Mountpoint: "/extra-filesystems/nvme0n1p1__caddy1-root/proc"},
-			{Device: "sysfs", Mountpoint: "/extra-filesystems/nvme0n1p1__caddy1-root/sys"},
-			{Device: "overlay", Mountpoint: "/extra-filesystems/nvme0n1p1__caddy1-root/var/lib/docker"},
+			{Device: "/dev/nvme0n1p1", Mountpoint: filepath.Join(extraFilesystemsPath, "nvme0n1p1__caddy1-root")},
+			{Device: "/dev/nvme1n1", Mountpoint: filepath.Join(extraFilesystemsPath, "nvme1n1__caddy1-docker")},
+			{Device: "proc", Mountpoint: filepath.Join(extraFilesystemsPath, "nvme0n1p1__caddy1-root", "proc")},
+			{Device: "sysfs", Mountpoint: filepath.Join(extraFilesystemsPath, "nvme0n1p1__caddy1-root", "sys")},
+			{Device: "overlay", Mountpoint: filepath.Join(extraFilesystemsPath, "nvme0n1p1__caddy1-root", "var", "lib", "docker")},
 		}
 		for _, p := range partitions {
 			d.addPartitionExtraFs(p)

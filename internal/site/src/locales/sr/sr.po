@@ -30,6 +30,16 @@ msgstr "{0} доступно"
 msgid "{0} of {1} row(s) selected."
 msgstr "{0} од {1} редова изабрано."
 
+#. placeholder {0}: updatePathSystems.length
+#: src/components/ssh-host-manager.tsx
+msgid "{0} SSH config paths updated."
+msgstr ""
+
+#. placeholder {0}: actionTargets.deleteSystems.length
+#: src/components/ssh-host-manager.tsx
+#~ msgid "{0} systems deleted."
+#~ msgstr ""
+
 #: src/components/routes/system/info-bar.tsx
 msgid "{cores, plural, one {# core} other {# cores}}"
 msgstr "{cores, plural, one {# jezgro} few {# jezgra} other {# jezgara}}"
@@ -45,6 +55,19 @@ msgstr "{count, plural, one {{countString} сат} few {{countString} сата} 
 #: src/lib/utils.ts
 msgid "{count, plural, one {{countString} minute} few {{countString} minutes} many {{countString} minutes} other {{countString} minutes}}"
 msgstr "{count, plural, one {{countString} минут} few {{countString} минута} many {{countString} минута} other {{countString} минута}}"
+
+#. placeholder {0}: failedHosts.length
+#: src/components/ssh-host-manager.tsx
+msgid "{imported} imported, {0} failed."
+msgstr ""
+
+#: src/components/ssh-host-import.tsx
+#~ msgid "{imported} imported, {failed} failed."
+#~ msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+msgid "{imported} systems imported."
+msgstr ""
 
 #: src/components/routes/system/info-bar.tsx
 msgid "{threads, plural, one {# thread} other {# threads}}"
@@ -105,21 +128,23 @@ msgid "Active"
 msgstr "Активно"
 
 #: src/components/active-alerts.tsx
-msgid "Active Alerts"
-msgstr "Активна упозорења"
+#~ msgid "Active Alerts"
+#~ msgstr "Активна упозорења"
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Active state"
 msgstr "Активно стање"
 
 #: src/components/add-system.tsx
-#: src/components/add-system.tsx
 #: src/components/navbar.tsx
-#: src/components/navbar.tsx
-#: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Add {foo}"
 msgstr "Додај {foo}"
+
+#: src/components/new-system-dialog.tsx
+#: src/components/system-agent-form.tsx
+msgid "Add System"
+msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Add URL"
@@ -134,7 +159,6 @@ msgid "Adjust the width of the main layout"
 msgstr "Подесите ширину главног распореда"
 
 #: src/components/command-palette.tsx
-#: src/components/command-palette.tsx
 #: src/components/navbar.tsx
 msgid "Admin"
 msgstr "Администратор"
@@ -147,6 +171,10 @@ msgstr "После"
 msgid "After setting the environment variables, restart your Beszel hub for changes to take effect."
 msgstr "Nakon podešavanja promenljivih okruženja, ponovo pokrenite Beszel hub da bi promene stupile na snagu."
 
+#: src/components/routes/settings/notifications.tsx
+msgid "After you dismiss an alert on the home page, the same alert for the same system can appear again after this interval."
+msgstr ""
+
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Agent"
 msgstr "Агент"
@@ -157,6 +185,7 @@ msgstr "Агент"
 msgid "Alert History"
 msgstr "Историја упозорења"
 
+#: src/components/active-alerts.tsx
 #: src/components/alerts/alert-button.tsx
 #: src/components/alerts/alerts-sheet.tsx
 msgid "Alerts"
@@ -164,7 +193,6 @@ msgstr "Упозорења"
 
 #: src/components/command-palette.tsx
 #: src/components/containers-table/containers-table.tsx
-#: src/components/navbar.tsx
 #: src/components/navbar.tsx
 #: src/components/routes/containers.tsx
 msgid "All Containers"
@@ -175,9 +203,12 @@ msgstr "Сви контејнери"
 #: src/components/routes/home.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/systems-table/systems-table.tsx
-#: src/components/systems-table/systems-table.tsx
 msgid "All Systems"
 msgstr "Сви системи"
+
+#: src/components/ssh-host-import.tsx
+#~ msgid "Already added"
+#~ msgstr ""
 
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Are you sure you want to delete {name}?"
@@ -246,7 +277,6 @@ msgid "Bandwidth"
 msgstr "Пропусни опсег"
 
 #: src/components/routes/system/charts/sensor-charts.tsx
-#: src/components/routes/system/charts/sensor-charts.tsx
 #: src/lib/alerts.ts
 msgid "Battery"
 msgstr "Батерија"
@@ -270,6 +300,10 @@ msgstr "Пре"
 msgid "Below {0}{1} in last {2, plural, one {# minute} other {# minutes}}"
 msgstr "Ispod {0}{1} u poslednjih {2, plural, one {# minuti} few {# minuta} other {# minuta}}"
 
+#: src/components/ssh-host-manager.tsx
+msgid "Beszel agent port"
+msgstr ""
+
 #: src/components/login/auth-form.tsx
 msgid "Beszel supports OpenID Connect and many OAuth2 authentication providers."
 msgstr "Beszel подржава OpenID Connect и многе OAuth2 провајдере аутентификације."
@@ -279,6 +313,7 @@ msgid "Beszel uses <0>Shoutrrr</0> to integrate with popular notification servic
 msgstr "Beszel користи <0>Shoutrrr</0> за интеграцију са популарним сервисима за обавештавања."
 
 #: src/components/add-system.tsx
+#: src/components/new-system-dialog.tsx
 msgid "Binary"
 msgstr "Бинарни"
 
@@ -286,7 +321,6 @@ msgstr "Бинарни"
 msgid "BIOS version"
 msgstr ""
 
-#: src/components/routes/settings/general.tsx
 #: src/components/routes/settings/general.tsx
 msgid "Bits (Kbps, Mbps, Gbps)"
 msgstr "Битови (Kbps, Mbps, Gbps)"
@@ -299,7 +333,6 @@ msgstr ""
 msgid "Boot state"
 msgstr "Стање покретања"
 
-#: src/components/routes/settings/general.tsx
 #: src/components/routes/settings/general.tsx
 msgid "Bytes (KB/s, MB/s, GB/s)"
 msgstr "Бајтови (KB/s, MB/s, GB/s)"
@@ -383,8 +416,13 @@ msgstr "Proverite svoju uslugu monitoringa"
 msgid "Check your notification service"
 msgstr "Проверите ваш сервис за обавештавања"
 
+#: src/components/new-system-dialog.tsx
+msgid "Choose how to add or connect a Beszel system."
+msgstr ""
+
 #: src/components/containers-table/containers-table.tsx
 #: src/components/routes/system/smart-table.tsx
+#: src/components/ssh-host-list.tsx
 #: src/components/systems-table/systems-table.tsx
 msgid "Clear"
 msgstr "Обриши"
@@ -406,7 +444,6 @@ msgid "Click to copy"
 msgstr "Кликните да копирате"
 
 #: src/components/login/forgot-pass-form.tsx
-#: src/components/login/forgot-pass-form.tsx
 msgid "Command line instructions"
 msgstr "Инструкције командне линије"
 
@@ -414,7 +451,6 @@ msgstr "Инструкције командне линије"
 msgid "Configure how you receive alert notifications."
 msgstr "Конфигуришите како primate обавештења о упозорењима."
 
-#: src/components/login/auth-form.tsx
 #: src/components/login/auth-form.tsx
 msgid "Confirm password"
 msgstr "Потврдите лозинку"
@@ -442,12 +478,14 @@ msgstr "Копирано у међуспремник"
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgctxt "Button to copy docker compose file content"
 msgid "Copy docker compose"
 msgstr "Копирај docker compose"
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgctxt "Button to copy docker run command"
 msgid "Copy docker run"
 msgstr "Копирај docker run"
@@ -468,6 +506,7 @@ msgstr "Копирај хоста"
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgid "Copy Linux command"
 msgstr "Копирај Linux команду"
 
@@ -482,6 +521,14 @@ msgstr ""
 #: src/components/copy-to-clipboard.tsx
 msgid "Copy text"
 msgstr "Копирај текст"
+
+#: src/components/system-agent-form.tsx
+msgid "Copy the <0>docker-compose.yml</0> content for the agent below, or register agents automatically with a <1/>."
+msgstr ""
+
+#: src/components/system-agent-form.tsx
+msgid "Copy the installation command for the agent below, or register agents automatically with a <0/>."
+msgstr ""
 
 #: src/components/add-system.tsx
 msgid "Copy the installation command for the agent below, or register agents automatically with a <0>universal token</0>."
@@ -510,9 +557,17 @@ msgstr "Процесор"
 msgid "CPU Cores"
 msgstr "CPU језгра"
 
+#: src/lib/alerts.ts
+msgid "CPU I/O Wait"
+msgstr ""
+
 #: src/components/systemd-table/systemd-table-columns.tsx
 msgid "CPU Peak"
 msgstr "CPU врхунац"
+
+#: src/lib/alerts.ts
+msgid "CPU Steal Time"
+msgstr ""
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "CPU time"
@@ -522,7 +577,6 @@ msgstr "CPU време"
 msgid "CPU Time Breakdown"
 msgstr "Расподела времена процесора"
 
-#: src/components/routes/system/charts/cpu-charts.tsx
 #: src/components/routes/system/charts/cpu-charts.tsx
 #: src/components/routes/system/cpu-sheet.tsx
 #: src/lib/alerts.ts
@@ -557,7 +611,6 @@ msgstr "Кумулативно отпремање"
 #. Context: Battery state
 #. Context: Battery state
 #: src/components/routes/system/charts/sensor-charts.tsx
-#: src/components/routes/system/charts/sensor-charts.tsx
 msgid "Current state"
 msgstr "Тренутно стање"
 
@@ -566,7 +619,6 @@ msgstr "Тренутно стање"
 msgid "Cycles"
 msgstr "Циклуси"
 
-#: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Daily"
 msgstr "Дневно"
@@ -580,6 +632,10 @@ msgstr "Подразумевано"
 msgid "Default time period"
 msgstr "Подразумевани временски период"
 
+#: src/components/routes/settings/notifications.tsx
+msgid "Default: 60 minutes."
+msgstr ""
+
 #: src/components/routes/settings/alerts-history-data-table.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/system/smart-table.tsx
@@ -590,6 +646,18 @@ msgstr "Избриши"
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Delete fingerprint"
 msgstr "Избриши отисак"
+
+#: src/components/ssh-host-manager.tsx
+#~ msgid "Delete selected"
+#~ msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+#~ msgid "Delete selected SSH systems?"
+#~ msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+#~ msgid "Delete systems"
+#~ msgstr ""
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Description"
@@ -622,7 +690,6 @@ msgid "Disk unit"
 msgstr "Диск јединица"
 
 #: src/components/routes/system/charts/disk-charts.tsx
-#: src/components/routes/system/charts/disk-charts.tsx
 #: src/lib/alerts.ts
 msgid "Disk Usage"
 msgstr "Употреба диска"
@@ -630,6 +697,14 @@ msgstr "Употреба диска"
 #: src/components/routes/system/charts/disk-charts.tsx
 msgid "Disk usage of {extraFsName}"
 msgstr "Употреба диска {extraFsName}"
+
+#: src/components/active-alerts.tsx
+msgid "Dismiss alert"
+msgstr ""
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Dismissed alert reminder"
+msgstr ""
 
 #: src/components/routes/system/info-bar.tsx
 msgctxt "Layout display options"
@@ -669,6 +744,15 @@ msgstr "Искључен ({downSystemsLength})"
 msgid "Download"
 msgstr "Преузимање"
 
+#: src/components/systems-table/visible-columns-menu.tsx
+msgid "Drag or use arrows to reorder."
+msgstr ""
+
+#: src/components/systems-table/systems-table-columns.tsx
+#: src/components/systems-table/visible-columns-menu.tsx
+msgid "Drag to reorder"
+msgstr ""
+
 #: src/components/alerts-history-columns.tsx
 msgid "Duration"
 msgstr "Трајање"
@@ -699,7 +783,6 @@ msgid "Empty"
 msgstr "Празнo"
 
 #: src/components/routes/settings/quiet-hours.tsx
-#: src/components/routes/settings/quiet-hours.tsx
 msgid "End Time"
 msgstr "Време завршетка"
 
@@ -710,6 +793,10 @@ msgstr "URL krajnje tačke"
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Endpoint URL to ping (required)"
 msgstr "URL krajnje tačke za ping (obavezno)"
+
+#: src/components/ssh-host-manager.tsx
+msgid "Enter a valid agent port between 1 and 65535."
+msgstr ""
 
 #: src/components/login/login.tsx
 msgid "Enter email address to reset password"
@@ -730,10 +817,7 @@ msgstr "Ефемеран"
 #: src/components/routes/settings/alerts-history-data-table.tsx
 #: src/components/routes/settings/config-yaml.tsx
 #: src/components/routes/settings/heartbeat.tsx
-#: src/components/routes/settings/heartbeat.tsx
-#: src/components/routes/settings/heartbeat.tsx
 #: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/systemd-table/systemd-table.tsx
@@ -784,6 +868,7 @@ msgid "Fahrenheit (°F)"
 msgstr "Фаренхајт (°F)"
 
 #: src/components/systems-table/systems-table-columns.tsx
+#: src/components/systems-table/systems-table.tsx
 msgid "Failed"
 msgstr "Неуспело"
 
@@ -794,6 +879,10 @@ msgstr "Неуспели атрибути:"
 #: src/lib/api.ts
 msgid "Failed to authenticate"
 msgstr "Неуспела аутентификација"
+
+#: src/components/active-alerts.tsx
+#~ msgid "Failed to dismiss alert"
+#~ msgstr ""
 
 #: src/components/routes/settings/layout.tsx
 #: src/components/routes/settings/notifications.tsx
@@ -853,6 +942,7 @@ msgstr ""
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgctxt "Button to copy install command"
 msgid "FreeBSD command"
 msgstr "FreeBSD команда"
@@ -885,9 +975,14 @@ msgstr "GPU енгине"
 msgid "GPU Power Draw"
 msgstr "GPU потрошња енергије"
 
+#: src/components/routes/system/charts/gpu-summary-charts.tsx
 #: src/lib/alerts.ts
 msgid "GPU Usage"
 msgstr "GPU употреба"
+
+#: src/components/routes/system/charts/gpu-summary-charts.tsx
+msgid "GPU VRAM"
+msgstr ""
 
 #. GPU utilization, systems table column
 #: src/components/systems-table/systems-table-columns.tsx
@@ -921,11 +1016,13 @@ msgstr "Heartbeat uspešno poslat"
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgctxt "Button to copy install command"
 msgid "Homebrew command"
 msgstr "Homebrew команда"
 
 #: src/components/add-system.tsx
+#: src/components/system-agent-form.tsx
 msgid "Host / IP"
 msgstr "Хост / IP"
 
@@ -966,6 +1063,22 @@ msgctxt "Docker image"
 msgid "Image"
 msgstr "Слика"
 
+#: src/components/ssh-host-manager.tsx
+msgid "Import selected"
+msgstr ""
+
+#: src/components/ssh-host-import.tsx
+#~ msgid "Import SSH config"
+#~ msgstr ""
+
+#: src/components/ssh-host-import.tsx
+#~ msgid "Import systems from SSH config"
+#~ msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+msgid "Importing..."
+msgstr ""
+
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Inactive"
 msgstr "Неактивно"
@@ -973,6 +1086,10 @@ msgstr "Неактивно"
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Interval"
 msgstr "Интервал"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Interval in minutes"
+msgstr ""
 
 #: src/components/login/auth-form.tsx
 msgid "Invalid email address."
@@ -1000,7 +1117,6 @@ msgid "Lifecycle"
 msgstr "Животни циклус"
 
 #: src/components/systemd-table/systemd-table.tsx
-#: src/components/systemd-table/systemd-table.tsx
 msgid "limit"
 msgstr "ограничење"
 
@@ -1024,12 +1140,15 @@ msgstr "Просечно оптерећење 5м"
 msgid "Load state"
 msgstr "Стање учитавања"
 
+#: src/components/ssh-host-list.tsx
+msgid "Loading SSH hosts..."
+msgstr ""
+
 #: src/components/add-system.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Loading..."
 msgstr "Учитавање..."
 
-#: src/components/navbar.tsx
 #: src/components/navbar.tsx
 msgid "Log Out"
 msgstr "Одјави се"
@@ -1062,8 +1181,8 @@ msgid "Manage display and notification preferences."
 msgstr "Управљајте преференцама приказа и обавештења."
 
 #: src/components/add-system.tsx
-#: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgid "Manual setup instructions"
 msgstr "Упутства за ручно подешавање"
 
@@ -1094,6 +1213,10 @@ msgstr "Врхунац меморије"
 msgid "Memory Usage"
 msgstr "Употреба меморије"
 
+#: src/components/routes/system/charts/gpu-summary-charts.tsx
+msgid "Memory usage of all GPUs"
+msgstr ""
+
 #: src/components/routes/system/charts/memory-charts.tsx
 msgid "Memory usage of docker containers"
 msgstr "Употреба меморије docker контејнера"
@@ -1103,13 +1226,30 @@ msgstr "Употреба меморије docker контејнера"
 msgid "Model"
 msgstr "Модел"
 
+#: src/components/system-install-actions.tsx
+msgid "More options"
+msgstr ""
+
+#: src/components/systems-table/visible-columns-menu.tsx
+msgid "Move column down"
+msgstr ""
+
+#: src/components/systems-table/visible-columns-menu.tsx
+msgid "Move column up"
+msgstr ""
+
 #: src/components/add-system.tsx
 #: src/components/alerts-history-columns.tsx
 #: src/components/containers-table/containers-table-columns.tsx
+#: src/components/system-agent-form.tsx
 #: src/components/systemd-table/systemd-table-columns.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Name"
 msgstr "Име"
+
+#: src/components/ssh-host-list.tsx
+msgid "Name already used"
+msgstr ""
 
 #: src/components/containers-table/containers-table-columns.tsx
 #: src/components/systems-table/systems-table-columns.tsx
@@ -1126,8 +1266,6 @@ msgstr "Мрежни саобраћај docker контејнера"
 
 #: src/components/routes/system/charts/network-charts.tsx
 #: src/components/routes/system/network-sheet.tsx
-#: src/components/routes/system/network-sheet.tsx
-#: src/components/routes/system/network-sheet.tsx
 msgid "Network traffic of public interfaces"
 msgstr "Мрежни саобраћај јавних интерфејса"
 
@@ -1137,10 +1275,12 @@ msgid "Network unit"
 msgstr "Мрежна јединица"
 
 #: src/components/systemd-table/systemd-table.tsx
-#: src/components/systemd-table/systemd-table.tsx
-#: src/components/systemd-table/systemd-table.tsx
 msgid "No"
 msgstr "Не"
+
+#: src/components/ssh-host-list.tsx
+msgid "No concrete hosts found."
+msgstr ""
 
 #: src/components/add-system.tsx
 #: src/components/command-palette.tsx
@@ -1148,8 +1288,6 @@ msgstr "Не"
 msgid "No results found."
 msgstr "Нису пронађени резултати."
 
-#: src/components/containers-table/containers-table.tsx
-#: src/components/containers-table/containers-table.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
 #: src/components/routes/system/smart-table.tsx
@@ -1162,9 +1300,12 @@ msgid "No S.M.A.R.T. attributes available for this device."
 msgstr "Нема доступних S.M.A.R.T. атрибута за овај уређај."
 
 #: src/components/systems-table/systems-table.tsx
-#: src/components/systems-table/systems-table.tsx
 msgid "No systems found."
 msgstr "Нису пронађени системи."
+
+#: src/components/ssh-host-list.tsx
+#~ msgid "Not in config"
+#~ msgstr ""
 
 #: src/components/command-palette.tsx
 #: src/components/routes/settings/layout.tsx
@@ -1181,7 +1322,6 @@ msgid "On each restart, systems in the database will be updated to match the sys
 msgstr "При сваком поновном покретању, системи у бази података ће се ажурирати да одговарају системима дефинисаним у датотеци."
 
 #: src/components/routes/settings/quiet-hours.tsx
-#: src/components/routes/settings/quiet-hours.tsx
 msgid "One-time"
 msgstr "Једнократно"
 
@@ -1189,8 +1329,11 @@ msgstr "Једнократно"
 msgid "One-time password"
 msgstr "Једнократна лозинка"
 
+#: src/components/ssh-host-manager.tsx
+#~ msgid "Only administrators can change this path."
+#~ msgstr ""
+
 #: src/components/routes/settings/quiet-hours.tsx
-#: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/routes/system/smart-table.tsx
 #: src/components/systems-table/systems-table-columns.tsx
@@ -1210,8 +1353,6 @@ msgid "Overwrite existing alerts"
 msgstr "Препиши постојећа упозорења"
 
 #: src/components/command-palette.tsx
-#: src/components/command-palette.tsx
-#: src/components/command-palette.tsx
 msgid "Page"
 msgstr "Страница"
 
@@ -1225,7 +1366,6 @@ msgstr "Страница {0} од {1}"
 msgid "Pages / Settings"
 msgstr "Странице / Подешавања"
 
-#: src/components/login/auth-form.tsx
 #: src/components/login/auth-form.tsx
 msgid "Password"
 msgstr "Лозинка"
@@ -1262,7 +1402,6 @@ msgstr "Паузирано ({pausedSystemsLength})"
 msgid "Payload format"
 msgstr "Format korisnog opterećenja (payload)"
 
-#: src/components/routes/system/cpu-sheet.tsx
 #: src/components/routes/system/cpu-sheet.tsx
 msgid "Per-core average utilization"
 msgstr "Просечна употреба по језгру"
@@ -1317,6 +1456,7 @@ msgid "Please sign in to your account"
 msgstr "Молимо вас да се пријавите на ваш налог"
 
 #: src/components/add-system.tsx
+#: src/components/system-agent-form.tsx
 msgid "Port"
 msgstr "Порт"
 
@@ -1348,7 +1488,9 @@ msgid "Public key"
 msgstr ""
 
 #. Use 'Key' if your language requires many more characters
+#. Use 'Key' if your language requires many more characters
 #: src/components/add-system.tsx
+#: src/components/system-agent-form.tsx
 msgid "Public Key"
 msgstr "Јавни кључ"
 
@@ -1364,18 +1506,18 @@ msgstr "Тихи сати"
 #. Disk read
 #: src/components/routes/system/charts/disk-charts.tsx
 #: src/components/routes/system/disk-io-sheet.tsx
-#: src/components/routes/system/disk-io-sheet.tsx
-#: src/components/routes/system/disk-io-sheet.tsx
 msgid "Read"
 msgstr "Читање"
+
+#: src/components/ssh-host-manager.tsx
+msgid "Read-only users cannot change this path."
+msgstr ""
 
 #: src/components/routes/system/charts/network-charts.tsx
 msgid "Received"
 msgstr "Примљено"
 
 #: src/components/add-system.tsx
-#: src/components/add-system.tsx
-#: src/components/containers-table/containers-table.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/routes/system/smart-table.tsx
 msgid "Refresh"
@@ -1384,6 +1526,22 @@ msgstr "Освежи"
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Relationships"
 msgstr "Односи"
+
+#: src/components/ssh-host-manager.tsx
+msgid "Reload SSH config"
+msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+msgid "Reload the SSH config after changing its path."
+msgstr ""
+
+#: src/components/ssh-host-list.tsx
+msgid "Remote hosts"
+msgstr ""
+
+#: src/components/systems-table/visible-columns-menu.tsx
+msgid "Reorder column"
+msgstr ""
 
 #: src/components/login/login.tsx
 msgid "Request a one-time password"
@@ -1405,7 +1563,6 @@ msgstr "Захтева"
 msgid "Reset Password"
 msgstr "Ресетуј лозинку"
 
-#: src/components/alerts-history-columns.tsx
 #: src/components/alerts-history-columns.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
 msgid "Resolved"
@@ -1457,6 +1614,10 @@ msgstr "Сачувајте адресу користећи enter тастер и
 msgid "Save Settings"
 msgstr "Сачувај подешавања"
 
+#: src/components/system-agent-form.tsx
+msgid "Save System"
+msgstr ""
+
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Saved in the database and does not expire until you disable it."
 msgstr "Сачувано у бази података и не истиче док га не онемогућите."
@@ -1493,9 +1654,17 @@ msgstr "Погледајте <0>подешавања обавештења</0> д
 msgid "Select {foo}"
 msgstr "Изаберите {foo}"
 
+#: src/components/ssh-host-list.tsx
+msgid "Select all"
+msgstr ""
+
 #: src/components/add-system.tsx
 msgid "Select an SSH Host from your local SSH config."
 msgstr ""
+
+#: src/components/ssh-host-import.tsx
+#~ msgid "Select remote hosts to add as Beszel systems."
+#~ msgstr ""
 
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Send a single heartbeat ping to verify your endpoint is working."
@@ -1535,10 +1704,7 @@ msgid "Set the following environment variables on your Beszel hub to enable hear
 msgstr "Podesite sledeće promenljive okruženja na svom Beszel hub-u da biste omogućili monitoring heartbeat-a:"
 
 #: src/components/command-palette.tsx
-#: src/components/command-palette.tsx
 #: src/components/navbar.tsx
-#: src/components/navbar.tsx
-#: src/components/routes/settings/layout.tsx
 #: src/components/routes/settings/layout.tsx
 #: src/components/routes/system/info-bar.tsx
 msgid "Settings"
@@ -1560,11 +1726,18 @@ msgstr "SMTP подешавања"
 msgid "Sort By"
 msgstr "Сортирај по"
 
+#: src/components/ssh-host-manager.tsx
+msgid "SSH config path"
+msgstr ""
+
 #: src/components/add-system.tsx
 msgid "SSH Host not found in ~/.ssh/config."
 msgstr ""
 
-#: src/components/routes/settings/quiet-hours.tsx
+#: src/components/ssh-host-list.tsx
+msgid "SSH system"
+msgstr ""
+
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Start Time"
 msgstr "Време почетка"
@@ -1597,7 +1770,6 @@ msgid "Swap Usage"
 msgstr "Swap употреба"
 
 #: src/components/mode-toggle.tsx
-#: src/components/mode-toggle.tsx
 msgid "Switch theme"
 msgstr ""
 
@@ -1605,9 +1777,6 @@ msgstr ""
 #: src/components/alerts-history-columns.tsx
 #: src/components/containers-table/containers-table-columns.tsx
 #: src/components/navbar.tsx
-#: src/components/routes/settings/quiet-hours.tsx
-#: src/components/routes/settings/quiet-hours.tsx
-#: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/routes/system/smart-table.tsx
@@ -1654,6 +1823,7 @@ msgid "Temp"
 msgstr "Темп"
 
 #: src/components/routes/system/charts/sensor-charts.tsx
+#: src/components/systems-table/systems-table-columns.tsx
 #: src/lib/alerts.ts
 msgid "Temperature"
 msgstr "Температура"
@@ -1690,6 +1860,10 @@ msgstr "Затим се пријавите на backend и ресетујте л
 msgid "This action cannot be undone. This will permanently delete all current records for {name} from the database."
 msgstr "Ова акција се не може опозвати. Ово ће трајно избрисати све тренутне записе за {name} из базе података."
 
+#: src/components/ssh-host-manager.tsx
+#~ msgid "This permanently deletes their monitoring records and configuration."
+#~ msgstr ""
+
 #: src/components/routes/settings/alerts-history-data-table.tsx
 msgid "This will permanently delete all selected records from the database."
 msgstr "Ово ће трајно избрисати све изабране записе из базе података."
@@ -1712,6 +1886,7 @@ msgstr "На е-пошту(е)"
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-agent-form.tsx
 msgid "Token"
 msgstr "Токен"
 
@@ -1729,7 +1904,6 @@ msgstr "Токени омогућавају агентима да се пове�
 msgid "Tokens and fingerprints are used to authenticate WebSocket connections to the hub."
 msgstr "Токени и отисци се користе за аутентификацију WebSocket веза са хабом."
 
-#: src/components/ui/chart.tsx
 #: src/components/ui/chart.tsx
 msgid "Total"
 msgstr "Укупно"
@@ -1785,6 +1959,14 @@ msgid "Triggers when combined up/down exceeds a threshold"
 msgstr "Окида се када комбиновано горе/доле премаши праг"
 
 #: src/lib/alerts.ts
+msgid "Triggers when CPU I/O wait exceeds a threshold"
+msgstr ""
+
+#: src/lib/alerts.ts
+msgid "Triggers when CPU steal time exceeds a threshold"
+msgstr ""
+
+#: src/lib/alerts.ts
 msgid "Triggers when CPU usage exceeds a threshold"
 msgstr "Окида се када CPU употреба премаши праг"
 
@@ -1809,10 +1991,29 @@ msgid "Triggers when usage of any disk exceeds a threshold"
 msgstr "Окида се када употреба било ког диска премаши праг"
 
 #: src/components/routes/settings/quiet-hours.tsx
-#: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/system/smart-table.tsx
 msgid "Type"
 msgstr "Тип"
+
+#: src/components/ssh-host-manager.tsx
+#~ msgid "Unable to delete the selected systems."
+#~ msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+msgid "Unable to import the selected SSH hosts."
+msgstr ""
+
+#: src/components/routes/settings/config-yaml.tsx
+msgid "Unable to load configuration"
+msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+msgid "Unable to read the SSH config."
+msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+msgid "Unable to update the selected SSH config paths."
+msgstr ""
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Unit file"
@@ -1834,7 +2035,6 @@ msgid "Unknown"
 msgstr "Непознато"
 
 #: src/components/systemd-table/systemd-table.tsx
-#: src/components/systemd-table/systemd-table.tsx
 msgid "Unlimited"
 msgstr "Неограничено"
 
@@ -1852,6 +2052,10 @@ msgstr "Укључен ({upSystemsLength})"
 msgid "Update"
 msgstr "Ажурирај"
 
+#: src/components/ssh-host-manager.tsx
+msgid "Update path"
+msgstr ""
+
 #: src/components/containers-table/containers-table-columns.tsx
 #: src/components/routes/system/smart-table.tsx
 #: src/components/systemd-table/systemd-table-columns.tsx
@@ -1861,6 +2065,10 @@ msgstr "Ажурирано"
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Updated every 10 minutes."
 msgstr "Ажурира се сваких 10 минута."
+
+#: src/components/ssh-host-manager.tsx
+msgid "Updating..."
+msgstr ""
 
 #: src/components/routes/system/network-sheet.tsx
 msgid "Upload"
@@ -1873,8 +2081,6 @@ msgstr "Време рада"
 
 #: src/components/routes/system/charts/disk-charts.tsx
 #: src/components/routes/system/charts/gpu-charts.tsx
-#: src/components/routes/system/charts/gpu-charts.tsx
-#: src/components/routes/system/charts/gpu-charts.tsx
 #: src/components/routes/system/cpu-sheet.tsx
 msgid "Usage"
 msgstr "Употреба"
@@ -1883,7 +2089,6 @@ msgstr "Употреба"
 msgid "Usage of root partition"
 msgstr "Употреба root партиције"
 
-#: src/components/routes/system/charts/memory-charts.tsx
 #: src/components/routes/system/charts/memory-charts.tsx
 msgid "Used"
 msgstr "Коришћено"
@@ -1897,6 +2102,10 @@ msgstr "Корисници"
 msgctxt "Disk I/O utilization"
 msgid "Utilization"
 msgstr "Искоришћеност"
+
+#: src/components/routes/system/charts/gpu-summary-charts.tsx
+msgid "Utilization of all GPUs"
+msgstr ""
 
 #: src/components/alerts-history-columns.tsx
 msgid "Value"
@@ -1964,14 +2173,13 @@ msgstr "Kada koristite POST, svaki heartbeat uključuje JSON payload sa rezimeom
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgctxt "Button to copy install command"
 msgid "Windows command"
 msgstr "Windows команда"
 
 #. Disk write
 #: src/components/routes/system/charts/disk-charts.tsx
-#: src/components/routes/system/disk-io-sheet.tsx
-#: src/components/routes/system/disk-io-sheet.tsx
 #: src/components/routes/system/disk-io-sheet.tsx
 msgid "Write"
 msgstr "Писање"
@@ -1984,8 +2192,6 @@ msgstr "YAML конфигурација"
 msgid "YAML Configuration"
 msgstr "YAML конфигурација"
 
-#: src/components/systemd-table/systemd-table.tsx
-#: src/components/systemd-table/systemd-table.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Yes"
 msgstr "Да"

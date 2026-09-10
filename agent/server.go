@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/henrygd/beszel"
 	"github.com/henrygd/beszel/agent/utils"
+	"github.com/henrygd/beszel/internal/beszel"
 	"github.com/henrygd/beszel/internal/common"
 	"github.com/henrygd/beszel/internal/entities/system"
 
@@ -24,9 +24,10 @@ import (
 
 // ServerOptions contains configuration options for starting the SSH server.
 type ServerOptions struct {
-	Addr    string            // Network address to listen on (e.g., ":45876" or "/path/to/socket")
-	Network string            // Network type ("tcp" or "unix")
-	Keys    []gossh.PublicKey // SSH public keys for authentication
+	Addr     string            // Network address to listen on (e.g., ":45876" or "/path/to/socket")
+	Network  string            // Network type ("tcp" or "unix")
+	Keys     []gossh.PublicKey // SSH public keys for authentication
+	listener net.Listener
 }
 
 // StartServer starts the SSH server with the provided options.
@@ -37,7 +38,9 @@ func (a *Agent) StartServer(opts ServerOptions) error {
 	if disableSSH, _ := utils.GetEnv("DISABLE_SSH"); disableSSH == "true" {
 		return errors.New("SSH disabled")
 	}
+	a.sshServerMu.Lock()
 	if a.server != nil {
+		a.sshServerMu.Unlock()
 		return errors.New("server already started")
 	}
 
@@ -46,14 +49,20 @@ func (a *Agent) StartServer(opts ServerOptions) error {
 	if opts.Network == "unix" {
 		// remove existing socket file if it exists
 		if err := os.Remove(opts.Addr); err != nil && !os.IsNotExist(err) {
+			a.sshServerMu.Unlock()
 			return err
 		}
 	}
 
 	// start listening on the address
-	ln, err := net.Listen(opts.Network, opts.Addr)
-	if err != nil {
-		return err
+	ln := opts.listener
+	if ln == nil {
+		var err error
+		ln, err = net.Listen(opts.Network, opts.Addr)
+		if err != nil {
+			a.sshServerMu.Unlock()
+			return err
+		}
 	}
 	defer ln.Close()
 
@@ -65,10 +74,8 @@ func (a *Agent) StartServer(opts ServerOptions) error {
 	config.MACs = common.DefaultMACs
 	config.Ciphers = common.DefaultCiphers
 
-	// set default handler
-	ssh.Handle(a.handleSession)
-
-	a.server = &ssh.Server{
+	server := &ssh.Server{
+		Handler: a.handleSession,
 		ServerConfigCallback: func(ctx ssh.Context) *gossh.ServerConfig {
 			return config
 		},
@@ -91,9 +98,17 @@ func (a *Agent) StartServer(opts ServerOptions) error {
 		// close idle connections after 70 seconds
 		IdleTimeout: 70 * time.Second,
 	}
+	a.server = server
+	a.sshServerMu.Unlock()
 
 	// Start SSH server on the listener
-	return a.server.Serve(ln)
+	err := server.Serve(ln)
+	a.sshServerMu.Lock()
+	if a.server == server {
+		a.server = nil
+	}
+	a.sshServerMu.Unlock()
+	return err
 }
 
 // getHubVersion extracts the hub version from the SSH client version string
@@ -258,13 +273,21 @@ func GetNetwork(addr string) string {
 // StopServer stops the SSH server if it's running.
 // It returns an error if the server is not running or if there's an error stopping it.
 func (a *Agent) StopServer() error {
+	a.sshServerMu.Lock()
 	if a.server == nil {
+		a.sshServerMu.Unlock()
 		return errors.New("SSH server not running")
 	}
 
 	slog.Info("Stopping SSH server")
-	_ = a.server.Close()
+	err := a.server.Close()
 	a.server = nil
-	a.connectionManager.eventChan <- SSHDisconnect
-	return nil
+	a.sshServerMu.Unlock()
+	if eventChan := a.connectionManager.eventChan; eventChan != nil {
+		select {
+		case eventChan <- SSHDisconnect:
+		default:
+		}
+	}
+	return err
 }

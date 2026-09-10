@@ -1,5 +1,5 @@
 // Package beszel provides core application constants and version information
-// which are used throughout the application.
+// used throughout the application.
 package beszel
 
 import "github.com/blang/semver"

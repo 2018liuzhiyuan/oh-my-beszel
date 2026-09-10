@@ -255,12 +255,16 @@ const AllContainersTable = memo(function AllContainersTable({
 							})
 						) : (
 							<TableRow>
-								<TableCell colSpan={colLength} className="h-37 text-center pointer-events-none">
+								<TableCell colSpan={colLength} className="h-37 p-0 pointer-events-none">
+									<div className="sticky start-0 flex w-[min(100%,calc(100vw-4rem))] justify-center px-4">
 									{data ? (
-										<Trans>No results.</Trans>
+										<span>
+											<Trans>No results.</Trans>
+										</span>
 									) : (
 										<LoaderCircleIcon className="animate-spin size-10 opacity-60 mx-auto" />
 									)}
+									</div>
 								</TableCell>
 							</TableRow>
 						)}

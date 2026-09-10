@@ -150,10 +150,9 @@ export default function AreaChartDefault({
 					<ChartTooltip
 						animationEasing="ease-out"
 						animationDuration={150}
-						// @ts-expect-error
-						itemSorter={itemSorter}
 						content={
 							<ChartTooltipContent
+								itemSorter={itemSorter}
 								labelFormatter={(_, data) => formatShortDate(data[0].payload.created)}
 								contentFormatter={contentFormatter}
 								showTotal={showTotal}

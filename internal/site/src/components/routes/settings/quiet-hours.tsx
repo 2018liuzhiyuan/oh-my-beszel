@@ -51,6 +51,7 @@ export function QuietHours() {
 	const { toast } = useToast()
 	const systems = useStore($systems)
 	useEffect(() => {
+		let active = true
 		let unsubscribe: (() => void) | undefined
 		const pbOptions = {
 			expand: "system",
@@ -62,11 +63,13 @@ export function QuietHours() {
 				...pbOptions,
 				sort: "system",
 			})
-			.then(({ items }) => setData(items))
+			.then(({ items }) => {
+				if (active) setData(items)
+			})
 
 		// Subscribe to changes
-		;(async () => {
-			unsubscribe = await pb.collection("quiet_hours").subscribe(
+		pb.collection("quiet_hours")
+			.subscribe(
 				"*",
 				(e) => {
 					if (e.action === "create") {
@@ -81,9 +84,18 @@ export function QuietHours() {
 				},
 				pbOptions
 			)
-		})()
+			.then((stopSubscription) => {
+				if (active) {
+					unsubscribe = stopSubscription
+				} else {
+					stopSubscription()
+				}
+			})
 		// Unsubscribe on unmount
-		return () => unsubscribe?.()
+		return () => {
+			active = false
+			unsubscribe?.()
+		}
 	}, [])
 
 	const handleDelete = async (id: string) => {

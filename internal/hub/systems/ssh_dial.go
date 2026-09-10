@@ -15,13 +15,11 @@ import (
 
 const sshDialTimeout = 10 * time.Second
 
-// DialAgent establishes a connection to the system's agent. Hosts that are
-// IPs (or localhost) are dialed directly; anything else is treated as an
-// ssh-config alias and delegated to the system's ssh client via `ssh -W`,
-// so ProxyJump chains, key management, and later edits to ~/.ssh/config are
-// all handled by ssh itself.
-func (sm *SystemManager) DialAgent(host, port string) (net.Conn, error) {
-	if isDirectHost(host) {
+// DialAgent establishes a connection to the system's agent. A selected SSH
+// config delegates every host to `ssh -W`; otherwise IPs and localhost are
+// dialed directly while aliases use the default SSH config.
+func (sm *SystemManager) DialAgent(host, port, configPath string) (net.Conn, error) {
+	if isDirectHost(host, configPath) {
 		dialer := net.Dialer{Timeout: sshDialTimeout, KeepAlive: sshKeepAliveInterval}
 		conn, err := dialer.Dial("tcp", net.JoinHostPort(host, port))
 		if err != nil {
@@ -32,14 +30,7 @@ func (sm *SystemManager) DialAgent(host, port string) (net.Conn, error) {
 
 	// the agent listens on the target host's loopback interface
 	target := net.JoinHostPort("127.0.0.1", port)
-	cmd := exec.Command("ssh",
-		"-W", target, host,
-		"-o", "BatchMode=yes",
-		"-o", "StrictHostKeyChecking=accept-new",
-		"-o", "ConnectTimeout=8",
-		"-o", "ServerAliveInterval=30",
-		"-o", "ServerAliveCountMax=3",
-	)
+	cmd := exec.Command("ssh", sshDialArgs(target, host, configPath)...)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, err
@@ -61,9 +52,26 @@ func (sm *SystemManager) DialAgent(host, port string) (net.Conn, error) {
 	}, nil
 }
 
-// isDirectHost reports whether the host should be dialed directly instead of
-// through the ssh client: IPs (v4/v6) and localhost.
-func isDirectHost(host string) bool {
+func sshDialArgs(target, host, configPath string) []string {
+	args := make([]string, 0, 15)
+	if configPath != "" {
+		args = append(args, "-F", configPath)
+	}
+	return append(args,
+		"-o", "BatchMode=yes",
+		"-o", "StrictHostKeyChecking=accept-new",
+		"-o", "ConnectTimeout=8",
+		"-o", "ServerAliveInterval=30",
+		"-o", "ServerAliveCountMax=3",
+		"-W", target,
+		host,
+	)
+}
+
+func isDirectHost(host, configPath string) bool {
+	if configPath != "" {
+		return false
+	}
 	if host == "" || host == "localhost" || strings.EqualFold(host, "localhost") {
 		return true
 	}

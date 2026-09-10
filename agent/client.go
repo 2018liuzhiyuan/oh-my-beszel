@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/henrygd/beszel"
 	"github.com/henrygd/beszel/agent/utils"
+	"github.com/henrygd/beszel/internal/beszel"
 	"github.com/henrygd/beszel/internal/common"
 
 	"github.com/fxamacker/cbor/v2"
@@ -87,7 +87,7 @@ func getToken() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return strings.TrimSpace(string(tokenBytes)), nil
+	return parseTokenFile(string(tokenBytes), tokenFile)
 }
 
 // getOptions returns the WebSocket client options, creating them if necessary.

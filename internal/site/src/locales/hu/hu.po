@@ -30,6 +30,16 @@ msgstr "{0} elérhető"
 msgid "{0} of {1} row(s) selected."
 msgstr "{0} a(z) {1} sorból kiválasztva."
 
+#. placeholder {0}: updatePathSystems.length
+#: src/components/ssh-host-manager.tsx
+msgid "{0} SSH config paths updated."
+msgstr ""
+
+#. placeholder {0}: actionTargets.deleteSystems.length
+#: src/components/ssh-host-manager.tsx
+#~ msgid "{0} systems deleted."
+#~ msgstr ""
+
 #: src/components/routes/system/info-bar.tsx
 msgid "{cores, plural, one {# core} other {# cores}}"
 msgstr "{cores, plural, one {# mag} other {# mag}}"
@@ -45,6 +55,19 @@ msgstr "{count, plural, one {{countString} óra} other {{countString} óra}}"
 #: src/lib/utils.ts
 msgid "{count, plural, one {{countString} minute} few {{countString} minutes} many {{countString} minutes} other {{countString} minutes}}"
 msgstr "{count, plural, one {{countString} perc} few {{countString} perc} many {{countString} perc} other {{countString} perc}}"
+
+#. placeholder {0}: failedHosts.length
+#: src/components/ssh-host-manager.tsx
+msgid "{imported} imported, {0} failed."
+msgstr ""
+
+#: src/components/ssh-host-import.tsx
+#~ msgid "{imported} imported, {failed} failed."
+#~ msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+msgid "{imported} systems imported."
+msgstr ""
 
 #: src/components/routes/system/info-bar.tsx
 msgid "{threads, plural, one {# thread} other {# threads}}"
@@ -105,21 +128,23 @@ msgid "Active"
 msgstr "Aktív"
 
 #: src/components/active-alerts.tsx
-msgid "Active Alerts"
-msgstr "Aktív riasztások"
+#~ msgid "Active Alerts"
+#~ msgstr "Aktív riasztások"
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Active state"
 msgstr "Aktív állapot"
 
 #: src/components/add-system.tsx
-#: src/components/add-system.tsx
 #: src/components/navbar.tsx
-#: src/components/navbar.tsx
-#: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Add {foo}"
 msgstr "Hozzáadás {foo}"
+
+#: src/components/new-system-dialog.tsx
+#: src/components/system-agent-form.tsx
+msgid "Add System"
+msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Add URL"
@@ -134,7 +159,6 @@ msgid "Adjust the width of the main layout"
 msgstr "A fő elrendezés szélességének beállítása"
 
 #: src/components/command-palette.tsx
-#: src/components/command-palette.tsx
 #: src/components/navbar.tsx
 msgid "Admin"
 msgstr "Adminisztráció"
@@ -147,6 +171,10 @@ msgstr "Utána"
 msgid "After setting the environment variables, restart your Beszel hub for changes to take effect."
 msgstr "A környezeti változók beállítása után indítsa újra a Beszel hubot a módosítások érvénybe léptetéséhez."
 
+#: src/components/routes/settings/notifications.tsx
+msgid "After you dismiss an alert on the home page, the same alert for the same system can appear again after this interval."
+msgstr ""
+
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Agent"
 msgstr "Ügynök"
@@ -157,6 +185,7 @@ msgstr "Ügynök"
 msgid "Alert History"
 msgstr "Riasztási előzmények"
 
+#: src/components/active-alerts.tsx
 #: src/components/alerts/alert-button.tsx
 #: src/components/alerts/alerts-sheet.tsx
 msgid "Alerts"
@@ -164,7 +193,6 @@ msgstr "Riasztások"
 
 #: src/components/command-palette.tsx
 #: src/components/containers-table/containers-table.tsx
-#: src/components/navbar.tsx
 #: src/components/navbar.tsx
 #: src/components/routes/containers.tsx
 msgid "All Containers"
@@ -175,9 +203,12 @@ msgstr "Minden konténer"
 #: src/components/routes/home.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/systems-table/systems-table.tsx
-#: src/components/systems-table/systems-table.tsx
 msgid "All Systems"
 msgstr "Minden rendszer"
+
+#: src/components/ssh-host-import.tsx
+#~ msgid "Already added"
+#~ msgstr ""
 
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Are you sure you want to delete {name}?"
@@ -246,7 +277,6 @@ msgid "Bandwidth"
 msgstr "Sávszélesség"
 
 #: src/components/routes/system/charts/sensor-charts.tsx
-#: src/components/routes/system/charts/sensor-charts.tsx
 #: src/lib/alerts.ts
 msgid "Battery"
 msgstr "Akkumulátor"
@@ -270,6 +300,10 @@ msgstr "Előtte"
 msgid "Below {0}{1} in last {2, plural, one {# minute} other {# minutes}}"
 msgstr "{0}{1} alatt az elmúlt {2, plural, one {# percben} other {# percben}}"
 
+#: src/components/ssh-host-manager.tsx
+msgid "Beszel agent port"
+msgstr ""
+
 #: src/components/login/auth-form.tsx
 msgid "Beszel supports OpenID Connect and many OAuth2 authentication providers."
 msgstr "A Beszel támogatja az OpenID Connect-et és számos OAuth2 hitelesítési szolgáltatót."
@@ -279,6 +313,7 @@ msgid "Beszel uses <0>Shoutrrr</0> to integrate with popular notification servic
 msgstr "A Beszel a <0>Shoutrrr</0>-t használja a népszerű értesítési szolgáltatások integrálására."
 
 #: src/components/add-system.tsx
+#: src/components/new-system-dialog.tsx
 msgid "Binary"
 msgstr "Bináris"
 
@@ -286,7 +321,6 @@ msgstr "Bináris"
 msgid "BIOS version"
 msgstr ""
 
-#: src/components/routes/settings/general.tsx
 #: src/components/routes/settings/general.tsx
 msgid "Bits (Kbps, Mbps, Gbps)"
 msgstr "Bitek (Kbps, Mbps, Gbps)"
@@ -299,7 +333,6 @@ msgstr ""
 msgid "Boot state"
 msgstr "Indítási állapot"
 
-#: src/components/routes/settings/general.tsx
 #: src/components/routes/settings/general.tsx
 msgid "Bytes (KB/s, MB/s, GB/s)"
 msgstr "Byte-ok (KB/s, MB/s, GB/s)"
@@ -383,8 +416,13 @@ msgstr "Ellenőrizze a megfigyelő szolgáltatást"
 msgid "Check your notification service"
 msgstr "Ellenőrizd az értesítési szolgáltatásodat"
 
+#: src/components/new-system-dialog.tsx
+msgid "Choose how to add or connect a Beszel system."
+msgstr ""
+
 #: src/components/containers-table/containers-table.tsx
 #: src/components/routes/system/smart-table.tsx
+#: src/components/ssh-host-list.tsx
 #: src/components/systems-table/systems-table.tsx
 msgid "Clear"
 msgstr "Törlés"
@@ -406,7 +444,6 @@ msgid "Click to copy"
 msgstr "Kattints a másoláshoz"
 
 #: src/components/login/forgot-pass-form.tsx
-#: src/components/login/forgot-pass-form.tsx
 msgid "Command line instructions"
 msgstr "Parancssori utasítások"
 
@@ -414,7 +451,6 @@ msgstr "Parancssori utasítások"
 msgid "Configure how you receive alert notifications."
 msgstr "Konfiguráld, hogyan kapod az értesítéseket."
 
-#: src/components/login/auth-form.tsx
 #: src/components/login/auth-form.tsx
 msgid "Confirm password"
 msgstr "Jelszó megerősítése"
@@ -442,12 +478,14 @@ msgstr "Vágólapra másolva"
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgctxt "Button to copy docker compose file content"
 msgid "Copy docker compose"
 msgstr "Docker compose másolása"
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgctxt "Button to copy docker run command"
 msgid "Copy docker run"
 msgstr "Docker run másolása"
@@ -468,6 +506,7 @@ msgstr "Hoszt másolása"
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgid "Copy Linux command"
 msgstr "Linux parancs másolása"
 
@@ -482,6 +521,14 @@ msgstr ""
 #: src/components/copy-to-clipboard.tsx
 msgid "Copy text"
 msgstr "Szöveg másolása"
+
+#: src/components/system-agent-form.tsx
+msgid "Copy the <0>docker-compose.yml</0> content for the agent below, or register agents automatically with a <1/>."
+msgstr ""
+
+#: src/components/system-agent-form.tsx
+msgid "Copy the installation command for the agent below, or register agents automatically with a <0/>."
+msgstr ""
 
 #: src/components/add-system.tsx
 msgid "Copy the installation command for the agent below, or register agents automatically with a <0>universal token</0>."
@@ -510,9 +557,17 @@ msgstr ""
 msgid "CPU Cores"
 msgstr "CPU magok"
 
+#: src/lib/alerts.ts
+msgid "CPU I/O Wait"
+msgstr ""
+
 #: src/components/systemd-table/systemd-table-columns.tsx
 msgid "CPU Peak"
 msgstr "CPU csúcs"
+
+#: src/lib/alerts.ts
+msgid "CPU Steal Time"
+msgstr ""
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "CPU time"
@@ -522,7 +577,6 @@ msgstr "CPU idő"
 msgid "CPU Time Breakdown"
 msgstr "CPU idő felbontása"
 
-#: src/components/routes/system/charts/cpu-charts.tsx
 #: src/components/routes/system/charts/cpu-charts.tsx
 #: src/components/routes/system/cpu-sheet.tsx
 #: src/lib/alerts.ts
@@ -557,7 +611,6 @@ msgstr "Kumulatív feltöltés"
 #. Context: Battery state
 #. Context: Battery state
 #: src/components/routes/system/charts/sensor-charts.tsx
-#: src/components/routes/system/charts/sensor-charts.tsx
 msgid "Current state"
 msgstr "Jelenlegi állapot"
 
@@ -566,7 +619,6 @@ msgstr "Jelenlegi állapot"
 msgid "Cycles"
 msgstr "Ciklusok"
 
-#: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Daily"
 msgstr "Napi"
@@ -580,6 +632,10 @@ msgstr "Alapértelmezett"
 msgid "Default time period"
 msgstr "Alapértelmezett időszak"
 
+#: src/components/routes/settings/notifications.tsx
+msgid "Default: 60 minutes."
+msgstr ""
+
 #: src/components/routes/settings/alerts-history-data-table.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/system/smart-table.tsx
@@ -590,6 +646,18 @@ msgstr "Törlés"
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Delete fingerprint"
 msgstr "Ujjlenyomat törlése"
+
+#: src/components/ssh-host-manager.tsx
+#~ msgid "Delete selected"
+#~ msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+#~ msgid "Delete selected SSH systems?"
+#~ msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+#~ msgid "Delete systems"
+#~ msgstr ""
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Description"
@@ -622,7 +690,6 @@ msgid "Disk unit"
 msgstr "Lemez mértékegysége"
 
 #: src/components/routes/system/charts/disk-charts.tsx
-#: src/components/routes/system/charts/disk-charts.tsx
 #: src/lib/alerts.ts
 msgid "Disk Usage"
 msgstr "Lemezhasználat"
@@ -630,6 +697,14 @@ msgstr "Lemezhasználat"
 #: src/components/routes/system/charts/disk-charts.tsx
 msgid "Disk usage of {extraFsName}"
 msgstr "Lemezhasználat a {extraFsName}"
+
+#: src/components/active-alerts.tsx
+msgid "Dismiss alert"
+msgstr ""
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Dismissed alert reminder"
+msgstr ""
 
 #: src/components/routes/system/info-bar.tsx
 msgctxt "Layout display options"
@@ -669,6 +744,15 @@ msgstr "Offline ({downSystemsLength})"
 msgid "Download"
 msgstr "Letöltés"
 
+#: src/components/systems-table/visible-columns-menu.tsx
+msgid "Drag or use arrows to reorder."
+msgstr ""
+
+#: src/components/systems-table/systems-table-columns.tsx
+#: src/components/systems-table/visible-columns-menu.tsx
+msgid "Drag to reorder"
+msgstr ""
+
 #: src/components/alerts-history-columns.tsx
 msgid "Duration"
 msgstr "Időtartam"
@@ -699,7 +783,6 @@ msgid "Empty"
 msgstr "Üres"
 
 #: src/components/routes/settings/quiet-hours.tsx
-#: src/components/routes/settings/quiet-hours.tsx
 msgid "End Time"
 msgstr "Befejezés ideje"
 
@@ -710,6 +793,10 @@ msgstr "Végpont URL"
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Endpoint URL to ping (required)"
 msgstr "Pingelendő végpont URL (kötelező)"
+
+#: src/components/ssh-host-manager.tsx
+msgid "Enter a valid agent port between 1 and 65535."
+msgstr ""
 
 #: src/components/login/login.tsx
 msgid "Enter email address to reset password"
@@ -730,10 +817,7 @@ msgstr "Ideiglenes"
 #: src/components/routes/settings/alerts-history-data-table.tsx
 #: src/components/routes/settings/config-yaml.tsx
 #: src/components/routes/settings/heartbeat.tsx
-#: src/components/routes/settings/heartbeat.tsx
-#: src/components/routes/settings/heartbeat.tsx
 #: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/systemd-table/systemd-table.tsx
@@ -784,6 +868,7 @@ msgid "Fahrenheit (°F)"
 msgstr ""
 
 #: src/components/systems-table/systems-table-columns.tsx
+#: src/components/systems-table/systems-table.tsx
 msgid "Failed"
 msgstr "Sikertelen"
 
@@ -794,6 +879,10 @@ msgstr "Sikertelen attribútumok:"
 #: src/lib/api.ts
 msgid "Failed to authenticate"
 msgstr "Hitelesítés sikertelen"
+
+#: src/components/active-alerts.tsx
+#~ msgid "Failed to dismiss alert"
+#~ msgstr ""
 
 #: src/components/routes/settings/layout.tsx
 #: src/components/routes/settings/notifications.tsx
@@ -853,6 +942,7 @@ msgstr ""
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgctxt "Button to copy install command"
 msgid "FreeBSD command"
 msgstr "FreeBSD parancs"
@@ -885,9 +975,14 @@ msgstr "GPU-k"
 msgid "GPU Power Draw"
 msgstr "GPU áramfelvétele"
 
+#: src/components/routes/system/charts/gpu-summary-charts.tsx
 #: src/lib/alerts.ts
 msgid "GPU Usage"
 msgstr "GPU használat"
+
+#: src/components/routes/system/charts/gpu-summary-charts.tsx
+msgid "GPU VRAM"
+msgstr ""
 
 #. GPU utilization, systems table column
 #: src/components/systems-table/systems-table-columns.tsx
@@ -921,11 +1016,13 @@ msgstr "Heartbeat sikeresen elküldve"
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgctxt "Button to copy install command"
 msgid "Homebrew command"
 msgstr "Homebrew parancs"
 
 #: src/components/add-system.tsx
+#: src/components/system-agent-form.tsx
 msgid "Host / IP"
 msgstr "Állomás / IP"
 
@@ -966,6 +1063,22 @@ msgctxt "Docker image"
 msgid "Image"
 msgstr "Kép"
 
+#: src/components/ssh-host-manager.tsx
+msgid "Import selected"
+msgstr ""
+
+#: src/components/ssh-host-import.tsx
+#~ msgid "Import SSH config"
+#~ msgstr ""
+
+#: src/components/ssh-host-import.tsx
+#~ msgid "Import systems from SSH config"
+#~ msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+msgid "Importing..."
+msgstr ""
+
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Inactive"
 msgstr "Inaktív"
@@ -973,6 +1086,10 @@ msgstr "Inaktív"
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Interval"
 msgstr "Intervallum"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Interval in minutes"
+msgstr ""
 
 #: src/components/login/auth-form.tsx
 msgid "Invalid email address."
@@ -1000,7 +1117,6 @@ msgid "Lifecycle"
 msgstr "Életciklus"
 
 #: src/components/systemd-table/systemd-table.tsx
-#: src/components/systemd-table/systemd-table.tsx
 msgid "limit"
 msgstr "korlát"
 
@@ -1024,12 +1140,15 @@ msgstr "Terhelési átlag 5p"
 msgid "Load state"
 msgstr "Betöltési állapot"
 
+#: src/components/ssh-host-list.tsx
+msgid "Loading SSH hosts..."
+msgstr ""
+
 #: src/components/add-system.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Loading..."
 msgstr "Betöltés..."
 
-#: src/components/navbar.tsx
 #: src/components/navbar.tsx
 msgid "Log Out"
 msgstr "Kijelentkezés"
@@ -1062,8 +1181,8 @@ msgid "Manage display and notification preferences."
 msgstr "A megjelenítési és értesítési beállítások kezelése."
 
 #: src/components/add-system.tsx
-#: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgid "Manual setup instructions"
 msgstr "Manuális beállítási lépések"
 
@@ -1094,6 +1213,10 @@ msgstr "Memória csúcs"
 msgid "Memory Usage"
 msgstr "Memóriahasználat"
 
+#: src/components/routes/system/charts/gpu-summary-charts.tsx
+msgid "Memory usage of all GPUs"
+msgstr ""
+
 #: src/components/routes/system/charts/memory-charts.tsx
 msgid "Memory usage of docker containers"
 msgstr "Docker konténerek memória használata"
@@ -1103,13 +1226,30 @@ msgstr "Docker konténerek memória használata"
 msgid "Model"
 msgstr "Modell"
 
+#: src/components/system-install-actions.tsx
+msgid "More options"
+msgstr ""
+
+#: src/components/systems-table/visible-columns-menu.tsx
+msgid "Move column down"
+msgstr ""
+
+#: src/components/systems-table/visible-columns-menu.tsx
+msgid "Move column up"
+msgstr ""
+
 #: src/components/add-system.tsx
 #: src/components/alerts-history-columns.tsx
 #: src/components/containers-table/containers-table-columns.tsx
+#: src/components/system-agent-form.tsx
 #: src/components/systemd-table/systemd-table-columns.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Name"
 msgstr "Név"
+
+#: src/components/ssh-host-list.tsx
+msgid "Name already used"
+msgstr ""
 
 #: src/components/containers-table/containers-table-columns.tsx
 #: src/components/systems-table/systems-table-columns.tsx
@@ -1126,8 +1266,6 @@ msgstr "Docker konténerek hálózati forgalma"
 
 #: src/components/routes/system/charts/network-charts.tsx
 #: src/components/routes/system/network-sheet.tsx
-#: src/components/routes/system/network-sheet.tsx
-#: src/components/routes/system/network-sheet.tsx
 msgid "Network traffic of public interfaces"
 msgstr "Nyilvános interfészek hálózati forgalma"
 
@@ -1137,10 +1275,12 @@ msgid "Network unit"
 msgstr "Sávszélesség mértékegysége"
 
 #: src/components/systemd-table/systemd-table.tsx
-#: src/components/systemd-table/systemd-table.tsx
-#: src/components/systemd-table/systemd-table.tsx
 msgid "No"
 msgstr "Nem"
+
+#: src/components/ssh-host-list.tsx
+msgid "No concrete hosts found."
+msgstr ""
 
 #: src/components/add-system.tsx
 #: src/components/command-palette.tsx
@@ -1148,8 +1288,6 @@ msgstr "Nem"
 msgid "No results found."
 msgstr "Nincs találat."
 
-#: src/components/containers-table/containers-table.tsx
-#: src/components/containers-table/containers-table.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
 #: src/components/routes/system/smart-table.tsx
@@ -1162,9 +1300,12 @@ msgid "No S.M.A.R.T. attributes available for this device."
 msgstr "Ehhez az eszközhöz nem állnak rendelkezésre S.M.A.R.T. attribútumok."
 
 #: src/components/systems-table/systems-table.tsx
-#: src/components/systems-table/systems-table.tsx
 msgid "No systems found."
 msgstr "Nem található rendszer."
+
+#: src/components/ssh-host-list.tsx
+#~ msgid "Not in config"
+#~ msgstr ""
 
 #: src/components/command-palette.tsx
 #: src/components/routes/settings/layout.tsx
@@ -1181,7 +1322,6 @@ msgid "On each restart, systems in the database will be updated to match the sys
 msgstr "Minden újraindításkor az adatbázisban lévő rendszerek frissítésre kerülnek, hogy megfeleljenek a fájlban meghatározott rendszereknek."
 
 #: src/components/routes/settings/quiet-hours.tsx
-#: src/components/routes/settings/quiet-hours.tsx
 msgid "One-time"
 msgstr "Egyszeri"
 
@@ -1189,8 +1329,11 @@ msgstr "Egyszeri"
 msgid "One-time password"
 msgstr "Egyszeri jelszó"
 
+#: src/components/ssh-host-manager.tsx
+#~ msgid "Only administrators can change this path."
+#~ msgstr ""
+
 #: src/components/routes/settings/quiet-hours.tsx
-#: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/routes/system/smart-table.tsx
 #: src/components/systems-table/systems-table-columns.tsx
@@ -1210,8 +1353,6 @@ msgid "Overwrite existing alerts"
 msgstr "Felülírja a meglévő riasztásokat"
 
 #: src/components/command-palette.tsx
-#: src/components/command-palette.tsx
-#: src/components/command-palette.tsx
 msgid "Page"
 msgstr "Oldal"
 
@@ -1225,7 +1366,6 @@ msgstr "{0}/{1} oldal"
 msgid "Pages / Settings"
 msgstr "Oldalak / Beállítások"
 
-#: src/components/login/auth-form.tsx
 #: src/components/login/auth-form.tsx
 msgid "Password"
 msgstr "Jelszó"
@@ -1262,7 +1402,6 @@ msgstr "Szüneteltetve ({pausedSystemsLength})"
 msgid "Payload format"
 msgstr "Payload formátum"
 
-#: src/components/routes/system/cpu-sheet.tsx
 #: src/components/routes/system/cpu-sheet.tsx
 msgid "Per-core average utilization"
 msgstr "Átlagos kihasználtság magonként"
@@ -1317,6 +1456,7 @@ msgid "Please sign in to your account"
 msgstr "Kérjük, jelentkezzen be a fiókjába"
 
 #: src/components/add-system.tsx
+#: src/components/system-agent-form.tsx
 msgid "Port"
 msgstr ""
 
@@ -1348,7 +1488,9 @@ msgid "Public key"
 msgstr ""
 
 #. Use 'Key' if your language requires many more characters
+#. Use 'Key' if your language requires many more characters
 #: src/components/add-system.tsx
+#: src/components/system-agent-form.tsx
 msgid "Public Key"
 msgstr "Nyilvános kulcs"
 
@@ -1364,18 +1506,18 @@ msgstr "Csendes órák"
 #. Disk read
 #: src/components/routes/system/charts/disk-charts.tsx
 #: src/components/routes/system/disk-io-sheet.tsx
-#: src/components/routes/system/disk-io-sheet.tsx
-#: src/components/routes/system/disk-io-sheet.tsx
 msgid "Read"
 msgstr "Olvasás"
+
+#: src/components/ssh-host-manager.tsx
+msgid "Read-only users cannot change this path."
+msgstr ""
 
 #: src/components/routes/system/charts/network-charts.tsx
 msgid "Received"
 msgstr "Fogadott"
 
 #: src/components/add-system.tsx
-#: src/components/add-system.tsx
-#: src/components/containers-table/containers-table.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/routes/system/smart-table.tsx
 msgid "Refresh"
@@ -1384,6 +1526,22 @@ msgstr "Frissítés"
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Relationships"
 msgstr "Kapcsolatok"
+
+#: src/components/ssh-host-manager.tsx
+msgid "Reload SSH config"
+msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+msgid "Reload the SSH config after changing its path."
+msgstr ""
+
+#: src/components/ssh-host-list.tsx
+msgid "Remote hosts"
+msgstr ""
+
+#: src/components/systems-table/visible-columns-menu.tsx
+msgid "Reorder column"
+msgstr ""
 
 #: src/components/login/login.tsx
 msgid "Request a one-time password"
@@ -1405,7 +1563,6 @@ msgstr "Igényel"
 msgid "Reset Password"
 msgstr "Jelszó visszaállítása"
 
-#: src/components/alerts-history-columns.tsx
 #: src/components/alerts-history-columns.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
 msgid "Resolved"
@@ -1457,6 +1614,10 @@ msgstr "Mentse el a címet az Enter billentyű vagy a vessző használatával. H
 msgid "Save Settings"
 msgstr "Beállítások mentése"
 
+#: src/components/system-agent-form.tsx
+msgid "Save System"
+msgstr ""
+
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Saved in the database and does not expire until you disable it."
 msgstr "Elmentve az adatbázisban és nem jár le, amíg ki nem kapcsolod."
@@ -1493,9 +1654,17 @@ msgstr "Lásd <0>az értesítési beállításokat</0>, hogy konfigurálja, hogy
 msgid "Select {foo}"
 msgstr "{foo} kiválasztása"
 
+#: src/components/ssh-host-list.tsx
+msgid "Select all"
+msgstr ""
+
 #: src/components/add-system.tsx
 msgid "Select an SSH Host from your local SSH config."
 msgstr ""
+
+#: src/components/ssh-host-import.tsx
+#~ msgid "Select remote hosts to add as Beszel systems."
+#~ msgstr ""
 
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Send a single heartbeat ping to verify your endpoint is working."
@@ -1535,10 +1704,7 @@ msgid "Set the following environment variables on your Beszel hub to enable hear
 msgstr "Állítsa be a következő környezeti változókat a Beszel hubon a heartbeat figyelés engedélyezéséhez:"
 
 #: src/components/command-palette.tsx
-#: src/components/command-palette.tsx
 #: src/components/navbar.tsx
-#: src/components/navbar.tsx
-#: src/components/routes/settings/layout.tsx
 #: src/components/routes/settings/layout.tsx
 #: src/components/routes/system/info-bar.tsx
 msgid "Settings"
@@ -1560,11 +1726,18 @@ msgstr "SMTP beállítások"
 msgid "Sort By"
 msgstr "Rendezés"
 
+#: src/components/ssh-host-manager.tsx
+msgid "SSH config path"
+msgstr ""
+
 #: src/components/add-system.tsx
 msgid "SSH Host not found in ~/.ssh/config."
 msgstr ""
 
-#: src/components/routes/settings/quiet-hours.tsx
+#: src/components/ssh-host-list.tsx
+msgid "SSH system"
+msgstr ""
+
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Start Time"
 msgstr "Kezdési idő"
@@ -1597,7 +1770,6 @@ msgid "Swap Usage"
 msgstr "Swap használat"
 
 #: src/components/mode-toggle.tsx
-#: src/components/mode-toggle.tsx
 msgid "Switch theme"
 msgstr ""
 
@@ -1605,9 +1777,6 @@ msgstr ""
 #: src/components/alerts-history-columns.tsx
 #: src/components/containers-table/containers-table-columns.tsx
 #: src/components/navbar.tsx
-#: src/components/routes/settings/quiet-hours.tsx
-#: src/components/routes/settings/quiet-hours.tsx
-#: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/routes/system/smart-table.tsx
@@ -1654,6 +1823,7 @@ msgid "Temp"
 msgstr "Hőmérséklet"
 
 #: src/components/routes/system/charts/sensor-charts.tsx
+#: src/components/systems-table/systems-table-columns.tsx
 #: src/lib/alerts.ts
 msgid "Temperature"
 msgstr "Hőmérséklet"
@@ -1690,6 +1860,10 @@ msgstr "Ezután jelentkezzen be a backendbe, és állítsa vissza a felhasznál�
 msgid "This action cannot be undone. This will permanently delete all current records for {name} from the database."
 msgstr "Ezt a műveletet nem lehet visszavonni! Véglegesen törli a {name} összes jelenlegi rekordját az adatbázisból!"
 
+#: src/components/ssh-host-manager.tsx
+#~ msgid "This permanently deletes their monitoring records and configuration."
+#~ msgstr ""
+
 #: src/components/routes/settings/alerts-history-data-table.tsx
 msgid "This will permanently delete all selected records from the database."
 msgstr "Ez véglegesen törli az összes kijelölt bejegyzést az adatbázisból."
@@ -1712,6 +1886,7 @@ msgstr "E-mailben"
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-agent-form.tsx
 msgid "Token"
 msgstr ""
 
@@ -1729,7 +1904,6 @@ msgstr "A tokenek lehetővé teszik az ügynökök csatlakozását és regisztr�
 msgid "Tokens and fingerprints are used to authenticate WebSocket connections to the hub."
 msgstr "A tokeneket és fingeravtrykkokat a hubhoz való WebSocket kapcsolatok hitelesítésére használják."
 
-#: src/components/ui/chart.tsx
 #: src/components/ui/chart.tsx
 msgid "Total"
 msgstr "Összesen"
@@ -1785,6 +1959,14 @@ msgid "Triggers when combined up/down exceeds a threshold"
 msgstr "Riaszt, ha a sávszélesség-használat túllép egy küszöbértéket"
 
 #: src/lib/alerts.ts
+msgid "Triggers when CPU I/O wait exceeds a threshold"
+msgstr ""
+
+#: src/lib/alerts.ts
+msgid "Triggers when CPU steal time exceeds a threshold"
+msgstr ""
+
+#: src/lib/alerts.ts
 msgid "Triggers when CPU usage exceeds a threshold"
 msgstr "Riaszt, ha a CPU használat túllép egy küszöbértéket"
 
@@ -1809,10 +1991,29 @@ msgid "Triggers when usage of any disk exceeds a threshold"
 msgstr "Riaszt, ha a lemezhasználat túllép egy küszöbértéket"
 
 #: src/components/routes/settings/quiet-hours.tsx
-#: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/system/smart-table.tsx
 msgid "Type"
 msgstr "Típus"
+
+#: src/components/ssh-host-manager.tsx
+#~ msgid "Unable to delete the selected systems."
+#~ msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+msgid "Unable to import the selected SSH hosts."
+msgstr ""
+
+#: src/components/routes/settings/config-yaml.tsx
+msgid "Unable to load configuration"
+msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+msgid "Unable to read the SSH config."
+msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+msgid "Unable to update the selected SSH config paths."
+msgstr ""
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Unit file"
@@ -1834,7 +2035,6 @@ msgid "Unknown"
 msgstr "Ismeretlen"
 
 #: src/components/systemd-table/systemd-table.tsx
-#: src/components/systemd-table/systemd-table.tsx
 msgid "Unlimited"
 msgstr "Korlátlan"
 
@@ -1852,6 +2052,10 @@ msgstr "Online ({upSystemsLength})"
 msgid "Update"
 msgstr "Frissítés"
 
+#: src/components/ssh-host-manager.tsx
+msgid "Update path"
+msgstr ""
+
 #: src/components/containers-table/containers-table-columns.tsx
 #: src/components/routes/system/smart-table.tsx
 #: src/components/systemd-table/systemd-table-columns.tsx
@@ -1861,6 +2065,10 @@ msgstr "Frissítve"
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Updated every 10 minutes."
 msgstr "10 percenként frissítve."
+
+#: src/components/ssh-host-manager.tsx
+msgid "Updating..."
+msgstr ""
 
 #: src/components/routes/system/network-sheet.tsx
 msgid "Upload"
@@ -1873,8 +2081,6 @@ msgstr "Üzemidő"
 
 #: src/components/routes/system/charts/disk-charts.tsx
 #: src/components/routes/system/charts/gpu-charts.tsx
-#: src/components/routes/system/charts/gpu-charts.tsx
-#: src/components/routes/system/charts/gpu-charts.tsx
 #: src/components/routes/system/cpu-sheet.tsx
 msgid "Usage"
 msgstr "Használat"
@@ -1883,7 +2089,6 @@ msgstr "Használat"
 msgid "Usage of root partition"
 msgstr "Root partíció kihasználtsága"
 
-#: src/components/routes/system/charts/memory-charts.tsx
 #: src/components/routes/system/charts/memory-charts.tsx
 msgid "Used"
 msgstr "Felhasznált"
@@ -1897,6 +2102,10 @@ msgstr "Felhasználók"
 msgctxt "Disk I/O utilization"
 msgid "Utilization"
 msgstr "Kihasználtság"
+
+#: src/components/routes/system/charts/gpu-summary-charts.tsx
+msgid "Utilization of all GPUs"
+msgstr ""
 
 #: src/components/alerts-history-columns.tsx
 msgid "Value"
@@ -1964,14 +2173,13 @@ msgstr "POST használata esetén minden heartbeat tartalmaz egy JSON payload-ot 
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgctxt "Button to copy install command"
 msgid "Windows command"
 msgstr "Windows parancs"
 
 #. Disk write
 #: src/components/routes/system/charts/disk-charts.tsx
-#: src/components/routes/system/disk-io-sheet.tsx
-#: src/components/routes/system/disk-io-sheet.tsx
 #: src/components/routes/system/disk-io-sheet.tsx
 msgid "Write"
 msgstr "Írás"
@@ -1984,8 +2192,6 @@ msgstr "YAML konfiguráció"
 msgid "YAML Configuration"
 msgstr "YAML konfiguráció"
 
-#: src/components/systemd-table/systemd-table.tsx
-#: src/components/systemd-table/systemd-table.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Yes"
 msgstr "Igen"

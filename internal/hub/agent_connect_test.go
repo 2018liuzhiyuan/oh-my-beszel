@@ -55,6 +55,40 @@ func cleanupTestHub(hub *Hub, testApp *pbtests.TestApp) {
 	}
 }
 
+func observeSystemStatus(t testing.TB, app core.App, expectedStatus string) <-chan string {
+	t.Helper()
+	updates := make(chan string, 16)
+	hook := app.OnRecordAfterUpdateSuccess("systems")
+	hookID := hook.BindFunc(func(e *core.RecordEvent) error {
+		if e.Record.GetString("status") == expectedStatus {
+			select {
+			case updates <- e.Record.Id:
+			default:
+			}
+		}
+		return e.Next()
+	})
+	t.Cleanup(func() { hook.Unbind(hookID) })
+	return updates
+}
+
+func waitForSystemStatus(t testing.TB, updates <-chan string, systemID string) string {
+	t.Helper()
+	timer := time.NewTimer(2 * time.Second)
+	defer timer.Stop()
+	for {
+		select {
+		case updatedSystemID := <-updates:
+			if systemID == "" || updatedSystemID == systemID {
+				return updatedSystemID
+			}
+		case <-timer.C:
+			t.Fatalf("timed out waiting for system %q status update", systemID)
+			return ""
+		}
+	}
+}
+
 // Helper function to create a test record
 func createTestRecord(app core.App, collection string, data map[string]any) (*core.Record, error) {
 	col, err := app.FindCachedCollectionByNameOrId(collection)
@@ -900,6 +934,8 @@ func TestAgentWebSocketIntegration(t *testing.T) {
 			t.Setenv("BESZEL_AGENT_HUB_URL", ts.URL)
 			t.Setenv("BESZEL_AGENT_TOKEN", tc.agentToken)
 
+			statusUpdates := observeSystemStatus(t, testApp, tc.expectSystemStatus)
+
 			// Start agent in background
 			done := make(chan error, 1)
 			go func() {
@@ -926,15 +962,15 @@ func TestAgentWebSocketIntegration(t *testing.T) {
 				case <-timeout:
 					// Timeout reached
 					if tc.expectConnection {
-						t.Fatalf("Expected connection to succeed but timed out - agent state: %d", connectionManager.State)
+						t.Fatalf("Expected connection to succeed but timed out - agent state: %d", connectionManager.State())
 					} else {
-						t.Logf("Connection properly rejected (timeout) - agent state: %d", connectionManager.State)
+						t.Logf("Connection properly rejected (timeout) - agent state: %d", connectionManager.State())
 					}
 					connectionResult = false
 				case <-ticker:
-					if connectionManager.State == agent.WebSocketConnected {
+					if connectionManager.State() == agent.WebSocketConnected {
 						if tc.expectConnection {
-							t.Logf("WebSocket connection successful - agent state: %d", connectionManager.State)
+							t.Logf("WebSocket connection successful - agent state: %d", connectionManager.State())
 							connectionResult = true
 						} else {
 							t.Errorf("Unexpected: Connection succeeded when it should have been rejected")
@@ -958,7 +994,9 @@ func TestAgentWebSocketIntegration(t *testing.T) {
 				}
 			}
 
-			time.Sleep(20 * time.Millisecond)
+			if tc.expectConnection {
+				waitForSystemStatus(t, statusUpdates, systemRecord.Id)
+			}
 
 			// Verify fingerprint state by re-reading the specific record
 			updatedFingerprintRecord, err := testApp.FindRecordById("fingerprints", fingerprintRecord.Id)
@@ -1084,6 +1122,8 @@ func TestMultipleSystemsWithSameUniversalToken(t *testing.T) {
 			require.NoError(t, err)
 			systemsBeforeCount := len(systemsBefore)
 
+			statusUpdates := observeSystemStatus(t, testApp, tc.expectSystemStatus)
+
 			// Start agent in background
 			done := make(chan error, 1)
 			go func() {
@@ -1109,15 +1149,15 @@ func TestMultipleSystemsWithSameUniversalToken(t *testing.T) {
 				select {
 				case <-timeout:
 					if tc.expectConnection {
-						t.Fatalf("Expected connection to succeed but timed out - agent state: %d", connectionManager.State)
+						t.Fatalf("Expected connection to succeed but timed out - agent state: %d", connectionManager.State())
 					} else {
-						t.Logf("Connection properly rejected (timeout) - agent state: %d", connectionManager.State)
+						t.Logf("Connection properly rejected (timeout) - agent state: %d", connectionManager.State())
 					}
 					connectionResult = false
 				case <-ticker:
-					if connectionManager.State == agent.WebSocketConnected {
+					if connectionManager.State() == agent.WebSocketConnected {
 						if tc.expectConnection {
-							t.Logf("WebSocket connection successful - agent state: %d", connectionManager.State)
+							t.Logf("WebSocket connection successful - agent state: %d", connectionManager.State())
 							connectionResult = true
 						} else {
 							t.Errorf("Unexpected: Connection succeeded when it should have been rejected")
@@ -1142,6 +1182,7 @@ func TestMultipleSystemsWithSameUniversalToken(t *testing.T) {
 
 			// Verify system creation/reuse behavior
 			if tc.expectConnection {
+				updatedSystemID := waitForSystemStatus(t, statusUpdates, "")
 				// Count systems after connection
 				systemsAfter, err := testApp.FindRecordsByFilter("systems", "users ~ {:userId}", "", -1, 0, map[string]any{"userId": userRecord.Id})
 				require.NoError(t, err)
@@ -1158,8 +1199,6 @@ func TestMultipleSystemsWithSameUniversalToken(t *testing.T) {
 					assert.Equal(t, systemCount, systemsAfterCount, "Total system count should remain the same")
 				}
 
-				time.Sleep(20 * time.Millisecond)
-
 				// Verify that a fingerprint record exists for this fingerprint
 				fingerprints, err := testApp.FindRecordsByFilter("fingerprints", "token = {:token} && fingerprint = {:fingerprint}", "", -1, 0, map[string]any{
 					"token":       universalToken,
@@ -1174,6 +1213,7 @@ func TestMultipleSystemsWithSameUniversalToken(t *testing.T) {
 
 				// Verify system status
 				systemId := fingerprint.GetString("system")
+				assert.Equal(t, updatedSystemID, systemId, "Status update should belong to the connected system")
 				system, err := testApp.FindRecordById("systems", systemId)
 				require.NoError(t, err)
 				status := system.GetString("status")
@@ -1260,9 +1300,9 @@ func TestPermanentUniversalTokenFromDB(t *testing.T) {
 	for {
 		select {
 		case <-timeout:
-			t.Fatalf("Expected connection to succeed but timed out - agent state: %d", connectionManager.State)
+			t.Fatalf("Expected connection to succeed but timed out - agent state: %d", connectionManager.State())
 		case <-ticker:
-			if connectionManager.State == agent.WebSocketConnected {
+			if connectionManager.State() == agent.WebSocketConnected {
 				// Success
 				goto verify
 			}

@@ -30,6 +30,16 @@ msgstr "{0} k dispozici"
 msgid "{0} of {1} row(s) selected."
 msgstr "{0} z {1} vybraných řádků."
 
+#. placeholder {0}: updatePathSystems.length
+#: src/components/ssh-host-manager.tsx
+msgid "{0} SSH config paths updated."
+msgstr ""
+
+#. placeholder {0}: actionTargets.deleteSystems.length
+#: src/components/ssh-host-manager.tsx
+#~ msgid "{0} systems deleted."
+#~ msgstr ""
+
 #: src/components/routes/system/info-bar.tsx
 msgid "{cores, plural, one {# core} other {# cores}}"
 msgstr "{cores, plural, one {# jádro} few {# jádra} many {# jader} other {# jader}}"
@@ -45,6 +55,19 @@ msgstr "{count, plural, one {{countString} Hodina} few {{countString} Hodiny} ma
 #: src/lib/utils.ts
 msgid "{count, plural, one {{countString} minute} few {{countString} minutes} many {{countString} minutes} other {{countString} minutes}}"
 msgstr "{count, plural, one {{countString} minuta} few {{countString} minuty} many {{countString} minut} other {{countString} minut}}"
+
+#. placeholder {0}: failedHosts.length
+#: src/components/ssh-host-manager.tsx
+msgid "{imported} imported, {0} failed."
+msgstr ""
+
+#: src/components/ssh-host-import.tsx
+#~ msgid "{imported} imported, {failed} failed."
+#~ msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+msgid "{imported} systems imported."
+msgstr ""
 
 #: src/components/routes/system/info-bar.tsx
 msgid "{threads, plural, one {# thread} other {# threads}}"
@@ -105,21 +128,23 @@ msgid "Active"
 msgstr "Aktivní"
 
 #: src/components/active-alerts.tsx
-msgid "Active Alerts"
-msgstr "Aktivní výstrahy"
+#~ msgid "Active Alerts"
+#~ msgstr "Aktivní výstrahy"
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Active state"
 msgstr "Aktivní stav"
 
 #: src/components/add-system.tsx
-#: src/components/add-system.tsx
 #: src/components/navbar.tsx
-#: src/components/navbar.tsx
-#: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Add {foo}"
 msgstr "Přidat {foo}"
+
+#: src/components/new-system-dialog.tsx
+#: src/components/system-agent-form.tsx
+msgid "Add System"
+msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Add URL"
@@ -134,7 +159,6 @@ msgid "Adjust the width of the main layout"
 msgstr "Upravit šířku hlavního rozvržení"
 
 #: src/components/command-palette.tsx
-#: src/components/command-palette.tsx
 #: src/components/navbar.tsx
 msgid "Admin"
 msgstr "Administrátor"
@@ -147,6 +171,10 @@ msgstr "Po"
 msgid "After setting the environment variables, restart your Beszel hub for changes to take effect."
 msgstr "Po nastavení proměnných prostředí restartujte hub Beszel, aby se změny projevily."
 
+#: src/components/routes/settings/notifications.tsx
+msgid "After you dismiss an alert on the home page, the same alert for the same system can appear again after this interval."
+msgstr ""
+
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Agent"
 msgstr ""
@@ -157,6 +185,7 @@ msgstr ""
 msgid "Alert History"
 msgstr "Historie upozornění"
 
+#: src/components/active-alerts.tsx
 #: src/components/alerts/alert-button.tsx
 #: src/components/alerts/alerts-sheet.tsx
 msgid "Alerts"
@@ -164,7 +193,6 @@ msgstr "Výstrahy"
 
 #: src/components/command-palette.tsx
 #: src/components/containers-table/containers-table.tsx
-#: src/components/navbar.tsx
 #: src/components/navbar.tsx
 #: src/components/routes/containers.tsx
 msgid "All Containers"
@@ -175,9 +203,12 @@ msgstr "Všechny kontejnery"
 #: src/components/routes/home.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/systems-table/systems-table.tsx
-#: src/components/systems-table/systems-table.tsx
 msgid "All Systems"
 msgstr "Všechny systémy"
+
+#: src/components/ssh-host-import.tsx
+#~ msgid "Already added"
+#~ msgstr ""
 
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Are you sure you want to delete {name}?"
@@ -246,7 +277,6 @@ msgid "Bandwidth"
 msgstr "Přenos"
 
 #: src/components/routes/system/charts/sensor-charts.tsx
-#: src/components/routes/system/charts/sensor-charts.tsx
 #: src/lib/alerts.ts
 msgid "Battery"
 msgstr "Baterie"
@@ -270,6 +300,10 @@ msgstr "Před"
 msgid "Below {0}{1} in last {2, plural, one {# minute} other {# minutes}}"
 msgstr "Pod {0}{1} za {2, plural, one {poslední # minutu} few {poslední # minuty} other {posledních # minut}}"
 
+#: src/components/ssh-host-manager.tsx
+msgid "Beszel agent port"
+msgstr ""
+
 #: src/components/login/auth-form.tsx
 msgid "Beszel supports OpenID Connect and many OAuth2 authentication providers."
 msgstr "Beszel podporuje OpenID Connect a mnoho poskytovatelů OAuth2 ověřování."
@@ -279,6 +313,7 @@ msgid "Beszel uses <0>Shoutrrr</0> to integrate with popular notification servic
 msgstr "Beszel používá <0>Shoutrrr</0> k integraci s populárními notifikačními službami."
 
 #: src/components/add-system.tsx
+#: src/components/new-system-dialog.tsx
 msgid "Binary"
 msgstr "Binární"
 
@@ -286,7 +321,6 @@ msgstr "Binární"
 msgid "BIOS version"
 msgstr ""
 
-#: src/components/routes/settings/general.tsx
 #: src/components/routes/settings/general.tsx
 msgid "Bits (Kbps, Mbps, Gbps)"
 msgstr "Bity (Kbps, Mbps, Gbps)"
@@ -299,7 +333,6 @@ msgstr ""
 msgid "Boot state"
 msgstr "Stav zavádění"
 
-#: src/components/routes/settings/general.tsx
 #: src/components/routes/settings/general.tsx
 msgid "Bytes (KB/s, MB/s, GB/s)"
 msgstr "Byty (KB/s, MB/s, GB/s)"
@@ -383,8 +416,13 @@ msgstr "Zkontrolujte svou monitorovací službu"
 msgid "Check your notification service"
 msgstr "Zkontrolujte službu upozornění"
 
+#: src/components/new-system-dialog.tsx
+msgid "Choose how to add or connect a Beszel system."
+msgstr ""
+
 #: src/components/containers-table/containers-table.tsx
 #: src/components/routes/system/smart-table.tsx
+#: src/components/ssh-host-list.tsx
 #: src/components/systems-table/systems-table.tsx
 msgid "Clear"
 msgstr "Vymazat"
@@ -406,7 +444,6 @@ msgid "Click to copy"
 msgstr "Klikněte pro zkopírování"
 
 #: src/components/login/forgot-pass-form.tsx
-#: src/components/login/forgot-pass-form.tsx
 msgid "Command line instructions"
 msgstr "Instrukce příkazového řádku"
 
@@ -414,7 +451,6 @@ msgstr "Instrukce příkazového řádku"
 msgid "Configure how you receive alert notifications."
 msgstr "Konfigurace způsobu přijímání upozornění."
 
-#: src/components/login/auth-form.tsx
 #: src/components/login/auth-form.tsx
 msgid "Confirm password"
 msgstr "Potvrdit heslo"
@@ -442,12 +478,14 @@ msgstr "Zkopírováno do schránky"
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgctxt "Button to copy docker compose file content"
 msgid "Copy docker compose"
 msgstr "Kopírovat docker compose"
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgctxt "Button to copy docker run command"
 msgid "Copy docker run"
 msgstr "Zkopírovat příkaz na spuštění dockeru"
@@ -468,6 +506,7 @@ msgstr "Kopírovat hostitele"
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgid "Copy Linux command"
 msgstr "Kopírovat příkaz Linux"
 
@@ -482,6 +521,14 @@ msgstr ""
 #: src/components/copy-to-clipboard.tsx
 msgid "Copy text"
 msgstr "Kopírovat text"
+
+#: src/components/system-agent-form.tsx
+msgid "Copy the <0>docker-compose.yml</0> content for the agent below, or register agents automatically with a <1/>."
+msgstr ""
+
+#: src/components/system-agent-form.tsx
+msgid "Copy the installation command for the agent below, or register agents automatically with a <0/>."
+msgstr ""
 
 #: src/components/add-system.tsx
 msgid "Copy the installation command for the agent below, or register agents automatically with a <0>universal token</0>."
@@ -510,9 +557,17 @@ msgstr "Procesor"
 msgid "CPU Cores"
 msgstr "CPU jádra"
 
+#: src/lib/alerts.ts
+msgid "CPU I/O Wait"
+msgstr ""
+
 #: src/components/systemd-table/systemd-table-columns.tsx
 msgid "CPU Peak"
 msgstr "Špička CPU"
+
+#: src/lib/alerts.ts
+msgid "CPU Steal Time"
+msgstr ""
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "CPU time"
@@ -522,7 +577,6 @@ msgstr "Čas CPU"
 msgid "CPU Time Breakdown"
 msgstr "Rozdělení času CPU"
 
-#: src/components/routes/system/charts/cpu-charts.tsx
 #: src/components/routes/system/charts/cpu-charts.tsx
 #: src/components/routes/system/cpu-sheet.tsx
 #: src/lib/alerts.ts
@@ -557,7 +611,6 @@ msgstr "Kumulativní odeslání"
 #. Context: Battery state
 #. Context: Battery state
 #: src/components/routes/system/charts/sensor-charts.tsx
-#: src/components/routes/system/charts/sensor-charts.tsx
 msgid "Current state"
 msgstr "Aktuální stav"
 
@@ -566,7 +619,6 @@ msgstr "Aktuální stav"
 msgid "Cycles"
 msgstr "Cykly"
 
-#: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Daily"
 msgstr "Denně"
@@ -580,6 +632,10 @@ msgstr "Výchozí"
 msgid "Default time period"
 msgstr "Výchozí doba"
 
+#: src/components/routes/settings/notifications.tsx
+msgid "Default: 60 minutes."
+msgstr ""
+
 #: src/components/routes/settings/alerts-history-data-table.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/system/smart-table.tsx
@@ -590,6 +646,18 @@ msgstr "Odstranit"
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Delete fingerprint"
 msgstr "Smazat identifikátor"
+
+#: src/components/ssh-host-manager.tsx
+#~ msgid "Delete selected"
+#~ msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+#~ msgid "Delete selected SSH systems?"
+#~ msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+#~ msgid "Delete systems"
+#~ msgstr ""
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Description"
@@ -622,7 +690,6 @@ msgid "Disk unit"
 msgstr "Disková jednotka"
 
 #: src/components/routes/system/charts/disk-charts.tsx
-#: src/components/routes/system/charts/disk-charts.tsx
 #: src/lib/alerts.ts
 msgid "Disk Usage"
 msgstr "Využití disku"
@@ -630,6 +697,14 @@ msgstr "Využití disku"
 #: src/components/routes/system/charts/disk-charts.tsx
 msgid "Disk usage of {extraFsName}"
 msgstr "Využití disku {extraFsName}"
+
+#: src/components/active-alerts.tsx
+msgid "Dismiss alert"
+msgstr ""
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Dismissed alert reminder"
+msgstr ""
 
 #: src/components/routes/system/info-bar.tsx
 msgctxt "Layout display options"
@@ -669,6 +744,15 @@ msgstr "Nefunkční ({downSystemsLength})"
 msgid "Download"
 msgstr "Stažení"
 
+#: src/components/systems-table/visible-columns-menu.tsx
+msgid "Drag or use arrows to reorder."
+msgstr ""
+
+#: src/components/systems-table/systems-table-columns.tsx
+#: src/components/systems-table/visible-columns-menu.tsx
+msgid "Drag to reorder"
+msgstr ""
+
 #: src/components/alerts-history-columns.tsx
 msgid "Duration"
 msgstr "Doba trvání"
@@ -699,7 +783,6 @@ msgid "Empty"
 msgstr "Prázdná"
 
 #: src/components/routes/settings/quiet-hours.tsx
-#: src/components/routes/settings/quiet-hours.tsx
 msgid "End Time"
 msgstr "Čas ukončení"
 
@@ -710,6 +793,10 @@ msgstr "URL koncového bodu"
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Endpoint URL to ping (required)"
 msgstr "URL koncového bodu pro ping (vyžadováno)"
+
+#: src/components/ssh-host-manager.tsx
+msgid "Enter a valid agent port between 1 and 65535."
+msgstr ""
 
 #: src/components/login/login.tsx
 msgid "Enter email address to reset password"
@@ -730,10 +817,7 @@ msgstr "Efemérní"
 #: src/components/routes/settings/alerts-history-data-table.tsx
 #: src/components/routes/settings/config-yaml.tsx
 #: src/components/routes/settings/heartbeat.tsx
-#: src/components/routes/settings/heartbeat.tsx
-#: src/components/routes/settings/heartbeat.tsx
 #: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/systemd-table/systemd-table.tsx
@@ -784,6 +868,7 @@ msgid "Fahrenheit (°F)"
 msgstr "Fahrenheita (°F)"
 
 #: src/components/systems-table/systems-table-columns.tsx
+#: src/components/systems-table/systems-table.tsx
 msgid "Failed"
 msgstr "Selhalo"
 
@@ -794,6 +879,10 @@ msgstr "Neúspěšné atributy:"
 #: src/lib/api.ts
 msgid "Failed to authenticate"
 msgstr "Ověření se nezdařilo"
+
+#: src/components/active-alerts.tsx
+#~ msgid "Failed to dismiss alert"
+#~ msgstr ""
 
 #: src/components/routes/settings/layout.tsx
 #: src/components/routes/settings/notifications.tsx
@@ -853,6 +942,7 @@ msgstr ""
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgctxt "Button to copy install command"
 msgid "FreeBSD command"
 msgstr "FreeBSD příkaz"
@@ -885,9 +975,14 @@ msgstr "GPU enginy"
 msgid "GPU Power Draw"
 msgstr "Spotřeba energie GPU"
 
+#: src/components/routes/system/charts/gpu-summary-charts.tsx
 #: src/lib/alerts.ts
 msgid "GPU Usage"
 msgstr "Využití GPU"
+
+#: src/components/routes/system/charts/gpu-summary-charts.tsx
+msgid "GPU VRAM"
+msgstr ""
 
 #. GPU utilization, systems table column
 #: src/components/systems-table/systems-table-columns.tsx
@@ -921,11 +1016,13 @@ msgstr "Heartbeat úspěšně odeslán"
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgctxt "Button to copy install command"
 msgid "Homebrew command"
 msgstr "Homebrew příkaz"
 
 #: src/components/add-system.tsx
+#: src/components/system-agent-form.tsx
 msgid "Host / IP"
 msgstr "Hostitel / IP"
 
@@ -966,12 +1063,32 @@ msgctxt "Docker image"
 msgid "Image"
 msgstr "Obraz"
 
+#: src/components/ssh-host-manager.tsx
+msgid "Import selected"
+msgstr ""
+
+#: src/components/ssh-host-import.tsx
+#~ msgid "Import SSH config"
+#~ msgstr ""
+
+#: src/components/ssh-host-import.tsx
+#~ msgid "Import systems from SSH config"
+#~ msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+msgid "Importing..."
+msgstr ""
+
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Inactive"
 msgstr "Neaktivní"
 
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Interval"
+msgstr ""
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Interval in minutes"
 msgstr ""
 
 #: src/components/login/auth-form.tsx
@@ -1000,7 +1117,6 @@ msgid "Lifecycle"
 msgstr "Životní cyklus"
 
 #: src/components/systemd-table/systemd-table.tsx
-#: src/components/systemd-table/systemd-table.tsx
 msgid "limit"
 msgstr ""
 
@@ -1024,12 +1140,15 @@ msgstr "Průměrná zátěž 5m"
 msgid "Load state"
 msgstr "Stav načtení"
 
+#: src/components/ssh-host-list.tsx
+msgid "Loading SSH hosts..."
+msgstr ""
+
 #: src/components/add-system.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Loading..."
 msgstr "Načítání..."
 
-#: src/components/navbar.tsx
 #: src/components/navbar.tsx
 msgid "Log Out"
 msgstr "Odhlásit"
@@ -1062,8 +1181,8 @@ msgid "Manage display and notification preferences."
 msgstr "Správa nastavení zobrazení a oznámení."
 
 #: src/components/add-system.tsx
-#: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgid "Manual setup instructions"
 msgstr "Pokyny k manuálnímu nastavení"
 
@@ -1094,6 +1213,10 @@ msgstr "Špička paměti"
 msgid "Memory Usage"
 msgstr "Využití paměti"
 
+#: src/components/routes/system/charts/gpu-summary-charts.tsx
+msgid "Memory usage of all GPUs"
+msgstr ""
+
 #: src/components/routes/system/charts/memory-charts.tsx
 msgid "Memory usage of docker containers"
 msgstr "Využití paměti docker kontejnerů"
@@ -1103,13 +1226,30 @@ msgstr "Využití paměti docker kontejnerů"
 msgid "Model"
 msgstr ""
 
+#: src/components/system-install-actions.tsx
+msgid "More options"
+msgstr ""
+
+#: src/components/systems-table/visible-columns-menu.tsx
+msgid "Move column down"
+msgstr ""
+
+#: src/components/systems-table/visible-columns-menu.tsx
+msgid "Move column up"
+msgstr ""
+
 #: src/components/add-system.tsx
 #: src/components/alerts-history-columns.tsx
 #: src/components/containers-table/containers-table-columns.tsx
+#: src/components/system-agent-form.tsx
 #: src/components/systemd-table/systemd-table-columns.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Name"
 msgstr "Název"
+
+#: src/components/ssh-host-list.tsx
+msgid "Name already used"
+msgstr ""
 
 #: src/components/containers-table/containers-table-columns.tsx
 #: src/components/systems-table/systems-table-columns.tsx
@@ -1126,8 +1266,6 @@ msgstr "Síťový provoz kontejnerů docker"
 
 #: src/components/routes/system/charts/network-charts.tsx
 #: src/components/routes/system/network-sheet.tsx
-#: src/components/routes/system/network-sheet.tsx
-#: src/components/routes/system/network-sheet.tsx
 msgid "Network traffic of public interfaces"
 msgstr "Síťový provoz veřejných rozhraní"
 
@@ -1137,10 +1275,12 @@ msgid "Network unit"
 msgstr "Síťová jednotka"
 
 #: src/components/systemd-table/systemd-table.tsx
-#: src/components/systemd-table/systemd-table.tsx
-#: src/components/systemd-table/systemd-table.tsx
 msgid "No"
 msgstr "Ne"
+
+#: src/components/ssh-host-list.tsx
+msgid "No concrete hosts found."
+msgstr ""
 
 #: src/components/add-system.tsx
 #: src/components/command-palette.tsx
@@ -1148,8 +1288,6 @@ msgstr "Ne"
 msgid "No results found."
 msgstr "Nenalezeny žádné výskyty."
 
-#: src/components/containers-table/containers-table.tsx
-#: src/components/containers-table/containers-table.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
 #: src/components/routes/system/smart-table.tsx
@@ -1162,9 +1300,12 @@ msgid "No S.M.A.R.T. attributes available for this device."
 msgstr "Pro toto zařízení nejsou k dispozici žádné atributy S.M.A.R.T."
 
 #: src/components/systems-table/systems-table.tsx
-#: src/components/systems-table/systems-table.tsx
 msgid "No systems found."
 msgstr "Nenalezeny žádné systémy."
+
+#: src/components/ssh-host-list.tsx
+#~ msgid "Not in config"
+#~ msgstr ""
 
 #: src/components/command-palette.tsx
 #: src/components/routes/settings/layout.tsx
@@ -1181,7 +1322,6 @@ msgid "On each restart, systems in the database will be updated to match the sys
 msgstr "Při každém restartu budou systémy v databázi aktualizovány tak, aby odpovídaly systémům definovaným v souboru."
 
 #: src/components/routes/settings/quiet-hours.tsx
-#: src/components/routes/settings/quiet-hours.tsx
 msgid "One-time"
 msgstr "Jednorázové"
 
@@ -1189,8 +1329,11 @@ msgstr "Jednorázové"
 msgid "One-time password"
 msgstr "Jednorázové heslo"
 
+#: src/components/ssh-host-manager.tsx
+#~ msgid "Only administrators can change this path."
+#~ msgstr ""
+
 #: src/components/routes/settings/quiet-hours.tsx
-#: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/routes/system/smart-table.tsx
 #: src/components/systems-table/systems-table-columns.tsx
@@ -1210,8 +1353,6 @@ msgid "Overwrite existing alerts"
 msgstr "Přepsat existující upozornění"
 
 #: src/components/command-palette.tsx
-#: src/components/command-palette.tsx
-#: src/components/command-palette.tsx
 msgid "Page"
 msgstr "Stránka"
 
@@ -1225,7 +1366,6 @@ msgstr "Stránka {0} z {1}"
 msgid "Pages / Settings"
 msgstr "Stránky / Nastavení"
 
-#: src/components/login/auth-form.tsx
 #: src/components/login/auth-form.tsx
 msgid "Password"
 msgstr "Heslo"
@@ -1262,7 +1402,6 @@ msgstr "Pozastaveno ({pausedSystemsLength})"
 msgid "Payload format"
 msgstr "Formát payloadu"
 
-#: src/components/routes/system/cpu-sheet.tsx
 #: src/components/routes/system/cpu-sheet.tsx
 msgid "Per-core average utilization"
 msgstr "Průměrné využití na jádro"
@@ -1317,6 +1456,7 @@ msgid "Please sign in to your account"
 msgstr "Přihlaste se prosím k vašemu účtu"
 
 #: src/components/add-system.tsx
+#: src/components/system-agent-form.tsx
 msgid "Port"
 msgstr ""
 
@@ -1348,7 +1488,9 @@ msgid "Public key"
 msgstr ""
 
 #. Use 'Key' if your language requires many more characters
+#. Use 'Key' if your language requires many more characters
 #: src/components/add-system.tsx
+#: src/components/system-agent-form.tsx
 msgid "Public Key"
 msgstr "Veřejný klíč"
 
@@ -1364,18 +1506,18 @@ msgstr "Tiché hodiny"
 #. Disk read
 #: src/components/routes/system/charts/disk-charts.tsx
 #: src/components/routes/system/disk-io-sheet.tsx
-#: src/components/routes/system/disk-io-sheet.tsx
-#: src/components/routes/system/disk-io-sheet.tsx
 msgid "Read"
 msgstr "Číst"
+
+#: src/components/ssh-host-manager.tsx
+msgid "Read-only users cannot change this path."
+msgstr ""
 
 #: src/components/routes/system/charts/network-charts.tsx
 msgid "Received"
 msgstr "Přijato"
 
 #: src/components/add-system.tsx
-#: src/components/add-system.tsx
-#: src/components/containers-table/containers-table.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/routes/system/smart-table.tsx
 msgid "Refresh"
@@ -1384,6 +1526,22 @@ msgstr "Aktualizovat"
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Relationships"
 msgstr "Vztahy"
+
+#: src/components/ssh-host-manager.tsx
+msgid "Reload SSH config"
+msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+msgid "Reload the SSH config after changing its path."
+msgstr ""
+
+#: src/components/ssh-host-list.tsx
+msgid "Remote hosts"
+msgstr ""
+
+#: src/components/systems-table/visible-columns-menu.tsx
+msgid "Reorder column"
+msgstr ""
 
 #: src/components/login/login.tsx
 msgid "Request a one-time password"
@@ -1405,7 +1563,6 @@ msgstr "Vyžaduje"
 msgid "Reset Password"
 msgstr "Obnovit heslo"
 
-#: src/components/alerts-history-columns.tsx
 #: src/components/alerts-history-columns.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
 msgid "Resolved"
@@ -1457,6 +1614,10 @@ msgstr "Adresu uložte pomocí klávesy enter nebo čárky. Pro deaktivaci e-mai
 msgid "Save Settings"
 msgstr "Uložit nastavení"
 
+#: src/components/system-agent-form.tsx
+msgid "Save System"
+msgstr ""
+
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Saved in the database and does not expire until you disable it."
 msgstr "Uložen v databázi a nevyprší, dokud jej nezablokujete."
@@ -1493,9 +1654,17 @@ msgstr "Podívejte se na <0>nastavení upozornění</0> pro nastavení toho, jak
 msgid "Select {foo}"
 msgstr "Vybrat {foo}"
 
+#: src/components/ssh-host-list.tsx
+msgid "Select all"
+msgstr ""
+
 #: src/components/add-system.tsx
 msgid "Select an SSH Host from your local SSH config."
 msgstr ""
+
+#: src/components/ssh-host-import.tsx
+#~ msgid "Select remote hosts to add as Beszel systems."
+#~ msgstr ""
 
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Send a single heartbeat ping to verify your endpoint is working."
@@ -1535,10 +1704,7 @@ msgid "Set the following environment variables on your Beszel hub to enable hear
 msgstr "Pro povolení monitorování heartbeat nastavte na hubu Beszel následující proměnné prostředí:"
 
 #: src/components/command-palette.tsx
-#: src/components/command-palette.tsx
 #: src/components/navbar.tsx
-#: src/components/navbar.tsx
-#: src/components/routes/settings/layout.tsx
 #: src/components/routes/settings/layout.tsx
 #: src/components/routes/system/info-bar.tsx
 msgid "Settings"
@@ -1560,11 +1726,18 @@ msgstr "Nastavení SMTP"
 msgid "Sort By"
 msgstr "Seřadit podle"
 
+#: src/components/ssh-host-manager.tsx
+msgid "SSH config path"
+msgstr ""
+
 #: src/components/add-system.tsx
 msgid "SSH Host not found in ~/.ssh/config."
 msgstr ""
 
-#: src/components/routes/settings/quiet-hours.tsx
+#: src/components/ssh-host-list.tsx
+msgid "SSH system"
+msgstr ""
+
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Start Time"
 msgstr "Čas začátku"
@@ -1597,7 +1770,6 @@ msgid "Swap Usage"
 msgstr "Swap využití"
 
 #: src/components/mode-toggle.tsx
-#: src/components/mode-toggle.tsx
 msgid "Switch theme"
 msgstr ""
 
@@ -1605,9 +1777,6 @@ msgstr ""
 #: src/components/alerts-history-columns.tsx
 #: src/components/containers-table/containers-table-columns.tsx
 #: src/components/navbar.tsx
-#: src/components/routes/settings/quiet-hours.tsx
-#: src/components/routes/settings/quiet-hours.tsx
-#: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/routes/system/smart-table.tsx
@@ -1654,6 +1823,7 @@ msgid "Temp"
 msgstr "Teplota"
 
 #: src/components/routes/system/charts/sensor-charts.tsx
+#: src/components/systems-table/systems-table-columns.tsx
 #: src/lib/alerts.ts
 msgid "Temperature"
 msgstr "Teplota"
@@ -1690,6 +1860,10 @@ msgstr "Poté se přihlaste do backendu a obnovte heslo k uživatelskému účtu
 msgid "This action cannot be undone. This will permanently delete all current records for {name} from the database."
 msgstr "Tuto akci nelze vzít zpět. Tím se z databáze trvale odstraní všechny aktuální záznamy pro {name}."
 
+#: src/components/ssh-host-manager.tsx
+#~ msgid "This permanently deletes their monitoring records and configuration."
+#~ msgstr ""
+
 #: src/components/routes/settings/alerts-history-data-table.tsx
 msgid "This will permanently delete all selected records from the database."
 msgstr "Tímto trvale odstraníte všechny vybrané záznamy z databáze."
@@ -1712,6 +1886,7 @@ msgstr "Na email(y)"
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-agent-form.tsx
 msgid "Token"
 msgstr ""
 
@@ -1729,7 +1904,6 @@ msgstr "Tokeny umožňují agentům připojení a registraci. Otisky jsou stabil
 msgid "Tokens and fingerprints are used to authenticate WebSocket connections to the hub."
 msgstr "Tokeny a otisky slouží k ověření připojení WebSocket k uzlu."
 
-#: src/components/ui/chart.tsx
 #: src/components/ui/chart.tsx
 msgid "Total"
 msgstr "Celkem"
@@ -1785,6 +1959,14 @@ msgid "Triggers when combined up/down exceeds a threshold"
 msgstr "Spustí se, když kombinace up/down překročí prahovou hodnotu"
 
 #: src/lib/alerts.ts
+msgid "Triggers when CPU I/O wait exceeds a threshold"
+msgstr ""
+
+#: src/lib/alerts.ts
+msgid "Triggers when CPU steal time exceeds a threshold"
+msgstr ""
+
+#: src/lib/alerts.ts
 msgid "Triggers when CPU usage exceeds a threshold"
 msgstr "Spustí se, když využití procesoru překročí prahovou hodnotu"
 
@@ -1809,10 +1991,29 @@ msgid "Triggers when usage of any disk exceeds a threshold"
 msgstr "Spustí se, když využití disku překročí prahovou hodnotu"
 
 #: src/components/routes/settings/quiet-hours.tsx
-#: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/system/smart-table.tsx
 msgid "Type"
 msgstr "Typ"
+
+#: src/components/ssh-host-manager.tsx
+#~ msgid "Unable to delete the selected systems."
+#~ msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+msgid "Unable to import the selected SSH hosts."
+msgstr ""
+
+#: src/components/routes/settings/config-yaml.tsx
+msgid "Unable to load configuration"
+msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+msgid "Unable to read the SSH config."
+msgstr ""
+
+#: src/components/ssh-host-manager.tsx
+msgid "Unable to update the selected SSH config paths."
+msgstr ""
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Unit file"
@@ -1834,7 +2035,6 @@ msgid "Unknown"
 msgstr "Neznámá"
 
 #: src/components/systemd-table/systemd-table.tsx
-#: src/components/systemd-table/systemd-table.tsx
 msgid "Unlimited"
 msgstr "Neomezeno"
 
@@ -1852,6 +2052,10 @@ msgstr "Funkční ({upSystemsLength})"
 msgid "Update"
 msgstr "Aktualizovat"
 
+#: src/components/ssh-host-manager.tsx
+msgid "Update path"
+msgstr ""
+
 #: src/components/containers-table/containers-table-columns.tsx
 #: src/components/routes/system/smart-table.tsx
 #: src/components/systemd-table/systemd-table-columns.tsx
@@ -1861,6 +2065,10 @@ msgstr "Aktualizováno"
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Updated every 10 minutes."
 msgstr "Aktualizováno každých 10 minut."
+
+#: src/components/ssh-host-manager.tsx
+msgid "Updating..."
+msgstr ""
 
 #: src/components/routes/system/network-sheet.tsx
 msgid "Upload"
@@ -1873,8 +2081,6 @@ msgstr "Doba provozu"
 
 #: src/components/routes/system/charts/disk-charts.tsx
 #: src/components/routes/system/charts/gpu-charts.tsx
-#: src/components/routes/system/charts/gpu-charts.tsx
-#: src/components/routes/system/charts/gpu-charts.tsx
 #: src/components/routes/system/cpu-sheet.tsx
 msgid "Usage"
 msgstr "Využití"
@@ -1883,7 +2089,6 @@ msgstr "Využití"
 msgid "Usage of root partition"
 msgstr "Využití kořenového oddílu"
 
-#: src/components/routes/system/charts/memory-charts.tsx
 #: src/components/routes/system/charts/memory-charts.tsx
 msgid "Used"
 msgstr "Využito"
@@ -1897,6 +2102,10 @@ msgstr "Uživatelé"
 msgctxt "Disk I/O utilization"
 msgid "Utilization"
 msgstr "Využití"
+
+#: src/components/routes/system/charts/gpu-summary-charts.tsx
+msgid "Utilization of all GPUs"
+msgstr ""
 
 #: src/components/alerts-history-columns.tsx
 msgid "Value"
@@ -1964,14 +2173,13 @@ msgstr "Při použití metody POST obsahuje každý heartbeat JSON payload se so
 
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
+#: src/components/system-install-actions.tsx
 msgctxt "Button to copy install command"
 msgid "Windows command"
 msgstr "Windows příkaz"
 
 #. Disk write
 #: src/components/routes/system/charts/disk-charts.tsx
-#: src/components/routes/system/disk-io-sheet.tsx
-#: src/components/routes/system/disk-io-sheet.tsx
 #: src/components/routes/system/disk-io-sheet.tsx
 msgid "Write"
 msgstr "Psát"
@@ -1984,8 +2192,6 @@ msgstr "YAML konfigurace"
 msgid "YAML Configuration"
 msgstr "YAML konfigurace"
 
-#: src/components/systemd-table/systemd-table.tsx
-#: src/components/systemd-table/systemd-table.tsx
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Yes"
 msgstr "Ano"

@@ -14,7 +14,7 @@ import (
 
 	"github.com/henrygd/beszel/internal/common"
 
-	"github.com/henrygd/beszel"
+	"github.com/henrygd/beszel/internal/beszel"
 
 	"github.com/blang/semver"
 	"github.com/pocketbase/pocketbase/core"
@@ -51,6 +51,11 @@ type SystemManager struct {
 	cancel        context.CancelFunc
 	samplerStop   chan struct{} // Stops the GpuMemoryFree sampler goroutine
 	samplerOnce   sync.Once
+	lifecycleMu   sync.Mutex
+	updaterCount  int
+	updatersDone  <-chan struct{}
+	updatersClose chan struct{}
+	stopped       bool
 }
 
 // hubLike defines the interface requirements for the hub dependency.
@@ -67,11 +72,14 @@ type hubLike interface {
 // NewSystemManager creates a new SystemManager instance with the provided hub.
 // The hub must implement the hubLike interface to provide database and alert functionality.
 func NewSystemManager(hub hubLike) *SystemManager {
+	updatersDone := make(chan struct{})
+	close(updatersDone)
 	sm := &SystemManager{
 		systems:       store.New(map[string]*System{}),
 		hub:           hub,
 		smartFetchMap: expirymap.New[smartFetchState](time.Hour),
 		samplerStop:   make(chan struct{}),
+		updatersDone:  updatersDone,
 	}
 	sm.ctx, sm.cancel = context.WithCancel(context.Background())
 	go sm.sampleGpuFree()
@@ -89,7 +97,7 @@ func (sm *SystemManager) sampleGpuFree() {
 			return
 		case <-ticker.C:
 			for _, sys := range sm.systems.Values() {
-				if sys.Status != up {
+				if sys.statusValue() != up {
 					continue
 				}
 				sm.hub.SampleGpuFreeAlerts(sys.Id, sys.dataSnapshot())
@@ -164,7 +172,12 @@ func (sm *SystemManager) bindEventHooks() {
 
 // onTerminate cancels SystemManager context on app shutdown
 func (sm *SystemManager) onTerminate(e *core.TerminateEvent) error {
+	sm.lifecycleMu.Lock()
+	sm.stopped = true
 	sm.cancel()
+	done := sm.updatersDone
+	sm.lifecycleMu.Unlock()
+	<-done
 	sm.StopSampler()
 	return e.Next()
 }
@@ -225,8 +238,8 @@ func (sm *SystemManager) onRecordAfterUpdateSuccess(e *core.RecordEvent) error {
 	prevStatus := pending
 	system, ok := sm.systems.GetOk(e.Record.Id)
 	if ok {
-		prevStatus = system.Status
-		system.Status = newStatus
+		prevStatus = system.statusValue()
+		system.setStatus(newStatus)
 	}
 
 	switch newStatus {
@@ -284,6 +297,11 @@ func (sm *SystemManager) onRecordAfterDeleteSuccess(e *core.RecordEvent) error {
 // It validates required fields, initializes the system context, and starts the update goroutine.
 // Returns error if a system with the same ID already exists.
 func (sm *SystemManager) AddSystem(sys *System) error {
+	sm.lifecycleMu.Lock()
+	defer sm.lifecycleMu.Unlock()
+	if sm.stopped || sm.ctx.Err() != nil {
+		return errors.New("system manager stopped")
+	}
 	if sm.systems.Has(sys.Id) {
 		return errSystemExists
 	}
@@ -298,8 +316,29 @@ func (sm *SystemManager) AddSystem(sys *System) error {
 	sm.systems.Set(sys.Id, sys)
 
 	// Start monitoring in background
-	go sys.StartUpdater()
+	if sm.updaterCount == 0 {
+		sm.updatersClose = make(chan struct{})
+		sm.updatersDone = sm.updatersClose
+	}
+	sm.updaterCount++
+	done := make(chan struct{})
+	sys.setUpdaterDone(done)
+	go func() {
+		defer sm.finishUpdater()
+		defer close(done)
+		sys.StartUpdater()
+	}()
 	return nil
+}
+
+func (sm *SystemManager) finishUpdater() {
+	sm.lifecycleMu.Lock()
+	sm.updaterCount--
+	if sm.updaterCount == 0 {
+		close(sm.updatersClose)
+		sm.updatersClose = nil
+	}
+	sm.lifecycleMu.Unlock()
 }
 
 // RemoveSystem removes a system from the manager and cleans up all associated resources.
@@ -342,6 +381,7 @@ func (sm *SystemManager) AddRecord(record *core.Record, system *System) (err err
 	system.Status = record.GetString("status")
 	system.Host = record.GetString("host")
 	system.Port = record.GetString("port")
+	system.SSHConfigPath = record.GetString("ssh_config")
 
 	return sm.AddSystem(system)
 }

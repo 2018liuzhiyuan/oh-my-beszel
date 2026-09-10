@@ -1,80 +1,93 @@
-# Beszel
+<p align="center">
+  <img src="docs/assets/oh-my-beszel-logo.png" alt="oh-my-beszel" width="360" />
+</p>
 
-Beszel is a lightweight server monitoring platform that includes Docker statistics, historical data, and alert functions.
+<h1 align="center">oh-my-beszel</h1>
+<p align="center">Know your GPU cluster. Manage it over SSH.</p>
+<p align="center"><strong>English</strong> · <a href="README-CN.md">简体中文</a></p>
+<p align="center"><a href="#features">Features</a> · <a href="#screenshots">Screenshots</a> · <a href="#quick-start">Quick start</a> · <a href="docs/guide.md">Documentation</a></p>
 
-It has a friendly web interface, simple configuration, and is ready to use out of the box. It supports automatic backup, multi-user, OAuth authentication, and API access.
-
-[![agent Docker Image Size](https://img.shields.io/docker/image-size/henrygd/beszel-agent/latest?logo=docker&label=agent%20image%20size)](https://hub.docker.com/r/henrygd/beszel-agent)
-[![hub Docker Image Size](https://img.shields.io/docker/image-size/henrygd/beszel/latest?logo=docker&label=hub%20image%20size)](https://hub.docker.com/r/henrygd/beszel)
-[![MIT license](https://img.shields.io/github/license/henrygd/beszel?color=%239944ee)](https://github.com/henrygd/beszel/blob/main/LICENSE)
-[![Crowdin](https://badges.crowdin.net/beszel/localized.svg)](https://crowdin.com/project/beszel)
-
-![Screenshot of Beszel dashboard and system page, side by side. The dashboard shows metrics from multiple connected systems, while the system page shows detailed metrics for a single system.](https://henrygd-assets.b-cdn.net/beszel/screenshot-new.png)
+Lightweight, self-hosted monitoring for GPU labs and private clusters. **oh-my-beszel** brings multi-GPU visibility, SSH host import, and Agent deployment into one dashboard. An independently maintained, unofficial fork of [Beszel](https://github.com/henrygd/beszel).
 
 ## Features
 
-- **Lightweight**: Smaller and less resource-intensive than leading solutions.
-- **Simple**: Easy setup with little manual configuration required.
-- **Docker stats**: Tracks CPU, memory, and network usage history for each container.
-- **Alerts**: Configurable alerts for CPU, memory, disk, bandwidth, temperature, load average, and status.
-- **Multi-user**: Users manage their own systems. Admins can share systems across users.
-- **OAuth / OIDC**: Supports many OAuth2 providers. Password auth can be disabled.
-- **Automatic backups**: Save to and restore from disk or S3-compatible storage.
-<!-- - **REST API**: Use or update your data in your own scripts and applications. -->
+- 🔍 **Maximum free VRAM detection.** Monitor the most free VRAM available on any single GPU per server; get notified when it stays above your threshold.
+- 🚀 **Batch SSH config import.** Import hosts from OpenSSH config with jump hosts and existing keys, then deploy Linux Agents from the dashboard.
+- 📊 **Multi-GPU monitoring.** Track utilization, VRAM, and temperature, with aggregate and per-GPU history plus CPU I/O wait and steal time alerts.
+- 🎨 **Make the overview yours.** Reorder and hide columns, switch themes, and check your cluster on mobile.
 
-## Architecture
-
-Beszel consists of two main components: the **hub** and the **agent**.
-
-- **Hub**: A web application built on [PocketBase](https://pocketbase.io/) that provides a dashboard for viewing and managing connected systems.
-- **Agent**: Runs on each system you want to monitor and communicates system metrics to the hub.
-
-## Getting started
-
-The [quick start guide](https://beszel.dev/guide/getting-started) and other documentation is available on our website, [beszel.dev](https://beszel.dev). You'll be up and running in a few minutes.
-
-## Deployment (this fork)
-
-This fork ships one-click, self-hosted deployment kits for a local GPU-cluster dashboard (中文说明见各目录下的 readme）：
-
-- **Windows 10/11**: `deploy/windows` — `build.ps1` produces a portable folder with `beszel.exe`, `Monitor.exe` (launcher) and config templates; autostart via a scheduled task. See `deploy/windows/app/readme.md`.
-- **Linux / WSL**: `Linux` branch, `deploy/linux` — `./run.sh start` builds (Go only, web UI prebuilt) and starts the hub; optional systemd service via `install.sh`; agent installer for monitored GPU nodes. See `deploy/linux/readme.md`.
-- Windows 7/8 are not supported: the Go toolchain requires Windows 10+ and this dependency stack cannot build on older toolchains.
-
-Note for building on Windows from source: `go build ./...` over the whole module first needs `go generate -run fetchsmartctl ./agent` (fetches `smartctl.exe` for the agent's embed). Building just the hub (`go build ./internal/cmd/hub`) is unaffected.
+Includes Beszel's system history, Docker / Podman monitoring, multi-user access, OAuth / OIDC, and backups.
 
 ## Screenshots
 
-![Dashboard](https://beszel.dev/image/dashboard.png)
-![System page](https://beszel.dev/image/system-full.png)
-![Notification Settings](https://beszel.dev/image/settings-notifications.png)
+Isolated demo instance with synthetic hosts and metrics. The shared home screenshots show Chinese; the detail pages below use English.
 
-## Supported metrics
+**Cluster overview**
 
-- **CPU usage** - Host system and Docker / Podman containers.
-- **Memory usage** - Host system and containers. Includes swap and ZFS ARC.
-- **Disk usage** - Host system. Supports multiple partitions and devices.
-- **Disk I/O** - Host system. Supports multiple partitions and devices.
-- **Network usage** - Host system and containers.
-- **Load average** - Host system.
-- **Temperature** - Host system sensors.
-- **GPU usage / power draw** - Nvidia, AMD, and Intel.
-- **Battery** - Host system battery charge.
-- **Containers** - Status and metrics of all running Docker / Podman containers.
-- **S.M.A.R.T.** - Host system disk health (includes eMMC wear/EOL and Linux mdraid array health via sysfs when available).
+![Cluster overview with GPU utilization, VRAM, and server status](docs/assets/screenshots/overview-light.png)
 
-## Help and discussion
+**Server details**
 
-Please search existing issues and discussions before opening a new one. I try my best to respond, but may not always have time to do so.
+![English server page with CPU, memory, network, and temperature history](docs/assets/screenshots/system-history-en.png)
 
-#### Bug reports and feature requests
+<details>
+<summary>Multi-GPU charts, SSH management, and dark theme</summary>
 
-Bug reports and feature requests can be posted on [GitHub issues](https://github.com/henrygd/beszel/issues).
+**Multi-GPU history**
 
-#### Support and general discussion
+![English per-GPU utilization and VRAM charts](docs/assets/screenshots/gpu-history-en.png)
 
-Support requests and general discussion can be posted on [GitHub discussions](https://github.com/henrygd/beszel/discussions) or the community-run [Matrix room](https://matrix.to/#/#beszel:matrix.org): `#beszel:matrix.org`.
+**SSH host management**
 
-## License
+![English SSH host import and Agent deployment panel](docs/assets/screenshots/ssh-hosts-en.png)
 
-Beszel is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+**Dark overview**
+
+![Cluster overview in dark mode](docs/assets/screenshots/overview-dark.png)
+
+</details>
+
+<details>
+<summary>Mobile overview</summary>
+
+<img src="docs/assets/screenshots/overview-mobile.png" alt="Mobile cluster overview" width="375" />
+
+</details>
+
+## Quick start
+
+Run one **Hub** for the dashboard and an **Agent** on each monitored node. Use builds from this repository to get the fork's features; upstream binaries and images do not include them.
+
+**Windows** · Requires Go 1.26.1+, Bun, and PowerShell 7. From the repository root:
+
+```powershell
+bun install --cwd ./internal/site --frozen-lockfile
+bun run --cwd ./internal/site build
+pwsh -NoLogo -NoProfile -File ./deploy/windows/build.ps1
+```
+
+In `build/windows/config.json`, set `hub.userEmail` and `hub.userPassword`, and clear `hub.autoLogin` for password login. Keep `host` at `127.0.0.1` for local access. These credentials initialize a new database; see the [Windows guide](docs/guide.md#windows) for existing accounts and inherited auto-login settings.
+
+```powershell
+pwsh -NoLogo -NoProfile -File ./build/windows/run-hub.ps1
+```
+
+Open **http://127.0.0.1:8090**, sign in, and keep the terminal open. Use **Add System → SSH** to import nodes once the Hub's SSH access is ready.
+
+**Change the web port:** edit `port` in `config.json` beside the running `Monitor.exe` (for example, `8091`), then restart the Hub and open `http://127.0.0.1:8091`. See [port and restart instructions](docs/guide.md#web-port).
+
+**Linux / WSL** · Follow the [build and startup guide](docs/guide.md#linux).
+
+[SSH deployment](docs/guide.md#ssh) · [Manual Agent setup](docs/guide.md#manual-agent) · [Windows launcher and auto-start](docs/guide.md#windows)
+
+## Documentation and contributing
+
+- [Configuration and operations](docs/guide.md) · [Troubleshooting](docs/guide.md#troubleshooting)
+- [Development and tests](test/README.md)
+- [Upstream integration](docs/upstream-0.19.0.md): based on 0.18.8, with selected 0.19.0 changes.
+
+Bug reports and pull requests are welcome on [GitHub](https://github.com/2018liuzhiyuan/oh-my-beszel/issues). Update both language versions when changing setup or behavior.
+
+## Credits and license
+
+Built on [Beszel](https://github.com/henrygd/beszel) and [PocketBase](https://pocketbase.io). Thanks to their authors and contributors. [MIT License](LICENSE).

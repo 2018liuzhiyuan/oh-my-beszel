@@ -1,4 +1,5 @@
 import { defineConfig } from "@lingui/cli"
+import { formatter } from "@lingui/format-po"
 
 export default defineConfig({
 	locales: [
@@ -35,9 +36,7 @@ export default defineConfig({
 	],
 	sourceLocale: "en",
 	compileNamespace: "ts",
-	formatOptions: {
-		lineNumbers: false,
-	},
+	format: formatter({ lineNumbers: false }),
 	catalogs: [
 		{
 			path: "<rootDir>/src/locales/{locale}/{locale}",

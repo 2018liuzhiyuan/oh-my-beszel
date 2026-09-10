@@ -115,6 +115,37 @@ func TestSetDashboardGpuInfo(t *testing.T) {
 	}
 }
 
+func TestSetDashboardMaxTemperature(t *testing.T) {
+	tests := []struct {
+		name         string
+		temperatures map[string]float64
+		want         int16
+		wantSet      bool
+	}{
+		{name: "rounds the highest monitored temperature", temperatures: map[string]float64{"CPU": 54.25, "GPU": 81.6}, want: 82, wantSet: true},
+		{name: "preserves zero temperature telemetry", temperatures: map[string]float64{"ambient": 0}, want: 0, wantSet: true},
+		{name: "supports temperatures below zero", temperatures: map[string]float64{"outside": -4.4, "freezer": -12}, want: -4, wantSet: true},
+		{name: "clears a stale value when telemetry is empty", temperatures: map[string]float64{}, want: 0, wantSet: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			staleTemp := int16(99)
+			data := &system.CombinedData{
+				Info:  system.Info{MaxTemp: &staleTemp},
+				Stats: system.Stats{Temperatures: tt.temperatures},
+			}
+			setDashboardMaxTemperature(data)
+			if (data.Info.MaxTemp != nil) != tt.wantSet {
+				t.Fatalf("expected value presence %t, got %t", tt.wantSet, data.Info.MaxTemp != nil)
+			}
+			if data.Info.MaxTemp != nil && *data.Info.MaxTemp != tt.want {
+				t.Fatalf("expected max temperature %d, got %d", tt.want, *data.Info.MaxTemp)
+			}
+		})
+	}
+}
+
 func TestCombinedData_MigrateDeprecatedFields(t *testing.T) {
 	t.Run("Migrate NetworkSent and NetworkRecv to Bandwidth", func(t *testing.T) {
 		cd := &system.CombinedData{
@@ -274,7 +305,7 @@ func TestSetDownAfterContextCancelled(t *testing.T) {
 	if err := sys.setDown(nil); err != context.Canceled {
 		t.Fatalf("expected context.Canceled, got %v", err)
 	}
-	if sys.Status != up {
-		t.Fatalf("status should be untouched, got %q", sys.Status)
+	if sys.statusValue() != up {
+		t.Fatalf("status should be untouched, got %q", sys.statusValue())
 	}
 }

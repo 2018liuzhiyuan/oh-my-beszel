@@ -5,7 +5,10 @@ package agent
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -16,6 +19,52 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func requireUnixShellFixtures(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("requires Unix shell executable fixtures")
+	}
+}
+
+// Each collector test owns a process so its polling goroutines cannot outlive
+// its command fixtures or observe another test's PATH.
+func runGPUCollectorTest(t *testing.T, unavailableNVML bool) bool {
+	t.Helper()
+	const childTestEnv = "BESZEL_TEST_GPU_COLLECTOR_CHILD"
+	if os.Getenv(childTestEnv) == t.Name() {
+		return false
+	}
+	t.Setenv(childTestEnv, t.Name())
+	if unavailableNVML && runtime.GOOS == "linux" && runtime.GOARCH == "amd64" {
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "libnvidia-ml.so.1"), []byte("invalid NVML test library"), 0600))
+		// The dynamic loader reads LD_LIBRARY_PATH at process startup.
+		t.Setenv("LD_LIBRARY_PATH", dir)
+	}
+	executable, err := os.Executable()
+	require.NoError(t, err)
+	cmd := exec.CommandContext(t.Context(), executable, "-test.run=^"+regexp.QuoteMeta(t.Name())+"$", "-test.count=1", "-test.timeout=30s")
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, "%s", output)
+	return true
+}
+
+func waitForGPUData(t *testing.T, gm *GPUManager, id string) system.GPUData {
+	t.Helper()
+	var data system.GPUData
+	require.Eventually(t, func() bool {
+		gm.Lock()
+		defer gm.Unlock()
+		gpu, ok := gm.GpuDataMap[id]
+		if !ok || gpu.Count == 0 {
+			return false
+		}
+		data = *gpu
+		return true
+	}, 5*time.Second, 10*time.Millisecond, "GPU %s did not produce a sample", id)
+	return data
+}
 
 func TestParseNvidiaData(t *testing.T) {
 	tests := []struct {
@@ -1083,6 +1132,7 @@ func TestCalculateGPUAverage(t *testing.T) {
 }
 
 func TestGPUCapabilitiesAndLegacyPriority(t *testing.T) {
+	requireUnixShellFixtures(t)
 	// Save original PATH
 	hasAmdSysfs := (&GPUManager{}).hasAmdSysfs()
 
@@ -1233,6 +1283,10 @@ echo "[]"`
 }
 
 func TestCollectorStartHelpers(t *testing.T) {
+	requireUnixShellFixtures(t)
+	if runGPUCollectorTest(t, false) {
+		return
+	}
 	// Set up temp dir with the commands
 	dir := t.TempDir()
 	t.Setenv("PATH", dir)
@@ -1257,13 +1311,9 @@ echo "0, NVIDIA Test GPU, 50, 1024, 4096, 25, 100"`
 				return nil
 			},
 			validate: func(t *testing.T, gm *GPUManager) {
-				gpu, exists := gm.GpuDataMap["0"]
-				assert.True(t, exists)
-				if exists {
-					assert.Equal(t, "Test GPU", gpu.Name)
-					assert.Equal(t, 50.0, gpu.Temperature)
-
-				}
+				gpu := waitForGPUData(t, gm, "0")
+				assert.Equal(t, "Test GPU", gpu.Name)
+				assert.Equal(t, 50.0, gpu.Temperature)
 			},
 		},
 		{
@@ -1279,13 +1329,10 @@ echo '{"card0": {"Temperature (Sensor edge) (C)": "49.0", "Current Socket Graphi
 				return nil
 			},
 			validate: func(t *testing.T, gm *GPUManager) {
-				gpu, exists := gm.GpuDataMap["34756"]
-				assert.True(t, exists)
-				if exists {
-					assert.Equal(t, "Rembrandt [Radeon 680M]", gpu.Name)
-					assert.InDelta(t, 49.0, gpu.Temperature, 0.01)
-					assert.InDelta(t, 28.159, gpu.Power, 0.01)
-				}
+				gpu := waitForGPUData(t, gm, "34756")
+				assert.Equal(t, "Rembrandt [Radeon 680M]", gpu.Name)
+				assert.InDelta(t, 49.0, gpu.Temperature, 0.01)
+				assert.InDelta(t, 28.159, gpu.Power, 0.01)
 			},
 		},
 		{
@@ -1301,11 +1348,8 @@ echo "11-14-2024 22:54:33 RAM 1024/4096MB GR3D_FREQ 80% tj@70C VDD_GPU_SOC 1000m
 				return nil
 			},
 			validate: func(t *testing.T, gm *GPUManager) {
-				gpu, exists := gm.GpuDataMap["0"]
-				assert.True(t, exists)
-				if exists {
-					assert.InDelta(t, 70.0, gpu.Temperature, 0.1)
-				}
+				gpu := waitForGPUData(t, gm, "0")
+				assert.InDelta(t, 70.0, gpu.Temperature, 0.1)
 			},
 			gm: &GPUManager{
 				GpuDataMap: map[string]*system.GPUData{
@@ -1326,12 +1370,9 @@ echo '[{"device_name":"NVIDIA Test GPU","temp":"52C","power_draw":"31W","gpu_uti
 				return nil
 			},
 			validate: func(t *testing.T, gm *GPUManager) {
-				gpu, exists := gm.GpuDataMap["n0"]
-				assert.True(t, exists)
-				if exists {
-					assert.Equal(t, "NVIDIA Test GPU", gpu.Name)
-					assert.Equal(t, 52.0, gpu.Temperature)
-				}
+				gpu := waitForGPUData(t, gm, "n0")
+				assert.Equal(t, "NVIDIA Test GPU", gpu.Name)
+				assert.Equal(t, 52.0, gpu.Temperature)
 			},
 		},
 	}
@@ -1358,13 +1399,16 @@ echo '[{"device_name":"NVIDIA Test GPU","temp":"52C","power_draw":"31W","gpu_uti
 			default:
 				t.Fatalf("unknown test command %q", tt.command)
 			}
-			time.Sleep(50 * time.Millisecond) // Give collector time to run
 			tt.validate(t, tt.gm)
 		})
 	}
 }
 
 func TestNewGPUManagerPriorityNvtopFallback(t *testing.T) {
+	requireUnixShellFixtures(t)
+	if runGPUCollectorTest(t, false) {
+		return
+	}
 	dir := t.TempDir()
 	t.Setenv("PATH", dir)
 	t.Setenv("BESZEL_AGENT_GPU_COLLECTOR", "nvtop,nvidia-smi")
@@ -1383,14 +1427,16 @@ echo "0, NVIDIA Priority GPU, 45, 512, 2048, 12, 25"`
 	require.NoError(t, err)
 	require.NotNil(t, gm)
 
-	time.Sleep(150 * time.Millisecond)
-	gpu, ok := gm.GpuDataMap["0"]
-	require.True(t, ok)
+	gpu := waitForGPUData(t, gm, "0")
 	assert.Equal(t, "Priority GPU", gpu.Name)
 	assert.Equal(t, 45.0, gpu.Temperature)
 }
 
 func TestNewGPUManagerPriorityMixedCollectors(t *testing.T) {
+	requireUnixShellFixtures(t)
+	if runGPUCollectorTest(t, false) {
+		return
+	}
 	dir := t.TempDir()
 	t.Setenv("PATH", dir)
 	t.Setenv("BESZEL_AGENT_GPU_COLLECTOR", "intel_gpu_top,rocm-smi")
@@ -1414,14 +1460,15 @@ echo '{"card0": {"Temperature (Sensor edge) (C)": "49.0", "Current Socket Graphi
 	require.NoError(t, err)
 	require.NotNil(t, gm)
 
-	time.Sleep(150 * time.Millisecond)
-	_, intelOk := gm.GpuDataMap["i0"]
-	_, amdOk := gm.GpuDataMap["34756"]
-	assert.True(t, intelOk)
-	assert.True(t, amdOk)
+	waitForGPUData(t, gm, "i0")
+	waitForGPUData(t, gm, "34756")
 }
 
 func TestNewGPUManagerPriorityNvmlFallbackToNvidiaSmi(t *testing.T) {
+	requireUnixShellFixtures(t)
+	if runGPUCollectorTest(t, true) {
+		return
+	}
 	dir := t.TempDir()
 	t.Setenv("PATH", dir)
 	t.Setenv("BESZEL_AGENT_GPU_COLLECTOR", "nvml,nvidia-smi")
@@ -1435,9 +1482,7 @@ echo "0, NVIDIA Fallback GPU, 41, 256, 1024, 8, 14"`
 	require.NoError(t, err)
 	require.NotNil(t, gm)
 
-	time.Sleep(150 * time.Millisecond)
-	gpu, ok := gm.GpuDataMap["0"]
-	require.True(t, ok)
+	gpu := waitForGPUData(t, gm, "0")
 	assert.Equal(t, "Fallback GPU", gpu.Name)
 }
 
@@ -1470,6 +1515,9 @@ func TestCollectorDefinitionsNvmlDoesNotRequireNvidiaSmi(t *testing.T) {
 }
 
 func TestNewGPUManagerConfiguredNvmlBypassesCapabilityGate(t *testing.T) {
+	if runGPUCollectorTest(t, true) {
+		return
+	}
 	dir := t.TempDir()
 	t.Setenv("PATH", dir)
 	t.Setenv("BESZEL_AGENT_GPU_COLLECTOR", "nvml")
@@ -1482,6 +1530,10 @@ func TestNewGPUManagerConfiguredNvmlBypassesCapabilityGate(t *testing.T) {
 }
 
 func TestNewGPUManagerJetsonIgnoresCollectorConfig(t *testing.T) {
+	requireUnixShellFixtures(t)
+	if runGPUCollectorTest(t, false) {
+		return
+	}
 	dir := t.TempDir()
 	t.Setenv("PATH", dir)
 	t.Setenv("BESZEL_AGENT_GPU_COLLECTOR", "nvidia-smi")
@@ -1495,9 +1547,7 @@ echo "11-14-2024 22:54:33 RAM 1024/4096MB GR3D_FREQ 80% tj@70C VDD_GPU_SOC 1000m
 	require.NoError(t, err)
 	require.NotNil(t, gm)
 
-	time.Sleep(100 * time.Millisecond)
-	gpu, ok := gm.GpuDataMap["0"]
-	require.True(t, ok)
+	gpu := waitForGPUData(t, gm, "0")
 	assert.Equal(t, "GPU", gpu.Name)
 }
 
@@ -1718,6 +1768,7 @@ func TestIntelUpdateFromStats(t *testing.T) {
 }
 
 func TestIntelCollectorStreaming(t *testing.T) {
+	requireUnixShellFixtures(t)
 	dir := t.TempDir()
 	t.Setenv("PATH", dir)
 
@@ -1973,6 +2024,7 @@ func TestParseIntelData(t *testing.T) {
 }
 
 func TestIntelCollectorDeviceEnv(t *testing.T) {
+	requireUnixShellFixtures(t)
 	dir := t.TempDir()
 	t.Setenv("PATH", dir)
 

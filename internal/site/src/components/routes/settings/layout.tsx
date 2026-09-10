@@ -108,14 +108,12 @@ export default function SettingsLayout() {
 
 	const page = useStore($router)
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: no dependencies
 	useEffect(() => {
 		document.title = `${t`Settings`} / Beszel`
-		// @ts-expect-error redirect to account page if no page is specified
-		if (!page?.params?.name) {
+		if (page?.route === "settings" && !page.params.name) {
 			redirectPage($router, "settings", { name: "general" })
 		}
-	}, [])
+	}, [page, t])
 
 	return (
 		<Card className="pt-5 px-4 pb-8 min-h-96 mb-14 sm:pt-6 sm:px-7">

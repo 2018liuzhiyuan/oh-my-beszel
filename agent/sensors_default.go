@@ -1,4 +1,4 @@
-//go:build !windows && !freebsd
+//go:build !freebsd
 
 package agent
 

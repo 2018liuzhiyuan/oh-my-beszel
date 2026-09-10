@@ -36,11 +36,9 @@ func TestStartServer(t *testing.T) {
 	require.NoError(t, err)
 
 	// Generate a different key pair for bad key test
-	badPubKey, badPrivKey, err := ed25519.GenerateKey(nil)
+	_, badPrivKey, err := ed25519.GenerateKey(nil)
 	require.NoError(t, err)
 	badSigner, err := gossh.NewSignerFromKey(badPrivKey)
-	require.NoError(t, err)
-	sshBadPubKey, err := gossh.NewPublicKey(badPubKey)
 	require.NoError(t, err)
 
 	socketFile := filepath.Join(t.TempDir(), "beszel-test.sock")
@@ -93,15 +91,19 @@ func TestStartServer(t *testing.T) {
 				return f.Close()
 			},
 			cleanup: func() error {
-				return os.Remove(socketFile)
+				err := os.Remove(socketFile)
+				if os.IsNotExist(err) {
+					return nil
+				}
+				return err
 			},
 		},
 		{
 			name: "bad key should fail",
 			config: ServerOptions{
 				Network: "tcp",
-				Addr:    ":45987",
-				Keys:    []gossh.PublicKey{sshBadPubKey},
+				Addr:    ":0",
+				Keys:    []gossh.PublicKey{sshPubKey},
 			},
 			wantErr:     true,
 			errContains: "ssh: handshake failed",
@@ -110,7 +112,7 @@ func TestStartServer(t *testing.T) {
 			name: "good key still good",
 			config: ServerOptions{
 				Network: "tcp",
-				Addr:    ":45987",
+				Addr:    ":0",
 				Keys:    []gossh.PublicKey{sshPubKey},
 			},
 		},
@@ -124,17 +126,40 @@ func TestStartServer(t *testing.T) {
 			}
 
 			if tt.cleanup != nil {
-				defer tt.cleanup()
+				t.Cleanup(func() {
+					require.NoError(t, tt.cleanup())
+				})
 			}
 
 			agent, err := NewAgent("")
 			require.NoError(t, err)
+
+			dialAddr := tt.config.Addr
+			if strings.HasPrefix(tt.config.Network, "tcp") {
+				listenAddr := "127.0.0.1:0"
+				if tt.config.Network == "tcp6" {
+					listenAddr = "[::1]:0"
+				}
+				listener, err := net.Listen(tt.config.Network, listenAddr)
+				require.NoError(t, err)
+				tt.config.listener = listener
+				dialAddr = listener.Addr().String()
+			}
 
 			// Start server in a goroutine since it blocks
 			errChan := make(chan error, 1)
 			go func() {
 				errChan <- agent.StartServer(tt.config)
 			}()
+			t.Cleanup(func() {
+				require.NoError(t, agent.StopServer())
+				select {
+				case err := <-errChan:
+					require.ErrorIs(t, err, ssh.ErrServerClosed)
+				case <-time.After(time.Second):
+					t.Fatal("SSH server did not stop within one second")
+				}
+			})
 
 			// Add a short delay to allow the server to start
 			time.Sleep(100 * time.Millisecond)
@@ -161,10 +186,7 @@ func TestStartServer(t *testing.T) {
 			case "unix":
 				client, err = gossh.Dial("unix", tt.config.Addr, sshClientConfig)
 			default:
-				if !strings.Contains(tt.config.Addr, ":") {
-					tt.config.Addr = ":" + tt.config.Addr
-				}
-				client, err = gossh.Dial("tcp", tt.config.Addr, sshClientConfig)
+				client, err = gossh.Dial("tcp", dialAddr, sshClientConfig)
 			}
 
 			if tt.wantErr {

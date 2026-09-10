@@ -35,3 +35,30 @@ func TestStatsLegacyBatteryPayload(t *testing.T) {
 	assert.Contains(t, payload, "bat")
 	assert.NotContains(t, payload, "bats")
 }
+
+func TestInfoGpuZeroPreservesTelemetryPresence(t *testing.T) {
+	gpuPct := 0.0
+	data, err := json.Marshal(Info{GpuPct: &gpuPct})
+	require.NoError(t, err)
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(data, &payload))
+	assert.Contains(t, payload, "g")
+	assert.Equal(t, 0.0, payload["g"])
+
+	data, err = json.Marshal(Info{})
+	require.NoError(t, err)
+	var emptyPayload map[string]any
+	require.NoError(t, json.Unmarshal(data, &emptyPayload))
+	assert.NotContains(t, emptyPayload, "g")
+}
+
+func TestInfoMaxTemperatureZeroPreservesTelemetryPresence(t *testing.T) {
+	maxTemp := int16(0)
+	data, err := json.Marshal(Info{MaxTemp: &maxTemp})
+	require.NoError(t, err)
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(data, &payload))
+	assert.Equal(t, 0.0, payload["mt"])
+}

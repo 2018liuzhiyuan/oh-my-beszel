@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/fxamacker/cbor/v2"
-	"github.com/henrygd/beszel"
+	"github.com/henrygd/beszel/internal/beszel"
 	"github.com/henrygd/beszel/internal/common"
 	"github.com/henrygd/beszel/internal/hub/ws"
 )

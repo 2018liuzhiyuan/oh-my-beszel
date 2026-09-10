@@ -55,8 +55,8 @@ export function OtpRequestForm() {
 				// console.log(email)
 				const { otpId } = await pb.collection("users").requestOTP(email)
 				setOtpId(otpId)
-			} catch (e: any) {
-				showLoginFaliedToast(e?.message)
+			} catch (error: unknown) {
+				showLoginFaliedToast(error instanceof Error ? error.message : undefined)
 			} finally {
 				setIsLoading(false)
 				setEmail("")

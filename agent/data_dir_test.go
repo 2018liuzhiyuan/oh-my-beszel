@@ -48,7 +48,9 @@ func TestGetDataDir(t *testing.T) {
 
 	// Test with invalid explicit dataDir
 	t.Run("invalid explicit data dir", func(t *testing.T) {
-		invalidPath := "/invalid/path/that/cannot/be/created"
+		blockingFile := filepath.Join(t.TempDir(), "blocking-file")
+		require.NoError(t, os.WriteFile(blockingFile, []byte("test"), 0o644))
+		invalidPath := filepath.Join(blockingFile, "child")
 		_, err := GetDataDir(invalidPath)
 		assert.Error(t, err)
 	})
@@ -78,7 +80,7 @@ func TestTestDataDirs(t *testing.T) {
 	// Test with multiple directories, first one valid
 	t.Run("multiple dirs - first valid", func(t *testing.T) {
 		tempDir := t.TempDir()
-		invalidDir := "/invalid/path"
+		invalidDir := filepath.Join(tempDir, "missing")
 		result, err := testDataDirs([]string{tempDir, invalidDir})
 		require.NoError(t, err)
 		assert.Equal(t, tempDir, result)
@@ -87,7 +89,9 @@ func TestTestDataDirs(t *testing.T) {
 	// Test with multiple directories, second one valid
 	t.Run("multiple dirs - second valid", func(t *testing.T) {
 		tempDir := t.TempDir()
-		invalidDir := "/invalid/path"
+		blockingFile := filepath.Join(tempDir, "blocking-file")
+		require.NoError(t, os.WriteFile(blockingFile, []byte("test"), 0o644))
+		invalidDir := filepath.Join(blockingFile, "child")
 		result, err := testDataDirs([]string{invalidDir, tempDir})
 		require.NoError(t, err)
 		assert.Equal(t, tempDir, result)
@@ -109,7 +113,13 @@ func TestTestDataDirs(t *testing.T) {
 
 	// Test with no valid directories
 	t.Run("no valid directories", func(t *testing.T) {
-		invalidPaths := []string{"/invalid/path1", "/invalid/path2"}
+		tempDir := t.TempDir()
+		blockingFile := filepath.Join(tempDir, "blocking-file")
+		require.NoError(t, os.WriteFile(blockingFile, []byte("test"), 0o644))
+		invalidPaths := []string{
+			filepath.Join(blockingFile, "child-1"),
+			filepath.Join(blockingFile, "child-2"),
+		}
 		_, err := testDataDirs(invalidPaths)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "data directory not found")

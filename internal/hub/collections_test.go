@@ -135,6 +135,7 @@ func TestCollectionRulesDefault(t *testing.T) {
 	// systems collection
 	systemsCollection, err := hub.FindCollectionByNameOrId("systems")
 	require.NoError(t, err, "Failed to find systems collection")
+	require.NotNil(t, systemsCollection.Fields.GetByName("ssh_config"), "systems should store the referenced SSH config path")
 	assert.Equal(t, isUserInUsers, *systemsCollection.ListRule)
 	assert.Equal(t, isUserInUsers, *systemsCollection.ViewRule)
 	assert.Equal(t, isUserInUsersNotReadonly, *systemsCollection.CreateRule)
