@@ -64,6 +64,8 @@
 
 运行一个 **Hub** 提供面板，在每台被监控节点运行 **Agent**。请使用本仓库构建的程序；上游二进制与镜像不包含本分支增强功能。
 
+**已经有 `build/` 目录？** 该目录不纳入 git，但发布包或此前的构建可能已包含可直接运行的程序。若存在 `build/windows/beszel.exe` 和 `Monitor.exe`，可跳过下面的构建命令，直接从 `config.json` 配置一步开始。若存在 `build/linux/beszel`，先用 `sha256sum --check build/linux/sha256sums.txt` 校验，再从[ Linux 指南](docs/guide.zh-CN.md#linux)的第 2 步开始。二进制只包含其构建时间之前的改动（见 `build/linux/build-info.txt`）；需要最新代码时按下面的命令重新构建。
+
 **Windows** · 需要 Go 1.26.1+、Bun 和 PowerShell 7。在仓库根目录执行：
 
 ```powershell
@@ -89,7 +91,6 @@ pwsh -NoLogo -NoProfile -File ./build/windows/run-hub.ps1
 ## 文档与贡献
 
 - [配置与运维](docs/guide.zh-CN.md) · [故障排查](docs/guide.zh-CN.md#troubleshooting)
-- [开发与测试](test/README.md)
 - [上游合并说明](docs/upstream-0.19.0.md)：基于 0.18.8，选择性引入 0.19.0 的改动。
 
 欢迎通过 [GitHub](https://github.com/2018liuzhiyuan/oh-my-beszel/issues) 提交问题与 PR。修改配置或行为说明时，请同步更新中英文版本。

@@ -58,6 +58,8 @@ Isolated demo instance with synthetic hosts and metrics. The shared home screens
 
 Run one **Hub** for the dashboard and an **Agent** on each monitored node. Use builds from this repository to get the fork's features; upstream binaries and images do not include them.
 
+**Already have a `build/` directory?** It is not tracked in git, but a release package or an earlier build may already contain ready-to-run binaries. If `build/windows/beszel.exe` and `Monitor.exe` exist, skip the build commands below and start from the `config.json` step. If `build/linux/beszel` exists, verify it with `sha256sum --check build/linux/sha256sums.txt` and start from step 2 of the [Linux guide](docs/guide.md#linux). Binaries match the code as of their build date (`build/linux/build-info.txt`); rebuild as shown below to pick up newer changes.
+
 **Windows** · Requires Go 1.26.1+, Bun, and PowerShell 7. From the repository root:
 
 ```powershell
@@ -83,7 +85,6 @@ Open **http://127.0.0.1:8090**, sign in, and keep the terminal open. Use **Add S
 ## Documentation and contributing
 
 - [Configuration and operations](docs/guide.md) · [Troubleshooting](docs/guide.md#troubleshooting)
-- [Development and tests](test/README.md)
 - [Upstream integration](docs/upstream-0.19.0.md): based on 0.18.8, with selected 0.19.0 changes.
 
 Bug reports and pull requests are welcome on [GitHub](https://github.com/2018liuzhiyuan/oh-my-beszel/issues). Update both language versions when changing setup or behavior.

@@ -140,19 +140,19 @@ For Linux / WSL, change the port in both `serve --http 127.0.0.1:8091` and `APP_
 
 ### Linux / WSL: build and start the Hub
 
-**1. Build in native Ubuntu:** this script installs dependencies, builds the frontend, runs checks, and creates binaries. You do not need to repeat the Windows frontend commands.
+**1. Build the Hub and Agent binaries** (requires Go 1.26.1+ and Bun). Or download the prebuilt Linux archive from the [releases page](https://github.com/2018liuzhiyuan/oh-my-beszel/releases) and skip to step 2.
 
 ```bash
-bash test/build-wsl.sh
+bun install --cwd ./internal/site --frozen-lockfile
+bun run --cwd ./internal/site build
+export GOEXPERIMENT=nojsonv2  # required with Go 1.27+ (PocketBase json/v2 recursion on first-run DB init)
+mkdir -p build/linux
+CGO_ENABLED=0 go build -trimpath -ldflags '-s -w' -o build/linux/beszel ./internal/cmd/hub
+CGO_ENABLED=0 go build -trimpath -ldflags '-s -w' -o build/linux/beszel-agent ./internal/cmd/agent
+CGO_ENABLED=0 go build -trimpath -tags glibc -ldflags '-s -w' -o build/linux/beszel-agent-glibc ./internal/cmd/agent
 ```
 
-For Ubuntu WSL, invoke it from Windows with:
-
-```powershell
-pwsh -NoLogo -NoProfile -NonInteractive -File ./test/run-wsl.ps1
-```
-
-Outputs are `build/linux/beszel`, `beszel-agent`, `beszel-agent-glibc`, and `sha256sums.txt`. The script is a build/test entry point, not an installer or a service manager. Linux amd64 was tested on real hardware; arm64 deployment support in the code is not equivalent to an arm64 runtime test.
+The default static Agent covers CPU-only nodes; the `-tags glibc` build dynamically links glibc and is required for NVML (NVIDIA GPU) collection. Linux amd64 was tested on real hardware; arm64 deployment support in the code is not equivalent to an arm64 runtime test.
 
 **2. Start the Hub with an explicit persistent data directory** in a Linux terminal:
 
@@ -321,13 +321,9 @@ Keep real passwords, tokens, SSH private keys, databases, and logs outside Git. 
 
 ## Development and verification
 
-```powershell
-pwsh -NoLogo -NoProfile -NonInteractive -File ./test/run.ps1
-```
+From the repository root, Go checks are `go vet -tags=testing ./...` and `go test -tags=testing ./...` (the `testing` build tag enables test-only helpers). Inside `internal/site`, frontend checks are `bun test`, `bun x tsc --build`, and `bun x biome lint src vite.config.ts`.
 
-The strict Windows runner covers Go compilation, vet, shuffled uncached tests, coverage, race, two fuzz targets, six performance budgets, platform builds, frontend unit tests, TypeScript, Biome, and production build. `-Quick` skips race and active fuzzing.
-
-Browser and live-GPU tests have separate entry points and environment requirements. Cross-compilation is not a runtime test. See the [test guide](../test/README.md) (currently in Chinese) for commands, results, and limits. Evidence lives in ignored `test/artifacts/` and `test/reports/`.
+Cross-compilation is not a runtime test. The stricter local harness that orchestrates these checks plus race, fuzz, performance budgets, browser, and live-GPU tests is kept outside the published tree.
 
 
 <a id="layout"></a>
@@ -341,11 +337,10 @@ internal/alerts/
 internal/site/
 internal/cmd/
 deploy/windows/
-test/
 docs/assets/
 ```
 
-These contain node collection, Hub APIs/deployment, alerts, frontend, executable entry points, Windows packaging, tests, and branding assets respectively.
+These contain node collection, Hub APIs/deployment, alerts, frontend, executable entry points, Windows packaging, and branding assets respectively.
 
 <a id="publishing"></a>
 

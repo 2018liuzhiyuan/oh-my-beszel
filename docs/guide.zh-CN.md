@@ -140,19 +140,19 @@ Linux / WSL 则在启动命令或服务配置中同步修改 `serve --http 127.0
 
 ### Linux / WSL：构建并启动 Hub
 
-**1. 在原生 Ubuntu 中构建：** 脚本会安装依赖、构建前端、执行检查并生成程序，不需要重复 Windows 章节的前端命令。
+**1. 构建 Hub 与 Agent 二进制**（需要 Go 1.26.1+ 和 Bun）。也可以从 [Releases 页面](https://github.com/2018liuzhiyuan/oh-my-beszel/releases) 下载预编译的 Linux 压缩包，直接进入第 2 步。
 
 ```bash
-bash test/build-wsl.sh
+bun install --cwd ./internal/site --frozen-lockfile
+bun run --cwd ./internal/site build
+export GOEXPERIMENT=nojsonv2  # Go 1.27+ 必需（PocketBase 首次建库的 json/v2 递归问题）
+mkdir -p build/linux
+CGO_ENABLED=0 go build -trimpath -ldflags '-s -w' -o build/linux/beszel ./internal/cmd/hub
+CGO_ENABLED=0 go build -trimpath -ldflags '-s -w' -o build/linux/beszel-agent ./internal/cmd/agent
+CGO_ENABLED=0 go build -trimpath -tags glibc -ldflags '-s -w' -o build/linux/beszel-agent-glibc ./internal/cmd/agent
 ```
 
-使用 Ubuntu WSL 时，从 Windows 调用：
-
-```powershell
-pwsh -NoLogo -NoProfile -NonInteractive -File ./test/run-wsl.ps1
-```
-
-产物为 `build/linux/beszel`、`beszel-agent`、`beszel-agent-glibc` 和 `sha256sums.txt`。这是构建与测试入口，不是安装器或服务管理器。Linux amd64 已在真实硬件上测试；代码支持 arm64 部署不等于已完成 arm64 实机测试。
+默认静态版 Agent 适用于无 GPU 节点；`-tags glibc` 版本动态链接 glibc，是 NVML（NVIDIA GPU）采集所必需的。Linux amd64 已在真实硬件上测试；代码支持 arm64 部署不等于已完成 arm64 实机测试。
 
 **2. 在 Linux 终端启动 Hub，并明确指定持久数据目录：**
 
@@ -321,13 +321,9 @@ Windows 的 `uninstall-task.ps1` 会注销任务，但不会删除数据，也�
 
 ## 开发与验证
 
-```powershell
-pwsh -NoLogo -NoProfile -NonInteractive -File ./test/run.ps1
-```
+Go 检查在仓库根目录执行：`go vet -tags=testing ./...` 与 `go test -tags=testing ./...`（`testing` 构建标签启用测试专用辅助代码）。前端检查在 `internal/site` 目录执行：`bun test`、`bun x tsc --build`、`bun x biome lint src vite.config.ts`。
 
-Windows 严格测试入口覆盖 Go 编译、vet、随机顺序无缓存测试、覆盖率、race、两项 fuzz、六项性能预算、平台构建、前端单元测试、TypeScript、Biome 和生产构建。`-Quick` 会跳过 race 与主动 fuzz。
-
-浏览器和真实 GPU 测试有独立入口及环境要求，交叉编译不等于实机运行测试。命令、结果与边界见[测试指南](../test/README.md)。证据存放在已忽略的 `test/artifacts/` 和 `test/reports/`。
+交叉编译不等于实机运行测试。编排上述检查以及 race、fuzz、性能预算、浏览器和真实 GPU 测试的更严格本地测试装置不随仓库发布。
 
 
 <a id="layout"></a>
@@ -341,11 +337,10 @@ internal/alerts/
 internal/site/
 internal/cmd/
 deploy/windows/
-test/
 docs/assets/
 ```
 
-以上依次为节点采集、Hub API/部署、告警、前端、程序入口、Windows 打包、测试和品牌资源。
+以上依次为节点采集、Hub API/部署、告警、前端、程序入口、Windows 打包和品牌资源。
 
 <a id="publishing"></a>
 
