@@ -25,7 +25,7 @@ function Invoke-GoBuild {
         [Parameter(Mandatory)] [string]$LdFlags
     )
 
-    $nativeArgs = @('build', '-trimpath', '-ldflags', $LdFlags, '-o', $Output, $Package)
+    $nativeArgs = @('build', '-trimpath', '-buildvcs=false', '-ldflags', $LdFlags, '-o', $Output, $Package)
     & go @nativeArgs
     if ($LASTEXITCODE -ne 0) {
         throw "go build failed for $Package with exit code $LASTEXITCODE"

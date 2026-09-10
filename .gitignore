@@ -39,10 +39,7 @@ ssh-tunnels.config
 docs/release-readiness.md
 
 .omo/
-test/.last-run.json
-test/artifacts/
-test/reports/
-test/e2e/test-results/
+test/
 
 # Local coding assistants and generated code indexes
 .kilo/
