@@ -21,7 +21,7 @@
    pwsh -NoLogo -NoProfile -File ./deploy/windows/build.ps1
    ```
    产物在 `build\windows\`。构建需要 Go 1.26.1+，前端使用 Bun 和 Node.js 22.12+；运行便携包需要 PowerShell 7，不需要这些构建工具。
-2. **改配置**：编辑便携目录的 `config.json`（缺失时从 `config.example.json` 复制），设置自己的 `hub.userEmail` 和 `hub.userPassword`。模板默认开启免登录；需要密码登录时将 `hub.autoLogin` 改为 `""`。
+2. **改配置**：编辑便携目录的 `config.json`，设置自己的 `hub.userEmail` 和 `hub.userPassword`。模板默认开启免登录；需要密码登录时将 `hub.autoLogin` 改为 `""`。
 3. **启动**（二选一）：
    - 持久运行：用 PowerShell 7 执行 `install-task.ps1`，注册并启动 `Beszel Hub` 任务，此后在当前用户登录时自动启动；再双击 `Monitor.exe` 打开面板。Monitor 不会注册缺失的任务。
    - 前台试运行：用 PowerShell 7 执行 `run-hub.ps1`，保持终端开启，手动访问 `http://127.0.0.1:8090`。
