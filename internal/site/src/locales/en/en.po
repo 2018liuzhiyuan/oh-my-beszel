@@ -186,6 +186,10 @@ msgstr "Alert History"
 msgid "Alerts"
 msgstr "Alerts"
 
+#: src/components/routes/settings/logs.tsx
+msgid "All"
+msgstr "All"
+
 #: src/components/command-palette.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/navbar.tsx
@@ -204,6 +208,10 @@ msgstr "All Systems"
 #: src/components/ssh-host-import.tsx
 #~ msgid "Already added"
 #~ msgstr "Already added"
+
+#: src/components/error-boundary.tsx
+msgid "An unexpected error interrupted the page. Reloading usually fixes it."
+msgstr "An unexpected error interrupted the page. Reloading usually fixes it."
 
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Are you sure you want to delete {name}?"
@@ -457,6 +465,10 @@ msgstr "Conflicts"
 #: src/components/active-alerts.tsx
 msgid "Connection is down"
 msgstr "Connection is down"
+
+#: src/components/hub-health.tsx
+msgid "Connection to the hub lost. Reconnecting…"
+msgstr "Connection to the hub lost. Reconnecting…"
 
 #: src/components/routes/system.tsx
 msgid "Containers"
@@ -812,6 +824,7 @@ msgstr "Ephemeral"
 #: src/components/routes/settings/alerts-history-data-table.tsx
 #: src/components/routes/settings/config-yaml.tsx
 #: src/components/routes/settings/heartbeat.tsx
+#: src/components/routes/settings/logs.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
@@ -905,6 +918,10 @@ msgstr "Failed: {0}"
 #: src/components/routes/system/charts/sensor-charts.tsx
 msgid "Fans"
 msgstr "Fans"
+
+#: src/components/routes/settings/logs.tsx
+msgid "Filter messages"
+msgstr "Filter messages"
 
 #: src/components/containers-table/containers-table.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
@@ -1009,6 +1026,10 @@ msgstr "Heartbeat Monitoring"
 msgid "Heartbeat sent successfully"
 msgstr "Heartbeat sent successfully"
 
+#: src/components/routes/settings/logs.tsx
+msgid "Hide details"
+msgstr "Hide details"
+
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/system-install-actions.tsx
@@ -1028,6 +1049,11 @@ msgstr "HTTP Method"
 #: src/components/routes/settings/heartbeat.tsx
 msgid "HTTP method: POST, GET, or HEAD (default: POST)"
 msgstr "HTTP method: POST, GET, or HEAD (default: POST)"
+
+#: src/components/routes/settings/layout.tsx
+#: src/components/routes/settings/logs.tsx
+msgid "Hub Logs"
+msgstr "Hub Logs"
 
 #: src/components/routes/system/disk-io-sheet.tsx
 msgctxt "Disk I/O average operation time (iostat await)"
@@ -1277,6 +1303,10 @@ msgstr "No"
 msgid "No concrete hosts found."
 msgstr "No concrete hosts found."
 
+#: src/components/routes/settings/logs.tsx
+msgid "No log entries at this level."
+msgstr "No log entries at this level."
+
 #: src/components/add-system.tsx
 #: src/components/command-palette.tsx
 #: src/components/systemd-table/systemd-table.tsx
@@ -1512,8 +1542,13 @@ msgstr "Read-only users cannot change this path."
 msgid "Received"
 msgstr "Received"
 
+#: src/components/routes/settings/logs.tsx
+msgid "Recent hub events: connection failures, agent deployments, and other warnings. Older entries are pruned automatically; the full history lives in the hub's log output."
+msgstr "Recent hub events: connection failures, agent deployments, and other warnings. Older entries are pruned automatically; the full history lives in the hub's log output."
+
 #: src/components/add-system.tsx
 #: src/components/containers-table/containers-table.tsx
+#: src/components/routes/settings/logs.tsx
 #: src/components/routes/system/smart-table.tsx
 msgid "Refresh"
 msgstr "Refresh"
@@ -1521,6 +1556,10 @@ msgstr "Refresh"
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Relationships"
 msgstr "Relationships"
+
+#: src/components/error-boundary.tsx
+msgid "Reload page"
+msgstr "Reload page"
 
 #: src/components/ssh-host-manager.tsx
 msgid "Reload SSH config"
@@ -1709,6 +1748,10 @@ msgstr "Settings"
 msgid "Settings saved"
 msgstr "Settings saved"
 
+#: src/components/routes/settings/logs.tsx
+msgid "Show details"
+msgstr "Show details"
+
 #: src/components/login/auth-form.tsx
 msgid "Sign in"
 msgstr "Sign in"
@@ -1716,6 +1759,10 @@ msgstr "Sign in"
 #: src/components/command-palette.tsx
 msgid "SMTP settings"
 msgstr "SMTP settings"
+
+#: src/components/error-boundary.tsx
+msgid "Something went wrong"
+msgstr "Something went wrong"
 
 #: src/components/systems-table/systems-table.tsx
 msgid "Sort By"
@@ -2145,6 +2192,10 @@ msgstr "Want to help improve our translations? Check <0>Crowdin</0> for details.
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Wants"
 msgstr "Wants"
+
+#: src/components/routes/settings/logs.tsx
+msgid "Warn+"
+msgstr "Warn+"
 
 #: src/components/routes/settings/general.tsx
 msgid "Warning (%)"

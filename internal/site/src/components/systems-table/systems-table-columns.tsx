@@ -514,12 +514,21 @@ function DiskCellWithMultiple(info: CellContext<SystemRecord, unknown>) {
 
 export function IndicatorDot({ system, className }: { system: SystemRecord; className?: ClassValue }) {
 	className ||= STATUS_COLORS[system.status as keyof typeof STATUS_COLORS] || ""
-	return (
-		<span
-			className={cn("shrink-0 size-2 rounded-full", className)}
-			// style={{ marginBottom: "-1px" }}
-		/>
-	)
+	// explain why a system is offline directly on the indicator; lift the dot
+	// above the row's full-size overlay link so the tooltip can open
+	if (system.status !== SystemStatus.Up && system.status_info) {
+		return (
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<span className={cn("shrink-0 size-2 rounded-full relative z-10", className)} />
+				</TooltipTrigger>
+				<TooltipContent side="right" className="max-w-sm">
+					<p className="text-xs font-mono break-words whitespace-pre-wrap">{system.status_info}</p>
+				</TooltipContent>
+			</Tooltip>
+		)
+	}
+	return <span className={cn("shrink-0 size-2 rounded-full", className)} />
 }
 
 export const ActionsButton = memo(({ system }: { system: SystemRecord }) => {

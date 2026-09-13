@@ -193,16 +193,20 @@ export default function InfoBar({
 										{translatedStatus}
 									</div>
 								</TooltipTrigger>
-								{system.info.ct && (
+								{(system.info.ct || (system.status === SystemStatus.Down && system.status_info)) && (
 									<TooltipContent>
-										<div className="flex gap-1 items-center">
-											{system.info.ct === ConnectionType.WebSocket ? (
-												<WebSocketIcon className="size-4" />
-											) : (
-												<ChevronRightSquareIcon className="size-4" strokeWidth={2} />
-											)}
-											{connectionTypeLabels[system.info.ct as ConnectionType]}
-										</div>
+										{system.status === SystemStatus.Down && system.status_info ? (
+											<p className="text-xs font-mono break-words whitespace-pre-wrap max-w-sm">{system.status_info}</p>
+										) : (
+											<div className="flex gap-1 items-center">
+												{system.info.ct === ConnectionType.WebSocket ? (
+													<WebSocketIcon className="size-4" />
+												) : (
+													<ChevronRightSquareIcon className="size-4" strokeWidth={2} />
+												)}
+												{connectionTypeLabels[system.info.ct as ConnectionType]}
+											</div>
+										)}
 									</TooltipContent>
 								)}
 							</Tooltip>
@@ -231,6 +235,9 @@ export default function InfoBar({
 								)
 							})}
 						</div>
+						{system.status === SystemStatus.Down && system.status_info && (
+							<p className="text-xs text-muted-foreground font-mono break-all -mt-2 xl:mt-0">{system.status_info}</p>
+						)}
 					</div>
 					<div className="xl:ms-auto flex items-center gap-2 max-sm:-mb-1">
 						<ChartTimeSelect className="w-full xl:w-40" agentVersion={chartData.agentVersion} />

@@ -6,6 +6,8 @@ import { DirectionProvider } from "@radix-ui/react-direction"
 import { lazy, memo, Suspense, useEffect } from "react"
 import ReactDOM from "react-dom/client"
 import { ClientResponseError } from "pocketbase"
+import { ErrorBoundary } from "@/components/error-boundary.tsx"
+import { HubHealth } from "@/components/hub-health.tsx"
 import Navbar from "@/components/navbar.tsx"
 import { $router } from "@/components/router.tsx"
 import { ThemeProvider } from "@/components/theme-provider.tsx"
@@ -113,6 +115,7 @@ const Layout = () => {
 
 	return (
 		<DirectionProvider dir={direction}>
+			<HubHealth />
 			{!authenticated ? (
 				<Suspense>
 					<LoginPage />
@@ -123,7 +126,9 @@ const Layout = () => {
 						<Navbar />
 					</div>
 					<div className="container relative">
-						<App />
+						<ErrorBoundary>
+							<App />
+						</ErrorBoundary>
 						{copyContent && (
 							<Suspense>
 								<CopyToClipboardDialog content={copyContent} />

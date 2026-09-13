@@ -28,6 +28,7 @@ export interface SystemRecord extends RecordModel {
 	name: string
 	host: string
 	ssh_config: string
+	status_info: string
 	status: "up" | "down" | "paused" | "pending"
 	port: string
 	info: SystemInfo
@@ -312,6 +313,7 @@ export interface UserSettings {
 	colorCrit?: number
 	hourFormat?: HourFormat
 	layoutWidth?: number
+	sshConfigPath?: string
 }
 
 type ChartDataContainer = {

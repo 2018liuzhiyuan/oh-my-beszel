@@ -3,7 +3,7 @@ import { useStore } from "@nanostores/react"
 import { RefreshCwIcon, SaveIcon, UploadIcon } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { isReadOnlyUser, pb } from "@/lib/api"
-import { $publicKey, $systems } from "@/lib/stores"
+import { $publicKey, $systems, $userSettings } from "@/lib/stores"
 import { cn } from "@/lib/utils"
 import { Button } from "./ui/button"
 import { DialogFooter } from "./ui/dialog"
@@ -15,6 +15,23 @@ import { SSHHostList } from "./ssh-host-list"
 type SSHHostsResponse = {
 	readonly path: string
 	readonly hosts: readonly SSHHost[]
+}
+
+// persistSSHConfigPath remembers the last loaded config path in the user's
+// settings so the next add-system session (on any device using this account)
+// starts from it instead of the auto-detected default.
+async function persistSSHConfigPath(path: string) {
+	const current = $userSettings.get()
+	if (current.sshConfigPath === path) return
+	try {
+		const record = await pb.collection("user_settings").getFirstListItem("", { fields: "id,settings" })
+		await pb.collection("user_settings").update(record.id, {
+			settings: { ...record.settings, sshConfigPath: path },
+		})
+		$userSettings.set({ ...current, sshConfigPath: path })
+	} catch (error) {
+		console.error("Failed to remember SSH config path", error)
+	}
 }
 
 export function SSHHostManager() {
@@ -48,6 +65,9 @@ export function SSHHostManager() {
 				setPath(response.path)
 				setLoadedPath(response.path)
 				setDiscoveredHosts(response.hosts)
+				if (response.path) {
+					void persistSSHConfigPath(response.path)
+				}
 				const newNames = new Set<string>()
 				for (const host of response.hosts) {
 					if (!existingNames.has(host.name.toLowerCase())) newNames.add(host.name)
@@ -67,7 +87,7 @@ export function SSHHostManager() {
 
 	useEffect(() => {
 		const controller = new AbortController()
-		loadHosts("", controller.signal).catch(console.error)
+		loadHosts($userSettings.get().sshConfigPath ?? "", controller.signal).catch(console.error)
 		return () => controller.abort()
 	}, [loadHosts])
 

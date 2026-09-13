@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { isReadOnlyUser, pb } from "@/lib/api"
 import { SystemStatus } from "@/lib/enums"
-import { $publicKey } from "@/lib/stores"
+import { $publicKey, $userSettings } from "@/lib/stores"
 import { cn, generateToken, tokenMap, useBrowserStorage } from "@/lib/utils"
 import type { SystemRecord } from "@/types"
 import {
@@ -85,6 +85,7 @@ export const SystemDialog = ({
 	const [sshHostValue, setSSHHostValue] = useState("")
 	const [sshHostsLoading, setSSHHostsLoading] = useState(false)
 	const [sshHostsError, setSSHHostsError] = useState(false)
+	const [sshConfigPath, setSSHConfigPath] = useState("")
 	const selectedSSHHost = sshHosts.find((host) => host.name.toLowerCase() === sshHostValue.trim().toLowerCase())
 	const sshHostNotFound = sshHostValue.trim() !== "" && !selectedSSHHost && !sshHostsLoading
 
@@ -92,14 +93,19 @@ export const SystemDialog = ({
 		setSSHHostsLoading(true)
 		setSSHHostsError(false)
 		try {
-			const response = await pb.send<{ hosts: SSHHost[] }>("/api/beszel/ssh-hosts", { signal })
+			// prefer the path remembered from the last SSH host import
+			const rememberedPath = $userSettings.get().sshConfigPath
+			const options = rememberedPath ? { query: { path: rememberedPath }, signal } : { signal }
+			const response = await pb.send<{ path: string; hosts: SSHHost[] }>("/api/beszel/ssh-hosts", options)
 			if (signal?.aborted) return
 			setSSHHosts(response.hosts)
+			setSSHConfigPath(response.path)
 			setSSHHostsError(response.hosts.length === 0)
 		} catch (error) {
 			if (signal?.aborted) return
 			console.error(error)
 			setSSHHosts([])
+			setSSHConfigPath("")
 			setSSHHostsError(true)
 		} finally {
 			if (!signal?.aborted) setSSHHostsLoading(false)
@@ -118,8 +124,11 @@ export const SystemDialog = ({
 		if (!quickMode) {
 			return
 		}
+		// Store the alias, not the resolved address: the hub dials it through
+		// `ssh -W` so ProxyJump / Include / key settings apply, and the alias
+		// must match the config for agent auto-deployment
 		setNameValue(selectedSSHHost?.name ?? "")
-		setHostValue(selectedSSHHost?.hostName ?? "")
+		setHostValue(selectedSSHHost?.name ?? "")
 	}, [quickMode, selectedSSHHost])
 
 	useEffect(() => {
@@ -293,7 +302,7 @@ export const SystemDialog = ({
 											type="button"
 											variant="outline"
 											size="icon"
-								onClick={() => loadSSHHosts()}
+											onClick={() => loadSSHHosts()}
 											disabled={sshHostsLoading}
 											aria-label={t`Refresh`}
 											title={t`Refresh`}
@@ -322,6 +331,7 @@ export const SystemDialog = ({
 									<input type="hidden" name="name" value={nameValue} />
 									<input type="hidden" name="host" value={hostValue} />
 									<input type="hidden" name="port" value="45876" />
+									<input type="hidden" name="ssh_config" value={sshConfigPath} />
 								</div>
 							</>
 						) : (

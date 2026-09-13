@@ -14,7 +14,7 @@ import type { SystemRecord } from "@/types"
 import { SystemStatus } from "./enums"
 
 const COLLECTION = pb.collection<SystemRecord>("systems")
-const FIELDS_DEFAULT = "id,name,host,port,ssh_config,info,status"
+const FIELDS_DEFAULT = "id,name,host,port,ssh_config,info,status,status_info"
 
 /** Maximum system name length for display purposes */
 const MAX_SYSTEM_NAME_LENGTH = 22
@@ -99,7 +99,7 @@ async function fetchSystems(): Promise<SystemRecord[]> {
 
 /** Makes sure the system has valid info object and throws if not */
 function validateSystemInfo(system: SystemRecord) {
-	if (!("cpu" in system.info)) {
+	if (!system.info || !("cpu" in system.info)) {
 		throw new Error(`${system.name} has no CPU info`)
 	}
 }

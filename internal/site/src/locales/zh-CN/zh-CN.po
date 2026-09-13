@@ -191,6 +191,10 @@ msgstr "警报历史"
 msgid "Alerts"
 msgstr "警报"
 
+#: src/components/routes/settings/logs.tsx
+msgid "All"
+msgstr "全部"
+
 #: src/components/command-palette.tsx
 #: src/components/containers-table/containers-table.tsx
 #: src/components/navbar.tsx
@@ -209,6 +213,10 @@ msgstr "所有客户端"
 #: src/components/ssh-host-import.tsx
 #~ msgid "Already added"
 #~ msgstr "已添加"
+
+#: src/components/error-boundary.tsx
+msgid "An unexpected error interrupted the page. Reloading usually fixes it."
+msgstr "页面发生意外错误，重新加载通常可以恢复。"
 
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Are you sure you want to delete {name}?"
@@ -462,6 +470,10 @@ msgstr "冲突"
 #: src/components/active-alerts.tsx
 msgid "Connection is down"
 msgstr "连接已断开"
+
+#: src/components/hub-health.tsx
+msgid "Connection to the hub lost. Reconnecting…"
+msgstr "与 Hub 的连接已中断，正在重连…"
 
 #: src/components/routes/system.tsx
 msgid "Containers"
@@ -817,6 +829,7 @@ msgstr "临时"
 #: src/components/routes/settings/alerts-history-data-table.tsx
 #: src/components/routes/settings/config-yaml.tsx
 #: src/components/routes/settings/heartbeat.tsx
+#: src/components/routes/settings/logs.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/quiet-hours.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
@@ -910,6 +923,10 @@ msgstr "失败: {0}"
 #: src/components/routes/system/charts/sensor-charts.tsx
 msgid "Fans"
 msgstr "风扇"
+
+#: src/components/routes/settings/logs.tsx
+msgid "Filter messages"
+msgstr "过滤消息"
 
 #: src/components/containers-table/containers-table.tsx
 #: src/components/routes/settings/alerts-history-data-table.tsx
@@ -1014,6 +1031,10 @@ msgstr "Heartbeat 监控"
 msgid "Heartbeat sent successfully"
 msgstr "Heartbeat 发送成功"
 
+#: src/components/routes/settings/logs.tsx
+msgid "Hide details"
+msgstr "隐藏详情"
+
 #: src/components/add-system.tsx
 #: src/components/routes/settings/tokens-fingerprints.tsx
 #: src/components/system-install-actions.tsx
@@ -1033,6 +1054,11 @@ msgstr "HTTP 方法"
 #: src/components/routes/settings/heartbeat.tsx
 msgid "HTTP method: POST, GET, or HEAD (default: POST)"
 msgstr "HTTP 方法：POST、GET 或 HEAD (默认：POST)"
+
+#: src/components/routes/settings/layout.tsx
+#: src/components/routes/settings/logs.tsx
+msgid "Hub Logs"
+msgstr "Hub 日志"
 
 #: src/components/routes/system/disk-io-sheet.tsx
 msgctxt "Disk I/O average operation time (iostat await)"
@@ -1282,6 +1308,10 @@ msgstr "否"
 msgid "No concrete hosts found."
 msgstr "未找到可导入的具体主机。"
 
+#: src/components/routes/settings/logs.tsx
+msgid "No log entries at this level."
+msgstr "该级别下暂无日志。"
+
 #: src/components/add-system.tsx
 #: src/components/command-palette.tsx
 #: src/components/systemd-table/systemd-table.tsx
@@ -1517,8 +1547,13 @@ msgstr "只读用户无法修改此路径。"
 msgid "Received"
 msgstr "接收"
 
+#: src/components/routes/settings/logs.tsx
+msgid "Recent hub events: connection failures, agent deployments, and other warnings. Older entries are pruned automatically; the full history lives in the hub's log output."
+msgstr "最近的 Hub 事件：连接失败、Agent 部署及其他警告。较旧的条目会自动清理，完整历史保存在 Hub 的日志输出中。"
+
 #: src/components/add-system.tsx
 #: src/components/containers-table/containers-table.tsx
+#: src/components/routes/settings/logs.tsx
 #: src/components/routes/system/smart-table.tsx
 msgid "Refresh"
 msgstr "刷新"
@@ -1526,6 +1561,10 @@ msgstr "刷新"
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Relationships"
 msgstr "关系"
+
+#: src/components/error-boundary.tsx
+msgid "Reload page"
+msgstr "重新加载页面"
 
 #: src/components/ssh-host-manager.tsx
 msgid "Reload SSH config"
@@ -1714,6 +1753,10 @@ msgstr "设置"
 msgid "Settings saved"
 msgstr "设置已保存"
 
+#: src/components/routes/settings/logs.tsx
+msgid "Show details"
+msgstr "显示详情"
+
 #: src/components/login/auth-form.tsx
 msgid "Sign in"
 msgstr "登录"
@@ -1721,6 +1764,10 @@ msgstr "登录"
 #: src/components/command-palette.tsx
 msgid "SMTP settings"
 msgstr "SMTP 设置"
+
+#: src/components/error-boundary.tsx
+msgid "Something went wrong"
+msgstr "出现了一些问题"
 
 #: src/components/systems-table/systems-table.tsx
 msgid "Sort By"
@@ -2150,6 +2197,10 @@ msgstr "想帮助我们改进翻译吗？查看<0>Crowdin</0>以获取更多详�
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Wants"
 msgstr "希望"
+
+#: src/components/routes/settings/logs.tsx
+msgid "Warn+"
+msgstr "警告及以上"
 
 #: src/components/routes/settings/general.tsx
 msgid "Warning (%)"
