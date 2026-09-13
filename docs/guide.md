@@ -12,7 +12,7 @@
 | Multi-GPU history | Aggregate and per-GPU charts, with stable series identifiers. |
 | Available VRAM alerts | Compare the maximum available VRAM across GPUs; trigger after 20 qualifying samples, spaced at least one twentieth of the configured window apart. The first sample is immediate, so the earliest trigger is at 95% of that window. Changing the threshold or window restarts observation. |
 | CPU state alerts | Configure I/O wait and steal time thresholds per system or across systems. Agents without usable CPU breakdown data retain their existing alert state. |
-| SSH host management | Discover concrete hosts declared in the selected OpenSSH config, detect name conflicts, and import in batches. Discovery does not expand `Include`; connections use system OpenSSH for jump hosts and identity files. |
+| SSH host management | Discover concrete hosts declared in the selected OpenSSH config, following `Include` directives; detect name conflicts, and import in batches. Connections use system OpenSSH for jump hosts and identity files. |
 | Agent deployment | Upload and verify Linux amd64 / arm64 binaries over SSH; use systemd or a detached process. Native NVML collection is Linux amd64 with the `glibc` build tag. |
 | Hardware information | Linux IPs, NICs, BIOS, BMC and IPMI SEL, subject to hardware, installed tools, and permissions. |
 | Customizable overview | Reorder columns with mouse, touch, or keyboard; save visibility and order in the current browser. |
@@ -238,9 +238,9 @@ cp ./build/linux/beszel-agent-glibc ./build/linux/agents/beszel-agent_linux_amd6
 
 Artifact lookup order is `BESZEL_AGENT_DEPLOY_DIR`, `agents/` beside the Hub executable, then `agents/` inside the Hub data directory. Filenames must be exactly `beszel-agent_linux_amd64` or `beszel-agent_linux_arm64`, matching the target. Renaming an amd64 binary does not make it an arm64 binary. The deployment code does not select a separate `_glibc` filename automatically.
 
-**4. In the dashboard, open Add System → SSH.** Check the displayed config path and reload after changing it. Select hosts, keep Agent port `45876` unless you need another, then import. This field is **not** the operating-system SSH port. A read-only account cannot manage these settings.
+**4. In the dashboard, open Add System → SSH.** Check the displayed config path and reload after changing it. Hosts pulled in through `Include` are listed too; relative include paths resolve against the including file, as in OpenSSH. Select hosts, keep Agent port `45876` unless you need another, then import. This field is **not** the operating-system SSH port. A read-only account cannot manage these settings. The quick-add field on the Binary tab uses the same discovery and stores the **alias** with the config path, so jump-host aliases connect through `ssh -W` and deploy automatically.
 
-The Hub uploads the local artifact, verifies SHA-256, and installs it under `/opt/beszel-agent/`. On systemd nodes it enables and starts `beszel-agent.service`; otherwise it starts a detached process, without a reboot-start guarantee. The Agent listens on `127.0.0.1:45876` by default for this path, and the Hub connects through `ssh -W`. Allow SSH TCP forwarding on the node; the Agent port need not be exposed publicly.
+The Hub uploads the local artifact, verifies SHA-256, and installs it under `/opt/beszel-agent/`. On systemd nodes it enables and starts `beszel-agent.service`; otherwise it starts a detached process, without a reboot-start guarantee. The Agent listens on `127.0.0.1:45876` by default for this path, and the Hub connects through `ssh -W`. Allow SSH TCP forwarding on the node; the Agent port need not be exposed publicly. Deployment uses one probe connection plus one compressed upload connection; when the installed binary already matches the artifact's SHA-256 and answers its health check, the upload is skipped entirely (logged in `hub.log`), which keeps Hub restarts cheap.
 
 **5. Confirm the node becomes online** and CPU/memory charts update. On the node, check the service and Agent health as needed:
 
@@ -250,6 +250,8 @@ LISTEN=127.0.0.1:45876 /opt/beszel-agent/beszel-agent health
 ```
 
 The `systemctl` command applies only to systemd nodes. For NVIDIA nodes, also check `nvidia-smi` on the node and verify GPU count and VRAM capacity in the dashboard.
+
+If a terminal can `ssh <alias>` but the node never becomes online, check three things. The Hub and the deployment both run the system `ssh` in **batch mode**, so every hop — including a `ProxyJump` bastion — must authenticate without a password prompt; deployment additionally needs root or passwordless sudo on the final node. The Agent must actually be running on the node (deployment failures leave the system `down`). The failure reason is stored on the system: hover the status indicator or open the system page to read it, admin users also find recent events under **Settings → Hub Logs**, and the same errors are mirrored to `hub.log` (`System down` entries include the ssh helper's stderr; skipped or failed deployments appear as `Agent auto-deploy ...` warnings with the host name). Status-change notifications include the reason as well.
 
 <a id="manual-agent"></a>
 

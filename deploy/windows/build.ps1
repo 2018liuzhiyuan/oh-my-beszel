@@ -1,5 +1,6 @@
-# Builds the Windows one-click package (beszel.exe + Monitor.exe + app files)
-# into build\windows, ready to zip and distribute.
+# Builds the Windows one-click package into build\windows, ready to zip and
+# distribute. Users only see Monitor.exe and their config at the root; the hub
+# (beszel.exe, run-hub.ps1, agents, data, logs) lives inside the app\ folder.
 #
 # Requirements: Go 1.26+ in PATH (https://golang.google.cn/dl/ or https://go.dev/dl/).
 # Node.js is only needed if internal/site/dist is missing (or -BuildWebUi is given).
@@ -14,7 +15,8 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $siteDir = Join-Path $repoRoot 'internal\site'
 $distIndex = Join-Path $siteDir 'dist\index.html'
 $outDir = Join-Path $repoRoot 'build\windows'
-$agentOutDir = Join-Path $outDir 'agents'
+$hubDir = Join-Path $outDir 'app'
+$agentOutDir = Join-Path $hubDir 'agents'
 $goBuildCache = Join-Path $repoRoot '.tmp\go-build-cache'
 $previousGoExperiment = $env:GOEXPERIMENT
 
@@ -56,12 +58,26 @@ $env:GOCACHE = $goBuildCache
 $env:GOEXPERIMENT = 'nojsonv2'
 
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+New-Item -ItemType Directory -Force -Path $hubDir | Out-Null
+
+# Refuse to package runtime state: a stale database or log would ship a
+# pre-migrated hub to every user (no first-boot account creation, and
+# possibly someone else's data). The hub's runtime files land in app\.
+foreach ($runtimeRoot in @($outDir, $hubDir)) {
+    foreach ($runtimeArtifact in @('beszel_data', 'hub.log', 'hub.log.1', 'launcher.log')) {
+        $runtimePath = Join-Path $runtimeRoot $runtimeArtifact
+        if (Test-Path -LiteralPath $runtimePath) {
+            throw "Runtime artifact '$runtimeArtifact' exists in $runtimeRoot. Move or delete it before building; never ship it in a package."
+        }
+    }
+}
+
 New-Item -ItemType Directory -Force -Path $agentOutDir | Out-Null
 New-Item -ItemType Directory -Force -Path $goBuildCache | Out-Null
 
 Push-Location $repoRoot
 try {
-    Invoke-GoBuild -Output (Join-Path $outDir 'beszel.exe') -Package './internal/cmd/hub' -LdFlags '-s -w'
+    Invoke-GoBuild -Output (Join-Path $hubDir 'beszel.exe') -Package './internal/cmd/hub' -LdFlags '-s -w'
     Invoke-GoBuild -Output (Join-Path $outDir 'Monitor.exe') -Package './internal/cmd/monitor' -LdFlags '-s -w -H windowsgui'
     $env:GOOS = 'linux'
     $env:GOARCH = 'amd64'
@@ -81,6 +97,7 @@ finally {
 }
 
 Copy-Item (Join-Path $PSScriptRoot 'app\*') $outDir -Force
+Copy-Item (Join-Path $PSScriptRoot 'hub\*') $hubDir -Force
 if (-not (Test-Path (Join-Path $outDir 'config.json'))) {
     Copy-Item (Join-Path $outDir 'config.example.json') (Join-Path $outDir 'config.json')
 }

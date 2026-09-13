@@ -12,7 +12,7 @@
 | 多卡历史 | 提供聚合及单卡图表，使用稳定的序列标识区分 GPU。 |
 | 剩余显存告警 | 比较全部 GPU 中的最大剩余显存；连续 20 次采样高于阈值时触发，采样间隔至少为配置窗口的 1/20。首次立即采样，因此最早在窗口的 95% 处触发。修改阈值或窗口会重新开始观察。 |
 | CPU 状态告警 | 按单机或跨系统配置 I/O 等待、CPU 窃取时间阈值。Agent 缺少有效 CPU 分项数据时保留原告警状态。 |
-| SSH 主机管理 | 发现所选 OpenSSH config 中直接声明的具体主机，检测名称冲突并批量导入。主机发现不展开 `Include`；连接时由系统 OpenSSH 处理跳板机和密钥文件。 |
+| SSH 主机管理 | 发现所选 OpenSSH config 中声明的具体主机，跟随 `Include` 展开；检测名称冲突并批量导入。连接时由系统 OpenSSH 处理跳板机和密钥文件。 |
 | Agent 部署 | 经 SSH 上传并校验 Linux amd64 / arm64 程序，使用 systemd 或独立后台进程运行。原生 NVML 采集适用于带 `glibc` 构建标签的 Linux amd64 程序。 |
 | 硬件信息 | 显示 Linux IP、网卡、BIOS、BMC 和 IPMI SEL，取决于硬件、已安装工具及权限。 |
 | 自定义总览 | 使用鼠标、触摸或键盘调整列顺序；可见列和顺序保存在当前浏览器。 |
@@ -238,9 +238,9 @@ cp ./build/linux/beszel-agent-glibc ./build/linux/agents/beszel-agent_linux_amd6
 
 文件查找顺序为 `BESZEL_AGENT_DEPLOY_DIR`、Hub 可执行文件旁的 `agents/`、Hub 数据目录内的 `agents/`。文件名必须为与目标架构匹配的 `beszel-agent_linux_amd64` 或 `beszel-agent_linux_arm64`。把 amd64 程序改名不会使它变成 arm64 程序；部署代码也不会自动选择独立的 `_glibc` 文件名。
 
-**4. 在面板打开“添加系统 → SSH”。** 核对显示的配置路径，修改后先重新加载。选择主机，通常保留 Agent 端口 `45876`，然后导入。此处**不是**操作系统 SSH 端口；只读账号不能管理这些设置。
+**4. 在面板打开“添加系统 → SSH”。** 核对显示的配置路径，修改后先重新加载。通过 `Include` 引入的主机同样会列出，相对路径按包含文件所在目录解析，与 OpenSSH 一致。选择主机，通常保留 Agent 端口 `45876`，然后导入。此处**不是**操作系统 SSH 端口；只读账号不能管理这些设置。“二进制”页签的快速添加使用同一套发现逻辑，并保存**别名**和配置路径，跳板机别名因此能通过 `ssh -W` 连接并自动部署。
 
-Hub 会上传本地程序、校验 SHA-256，并安装到 `/opt/beszel-agent/`。systemd 节点上会启用并启动 `beszel-agent.service`；其他节点使用独立后台进程，不保证重启机器后自动运行。此路径下 Agent 默认监听 `127.0.0.1:45876`，Hub 通过 `ssh -W` 连接。节点需要允许 SSH TCP 转发，无需将 Agent 端口暴露到公网。
+Hub 会上传本地程序、校验 SHA-256，并安装到 `/opt/beszel-agent/`。systemd 节点上会启用并启动 `beszel-agent.service`；其他节点使用独立后台进程，不保证重启机器后自动运行。此路径下 Agent 默认监听 `127.0.0.1:45876`，Hub 通过 `ssh -W` 连接。节点需要允许 SSH TCP 转发，无需将 Agent 端口暴露到公网。部署只需一条探测连接加一条压缩上传连接；已安装的二进制与产物 SHA-256 一致且健康检查通过时会直接跳过上传（记录在 `hub.log`），Hub 重启因此不会重复搬运。
 
 **5. 确认节点变为在线，CPU/内存图表开始更新。** 必要时在节点上检查服务和 Agent 健康状态：
 
@@ -250,6 +250,8 @@ LISTEN=127.0.0.1:45876 /opt/beszel-agent/beszel-agent health
 ```
 
 `systemctl` 命令仅适用于 systemd 节点。NVIDIA 节点还应检查本机的 `nvidia-smi`，并核对面板中的 GPU 数量和显存容量。
+
+如果终端里 `ssh <别名>` 正常但节点一直不上线，检查三点：Hub 与自动部署都以**批处理模式**调用系统 `ssh`，链路上每一跳（包括 `ProxyJump` 跳板机）都必须免密码认证，部署还要求目标节点具备 root 或免密码 sudo；节点上 Agent 必须真的在运行（部署失败会保持 `down` 状态）。失败原因会保存在系统记录上：悬停状态指示点或打开系统页即可看到，管理员还可在“设置 → Hub 日志”查看最近事件，同样的错误也会镜像到 `hub.log`（`System down` 条目附带 ssh 子进程的 stderr，跳过或失败的部署以带主机名的 `Agent auto-deploy ...` 警告记录）。状态变更通知同样附带原因。
 
 <a id="manual-agent"></a>
 

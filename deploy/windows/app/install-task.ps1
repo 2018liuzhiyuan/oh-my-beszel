@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 $taskName = 'Beszel Hub'
-$runner = Join-Path $PSScriptRoot 'run-hub.ps1'
+$runner = Join-Path $PSScriptRoot 'app\run-hub.ps1'
 $taskRunner = Join-Path $PSScriptRoot 'Monitor.exe'
 $action = New-ScheduledTaskAction `
     -Execute $taskRunner `
