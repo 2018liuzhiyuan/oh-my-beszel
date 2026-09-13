@@ -17,6 +17,7 @@ import (
 	"github.com/henrygd/beszel/internal/beszel"
 
 	"github.com/blang/semver"
+	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/store"
 	"golang.org/x/crypto/ssh"
@@ -133,8 +134,7 @@ func (sm *SystemManager) Initialize() error {
 	}
 
 	// Load existing systems from database (excluding paused ones)
-	var systems []*System
-	err = sm.hub.DB().NewQuery("SELECT id, host, port, status FROM systems WHERE status != 'paused'").All(&systems)
+	systems, err := loadSystemsForStartup(sm.hub.DB())
 	if err != nil || len(systems) == 0 {
 		return err
 	}
@@ -154,6 +154,16 @@ func (sm *SystemManager) Initialize() error {
 		}
 	}()
 	return nil
+}
+
+// loadSystemsForStartup returns the systems that should be monitored after a
+// hub start. ssh_config must be selected so systems with a custom SSH config
+// keep dialing through `ssh -F` after a restart instead of silently falling
+// back to direct connections.
+func loadSystemsForStartup(db dbx.Builder) ([]*System, error) {
+	var systems []*System
+	err := db.NewQuery("SELECT id, host, port, ssh_config, status FROM systems WHERE status != 'paused'").All(&systems)
+	return systems, err
 }
 
 // bindEventHooks registers event handlers for system and fingerprint record changes.
@@ -201,16 +211,25 @@ func (sm *SystemManager) onTokenRotated(e *core.RecordEvent) error {
 }
 
 // onRecordCreate is called before a new system record is committed to the database.
-// It initializes the record with default values: empty info and pending status.
+// info must always default to a JSON object (a null breaks the dashboard's
+// derived-field lookups); status keeps any caller-provided value so API
+// created paused or seeded systems are not force-fed into polling.
 func (sm *SystemManager) onRecordCreate(e *core.RecordEvent) error {
 	e.Record.Set("info", system.Info{})
-	e.Record.Set("status", pending)
+	if e.Record.GetString("status") == "" {
+		e.Record.Set("status", pending)
+	}
 	return e.Next()
 }
 
 // onRecordAfterCreateSuccess is called after a new system record is successfully created.
 // It adds the new system to the manager to begin monitoring.
 func (sm *SystemManager) onRecordAfterCreateSuccess(e *core.RecordEvent) error {
+	// paused systems are not monitored (mirrors the startup query in Initialize);
+	// resuming flips the status to pending, which re-adds them via onRecordAfterUpdateSuccess
+	if e.Record.GetString("status") == paused {
+		return e.Next()
+	}
 	if err := sm.AddRecord(e.Record, nil); err != nil {
 		e.App.Logger().Error("Error adding record", "err", err)
 	}
@@ -222,6 +241,7 @@ func (sm *SystemManager) onRecordAfterCreateSuccess(e *core.RecordEvent) error {
 func (sm *SystemManager) onRecordUpdate(e *core.RecordEvent) error {
 	if e.Record.GetString("status") == paused {
 		e.Record.Set("info", system.Info{})
+		e.Record.Set("status_info", "")
 	}
 	return e.Next()
 }

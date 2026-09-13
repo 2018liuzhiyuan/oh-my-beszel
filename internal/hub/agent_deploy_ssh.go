@@ -9,10 +9,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os/exec"
-	"strconv"
 	"strings"
 
+	"github.com/henrygd/beszel/internal/hub/systems"
 	"github.com/pocketbase/pocketbase/core"
 )
 
@@ -33,33 +34,66 @@ type agentPlatform struct {
 }
 
 func deployAgentOverSSH(ctx context.Context, app core.App, target agentDeploymentTarget) error {
-	platformOutput, err := runAgentSSH(ctx, target, "sh -c 'printf \"%s\\n%s\\n%s\\n%s\\n\" \"$(uname -s)\" \"$(uname -m)\" \"$([ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1 && echo systemd || echo none)\" \"$(getconf GNU_LIBC_VERSION >/dev/null 2>&1 && echo glibc || echo unknown)\"'", nil)
+	probeOutput, err := runAgentSSH(ctx, target, agentProbeCommand(target.port), nil, false)
 	if err != nil {
 		return fmt.Errorf("probe remote platform: %w", err)
 	}
-	platform, err := parseAgentPlatform(platformOutput)
+	probe, err := parseAgentProbe(probeOutput)
 	if err != nil {
 		return err
 	}
-	artifact, err := loadAgentArtifact(ctx, app.DataDir(), platform)
+	artifact, err := loadAgentArtifact(ctx, app.DataDir(), probe.platform)
 	if err != nil {
 		return err
+	}
+	if probe.installedSha256 == artifact.sha256 && probe.healthy {
+		app.Logger().Info("Agent already installed and healthy; skipping redeploy", "system", target.id, "host", target.host)
+		slog.Info("Agent already installed and healthy; skipping redeploy", "system", target.id, "host", target.host)
+		return nil
 	}
 	stageName, err := newAgentStageName()
 	if err != nil {
 		return fmt.Errorf("create staging name: %w", err)
 	}
-	uploadCommand := "umask 077; cat > /tmp/" + stageName
-	if _, err := runAgentSSH(ctx, target, uploadCommand, bytes.NewReader(artifact.data)); err != nil {
-		return fmt.Errorf("upload agent artifact: %w", err)
+	uploadAndInstall := agentInstallCommand(target, stageName, artifact.sha256)
+	if _, err := runAgentSSH(ctx, target, uploadAndInstall, bytes.NewReader(artifact.data), true); err != nil {
+		return fmt.Errorf("upload and install agent: %w", err)
 	}
-	command, args := agentInstallCommand(target, stageName, artifact.sha256)
-	remoteCommand := command + " " + strings.Join(args, " ")
-	if _, err := runAgentSSH(ctx, target, remoteCommand, strings.NewReader(agentInstallScript())); err != nil {
-		return fmt.Errorf("install agent: %w", err)
-	}
-	app.Logger().Info("Agent auto-deploy completed", "system", target.id, "host", target.host, "platform", platform.os+"/"+platform.arch, "init", platform.init)
+	app.Logger().Info("Agent auto-deploy completed", "system", target.id, "host", target.host, "platform", probe.platform.os+"/"+probe.platform.arch, "init", probe.platform.init)
+	slog.Info("Agent auto-deploy completed", "system", target.id, "host", target.host, "platform", probe.platform.os+"/"+probe.platform.arch, "init", probe.platform.init)
 	return nil
+}
+
+// agentProbeCommand reports the platform (four fields), the SHA-256 of any
+// installed agent binary (or "none"), and whether that binary answers its
+// health check, all through one connection.
+func agentProbeCommand(port uint16) string {
+	return fmt.Sprintf(`sh -c 'printf "%%s\n%%s\n%%s\n%%s\n" "$(uname -s)" "$(uname -m)" "$([ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1 && echo systemd || echo none)" "$(getconf GNU_LIBC_VERSION >/dev/null 2>&1 && echo glibc || echo unknown)"; BIN=/opt/beszel-agent/beszel-agent; if [ -f "$BIN" ]; then sha256sum "$BIN" | cut -d" " -f1; else echo none; fi; if LISTEN="127.0.0.1:%d" "$BIN" health >/dev/null 2>&1; then echo healthy; else echo unhealthy; fi'`, port)
+}
+
+type agentProbe struct {
+	platform        agentPlatform
+	installedSha256 string
+	healthy         bool
+}
+
+func parseAgentProbe(output string) (agentProbe, error) {
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	if len(lines) < 4 {
+		return agentProbe{}, fmt.Errorf("unexpected probe output %q", strings.TrimSpace(output))
+	}
+	platform, err := parseAgentPlatform(strings.Join(lines[:4], " "))
+	if err != nil {
+		return agentProbe{}, err
+	}
+	probe := agentProbe{platform: platform, installedSha256: "none"}
+	if len(lines) > 4 && strings.TrimSpace(lines[4]) != "" {
+		probe.installedSha256 = strings.TrimSpace(lines[4])
+	}
+	if len(lines) > 5 && strings.TrimSpace(lines[5]) == "healthy" {
+		probe.healthy = true
+	}
+	return probe, nil
 }
 
 func parseAgentPlatform(output string) (agentPlatform, error) {
@@ -92,25 +126,41 @@ func newAgentStageName() (string, error) {
 	return "beszel-agent-" + hex.EncodeToString(random), nil
 }
 
-func agentInstallCommand(target agentDeploymentTarget, stageName, checksum string) (string, []string) {
-	return "sh -s --", []string{
-		strconv.FormatUint(uint64(target.port), 10),
-		base64.StdEncoding.EncodeToString([]byte(target.publicKey)),
-		stageName,
-		checksum,
-	}
+// agentInstallCommand streams the artifact into the staging file and pipes
+// the install script through the same connection, so a deploy needs only one
+// connection after the probe. Record values and the script travel base64
+// encoded so they can never be interpreted as shell source; the trailing
+// executable check guards against an empty script slipping through a failed
+// decoder.
+func agentInstallCommand(target agentDeploymentTarget, stageName, checksum string) string {
+	script := base64.StdEncoding.EncodeToString([]byte(agentInstallScript()))
+	publicKey := base64.StdEncoding.EncodeToString([]byte(target.publicKey))
+	return fmt.Sprintf(
+		"umask 077; cat > /tmp/%[1]s && printf %%s %[2]s | base64 -d | sh -s -- %[3]d %[4]s %[1]s %[5]s && test -x /opt/beszel-agent/beszel-agent",
+		stageName, script, target.port, publicKey, checksum,
+	)
 }
 
-func runAgentSSH(ctx context.Context, target agentDeploymentTarget, remoteCommand string, stdin io.Reader) (string, error) {
+// runAgentSSH executes remoteCommand on the target host. The compress flag
+// enables ssh transport compression for data-heavy calls such as the artifact
+// upload; the Go agent binary shrinks roughly threefold.
+func runAgentSSH(ctx context.Context, target agentDeploymentTarget, remoteCommand string, stdin io.Reader, compress bool) (string, error) {
 	args := []string{
 		"-F", target.sshConfig,
 		"-o", "BatchMode=yes",
 		"-o", "ClearAllForwardings=yes",
 		"-o", "StrictHostKeyChecking=accept-new",
 		"-o", "ConnectTimeout=8",
-		"--", target.host, remoteCommand,
 	}
-	cmd := exec.CommandContext(ctx, "ssh", args...)
+	if compress {
+		args = append(args, "-C")
+	}
+	args = append(args, "--", target.host, remoteCommand)
+	sshBinary, err := systems.ResolveSSHClient()
+	if err != nil {
+		return "", err
+	}
+	cmd := exec.CommandContext(ctx, sshBinary, args...)
 	cmd.Stdin = stdin
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer

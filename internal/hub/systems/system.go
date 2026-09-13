@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"log/slog"
 	"math"
 	"math/rand"
 	"net"
@@ -171,7 +172,9 @@ func (sys *System) StartUpdater() {
 		case <-downChan:
 			sys.WsConn = nil
 			downChan = nil
-			_ = sys.setDown(nil)
+			// store an explicit reason so websocket systems show why they went
+			// dark instead of a bare red indicator
+			_ = sys.setDown(errors.New("agent WebSocket connection closed"))
 			// retry quickly after a websocket drop so recovery is noticed fast
 			failures = 1
 			resetTicker()
@@ -310,6 +313,7 @@ func (sys *System) createRecords(data *system.CombinedData) (*core.Record, error
 		// update system record (do this last because it triggers alerts and we need above records to be inserted first)
 		systemRecord.Set("status", up)
 		systemRecord.Set("info", data.Info)
+		systemRecord.Set("status_info", "")
 		if err := txApp.SaveNoValidate(systemRecord); err != nil {
 			return err
 		}
@@ -538,10 +542,34 @@ func (sys *System) setDown(originalError error) error {
 	}
 	if originalError != nil {
 		sys.manager.hub.Logger().Error("System down", "system", record.GetString("name"), "err", originalError)
+		// mirror to stderr so packaged hubs capture the reason in hub.log
+		slog.Error("System down", "system", record.GetString("name"), "err", originalError)
 	}
 	sys.detailsFetched.Store(false)
 	record.Set("status", down)
+	record.Set("status_info", FormatStatusInfo(originalError))
 	return sys.manager.hub.SaveNoValidate(record)
+}
+
+// maxStatusInfoLength bounds the stored connection failure reason so a long
+// SSH error chain cannot bloat the record or the realtime payload.
+const maxStatusInfoLength = 400
+
+// FormatStatusInfo prepares the connection error shown on the down
+// indicator: the first line of the error, whitespace-normalized and
+// truncated.
+func FormatStatusInfo(err error) string {
+	if err == nil {
+		return ""
+	}
+	message := strings.TrimSpace(err.Error())
+	if idx := strings.IndexAny(message, "\r\n"); idx >= 0 {
+		message = message[:idx]
+	}
+	if len(message) > maxStatusInfoLength {
+		message = message[:maxStatusInfoLength]
+	}
+	return message
 }
 
 func (sys *System) getContext(ctx context.Context) (context.Context, context.CancelFunc) {
@@ -892,9 +920,16 @@ func (s *System) createSSHClient() error {
 			return err
 		}
 		addr := net.JoinHostPort(s.Host, s.Port)
-		c, chans, reqs, err := ssh.NewClientConn(conn, addr, s.manager.sshConfig)
+		c, chans, reqs, err := sshHandshake(conn, addr, s.manager.sshConfig)
 		if err != nil {
+			// Close terminates the ssh helper and waits for it, completing
+			// its stderr capture before the reason is surfaced to the logs
 			conn.Close()
+			if helper, ok := conn.(interface{ HelperStderr() string }); ok {
+				if msg := helper.HelperStderr(); msg != "" {
+					err = fmt.Errorf("%w; ssh: %s", err, msg)
+				}
+			}
 			return err
 		}
 		// clear the dial deadline; the connection is long-lived from here on

@@ -6,6 +6,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"os"
 	"path"
@@ -39,8 +40,32 @@ type Hub struct {
 	appURL string
 }
 
+// applyLogLevelEnv honors BESZEL_LOG_LEVEL (debug|info|warn|error) for the
+// stderr/slog mirror that packaged hubs capture in hub.log. PocketBase's own
+// `_logs` table keeps its configured minimum level independent of this.
+func applyLogLevelEnv(app core.App) {
+	value, _ := utils.GetEnv("BESZEL_LOG_LEVEL")
+	value = strings.ToLower(strings.TrimSpace(value))
+	var level slog.Level
+	switch value {
+	case "debug":
+		level = slog.LevelDebug
+	case "", "info":
+		level = slog.LevelInfo
+	case "warn", "warning":
+		level = slog.LevelWarn
+	case "error":
+		level = slog.LevelError
+	default:
+		app.Logger().Warn("Unknown BESZEL_LOG_LEVEL, keeping info", "value", value)
+		return
+	}
+	slog.SetLogLoggerLevel(level)
+}
+
 // NewHub creates a new Hub instance with default configuration
 func NewHub(app core.App) *Hub {
+	applyLogLevelEnv(app)
 	hub := &Hub{App: app}
 	hub.AlertManager = alerts.NewAlertManager(hub)
 	hub.um = users.NewUserManager(hub)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"sync"
@@ -76,7 +77,7 @@ func (manager *agentDeploymentManager) onSystemChanged(event *core.RecordEvent) 
 	}
 	target, err := manager.targetFromRecord(event.Record)
 	if err != nil {
-		event.App.Logger().Warn("Agent auto-deploy skipped", "system", event.Record.Id, "err", err)
+		event.App.Logger().Warn("Agent auto-deploy skipped", "system", event.Record.Id, "host", event.Record.GetString("host"), "err", err)
 		return event.Next()
 	}
 	manager.schedule(target)
@@ -94,7 +95,7 @@ func (manager *agentDeploymentManager) startExisting() error {
 		}
 		target, err := manager.targetFromRecord(record)
 		if err != nil {
-			manager.app.Logger().Warn("Agent auto-deploy skipped", "system", record.Id, "err", err)
+			manager.app.Logger().Warn("Agent auto-deploy skipped", "system", record.Id, "host", record.GetString("host"), "err", err)
 			continue
 		}
 		manager.schedule(target)
@@ -190,6 +191,8 @@ func (manager *agentDeploymentManager) run(target agentDeploymentTarget) {
 		if manager.app != nil {
 			manager.app.Logger().Warn("Agent auto-deploy failed", "system", target.id, "host", target.host, "err", err)
 		}
+		// mirror to stderr so packaged hubs capture the reason in hub.log
+		slog.Warn("Agent auto-deploy failed", "system", target.id, "host", target.host, "err", err)
 		if attempt >= len(manager.retryDelays) || !waitForAgentDeployment(manager.ctx, manager.retryDelays[attempt]) {
 			return
 		}

@@ -53,7 +53,7 @@ func TestAlertManagerRejectsWorkAfterStop(t *testing.T) {
 
 	// Then rejection is observable and the task is never invoked.
 	assert.False(t, accepted)
-	assert.False(t, am.schedulePendingStatusAlert("stopped", CachedAlertData{Id: "alert"}, time.Hour))
+	assert.False(t, am.schedulePendingStatusAlert("sys", "stopped", "", CachedAlertData{Id: "alert"}, time.Hour))
 	assert.Zero(t, am.GetPendingAlertsCount())
 	select {
 	case <-ran:

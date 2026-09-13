@@ -2,6 +2,7 @@ package systems
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net"
 	"os/exec"
@@ -11,6 +12,8 @@ import (
 	"time"
 
 	"log/slog"
+
+	"golang.org/x/crypto/ssh"
 )
 
 const sshDialTimeout = 10 * time.Second
@@ -30,7 +33,11 @@ func (sm *SystemManager) DialAgent(host, port, configPath string) (net.Conn, err
 
 	// the agent listens on the target host's loopback interface
 	target := net.JoinHostPort("127.0.0.1", port)
-	cmd := exec.Command("ssh", sshDialArgs(target, host, configPath)...)
+	sshBinary, err := ResolveSSHClient()
+	if err != nil {
+		return nil, err
+	}
+	cmd := exec.Command(sshBinary, sshDialArgs(target, host, configPath)...)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, err
@@ -39,10 +46,10 @@ func (sm *SystemManager) DialAgent(host, port, configPath string) (net.Conn, err
 	if err != nil {
 		return nil, err
 	}
-	errBuf := &bytes.Buffer{}
+	errBuf := &syncBuffer{}
 	cmd.Stderr = errBuf
 	if err := cmd.Start(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ssh helper: %w", err)
 	}
 	return &sshPipeConn{
 		cmd:    cmd,
@@ -81,16 +88,57 @@ func isDirectHost(host, configPath string) bool {
 	return net.ParseIP(host) != nil
 }
 
+// sshHandshakeTimeout bounds the agent SSH handshake. The `ssh -W` helper's
+// pipe connection cannot enforce deadlines, so without this bound a wedged
+// tunnel would stall the system's poll loop indefinitely.
+const sshHandshakeTimeout = 15 * time.Second
+
+func sshHandshake(conn net.Conn, addr string, config *ssh.ClientConfig) (ssh.Conn, <-chan ssh.NewChannel, <-chan *ssh.Request, error) {
+	type handshakeResult struct {
+		conn  ssh.Conn
+		chans <-chan ssh.NewChannel
+		reqs  <-chan *ssh.Request
+	}
+	results := make(chan handshakeResult, 1)
+	errs := make(chan error, 1)
+	go func() {
+		c, chans, reqs, err := ssh.NewClientConn(conn, addr, config)
+		if err != nil {
+			errs <- err
+			return
+		}
+		results <- handshakeResult{conn: c, chans: chans, reqs: reqs}
+	}()
+	select {
+	case result := <-results:
+		return result.conn, result.chans, result.reqs, nil
+	case err := <-errs:
+		return nil, nil, nil, err
+	case <-time.After(sshHandshakeTimeout):
+		// kill the helper so the handshake goroutine can finish; its buffered
+		// channel send never blocks, so the goroutine is not leaked
+		conn.Close()
+		return nil, nil, nil, fmt.Errorf("ssh handshake timed out after %s", sshHandshakeTimeout)
+	}
+}
+
 // sshPipeConn adapts an `ssh -W` child process to net.Conn. Closing the
 // connection terminates the ssh process.
 type sshPipeConn struct {
 	cmd    *exec.Cmd
 	stdin  io.WriteCloser
 	stdout io.ReadCloser
-	stderr *bytes.Buffer
+	stderr *syncBuffer
 
 	closeOnce sync.Once
 	closed    atomic.Bool
+}
+
+// HelperStderr returns the ssh child process output captured so far. Callers
+// should Close the connection first: Close waits for the process to exit, at
+// which point stderr is complete.
+func (c *sshPipeConn) HelperStderr() string {
+	return strings.TrimSpace(c.stderr.String())
 }
 
 func (c *sshPipeConn) Read(b []byte) (int, error)  { return c.stdout.Read(b) }
@@ -110,6 +158,25 @@ func (c *sshPipeConn) Close() error {
 		}
 	})
 	return nil
+}
+
+// syncBuffer is a bytes.Buffer that tolerates concurrent writes from the
+// exec package's copying goroutine and reads from the connection owner.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
 }
 
 func (c *sshPipeConn) LocalAddr() net.Addr              { return pipeAddr{} }

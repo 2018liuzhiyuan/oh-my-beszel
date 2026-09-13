@@ -66,3 +66,82 @@ func TestExpandSSHConfigPath(t *testing.T) {
 	require.Equal(t, filepath.Join(home, "custom", "config"), expandSSHConfigPath("~/custom/config", home))
 	require.Equal(t, filepath.Clean("relative/config"), expandSSHConfigPath("relative/config", home))
 }
+
+func writeSSHConfig(t *testing.T, path, content string) {
+	t.Helper()
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+}
+
+func TestReadSSHHostsInclude(t *testing.T) {
+	dir := t.TempDir()
+	writeSSHConfig(t, filepath.Join(dir, "config"), `
+Host main-node
+    HostName 10.0.0.1
+Include config.d/*.conf
+Host after-include
+`)
+	writeSSHConfig(t, filepath.Join(dir, "config.d", "10-a.conf"), `
+Host inc-a
+    HostName 10.0.0.2
+`)
+	writeSSHConfig(t, filepath.Join(dir, "config.d", "20-b.conf"), `
+Host inc-b
+    HostName 10.0.0.3
+Host main-node
+    HostName ignored-later.example.com
+`)
+
+	hosts, err := readSSHHosts(filepath.Join(dir, "config"))
+	require.NoError(t, err)
+	require.Equal(t, []sshHost{
+		{Name: "after-include", HostName: "after-include"},
+		{Name: "inc-a", HostName: "10.0.0.2"},
+		{Name: "inc-b", HostName: "10.0.0.3"},
+		{Name: "main-node", HostName: "10.0.0.1"},
+	}, hosts)
+}
+
+func TestReadSSHHostsIncludeMissingAndCyclic(t *testing.T) {
+	dir := t.TempDir()
+	writeSSHConfig(t, filepath.Join(dir, "config"), `
+Include config.d/*.conf
+Include absolute/missing/*.conf
+Host loop-a
+    HostName 10.0.0.4
+`)
+	writeSSHConfig(t, filepath.Join(dir, "config.d", "loop.conf"), `
+Include ../config
+Host loop-b
+`)
+
+	hosts, err := readSSHHosts(filepath.Join(dir, "config"))
+	require.NoError(t, err)
+	require.Equal(t, []sshHost{
+		{Name: "loop-a", HostName: "10.0.0.4"},
+		{Name: "loop-b", HostName: "loop-b"},
+	}, hosts)
+}
+
+func TestReadSSHHostsIncludeHomePath(t *testing.T) {
+	dir := t.TempDir()
+	home := filepath.Join(dir, "home", "operator")
+	writeSSHConfig(t, filepath.Join(dir, "config"), "Include ~/.ssh/extra.conf\n")
+	writeSSHConfig(t, filepath.Join(home, ".ssh", "extra.conf"), "Host home-host\n    HostName 10.0.0.5\n")
+
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+
+	hosts, err := readSSHHosts(filepath.Join(dir, "config"))
+	require.NoError(t, err)
+	require.Equal(t, []sshHost{{Name: "home-host", HostName: "10.0.0.5"}}, hosts)
+}
+
+func TestParseSSHHostsBOM(t *testing.T) {
+	// the string starts with a UTF-8 BOM, as Windows editors write it
+	config := string(rune(0xfeff)) + "Host bom-node\n    HostName 10.0.0.6\n"
+
+	hosts, err := parseSSHHosts(strings.NewReader(config))
+	require.NoError(t, err)
+	require.Equal(t, []sshHost{{Name: "bom-node", HostName: "10.0.0.6"}}, hosts)
+}

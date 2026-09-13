@@ -10,6 +10,8 @@ import (
 
 type alertInfo struct {
 	systemName string
+	systemID   string
+	reason     string
 	alertData  CachedAlertData
 	expireTime time.Time
 	timer      *time.Timer
@@ -49,7 +51,7 @@ func (am *AlertManager) HandleStatusAlerts(newStatus string, systemRecord *core.
 
 	systemName := systemRecord.GetString("name")
 	if newStatus == "down" {
-		am.handleSystemDown(systemName, alerts)
+		am.handleSystemDown(systemRecord, alerts)
 	} else {
 		am.handleSystemUp(systemName, alerts)
 	}
@@ -57,16 +59,22 @@ func (am *AlertManager) HandleStatusAlerts(newStatus string, systemRecord *core.
 }
 
 // handleSystemDown manages the logic when a system status changes to "down". It schedules pending alerts for each alert record.
-func (am *AlertManager) handleSystemDown(systemName string, alerts []CachedAlertData) {
+func (am *AlertManager) handleSystemDown(systemRecord *core.Record, alerts []CachedAlertData) {
 	for _, alertData := range alerts {
 		min := max(1, int(alertData.Min))
-		am.schedulePendingStatusAlert(systemName, alertData, time.Duration(min)*time.Minute)
+		am.schedulePendingStatusAlert(
+			systemRecord.Id,
+			systemRecord.GetString("name"),
+			systemRecord.GetString("status_info"),
+			alertData,
+			time.Duration(min)*time.Minute,
+		)
 	}
 }
 
 // schedulePendingStatusAlert sets up a timer to send a "down" alert after the specified delay if the system is still down.
-// It returns true if the alert was scheduled, or false if an alert was already pending for the given alert record.
-func (am *AlertManager) schedulePendingStatusAlert(systemName string, alertData CachedAlertData, delay time.Duration) bool {
+// It returns true if an alert was scheduled, or false if an alert was already pending for the given alert record.
+func (am *AlertManager) schedulePendingStatusAlert(systemID, systemName, reason string, alertData CachedAlertData, delay time.Duration) bool {
 	am.lifecycleMu.Lock()
 	defer am.lifecycleMu.Unlock()
 	if am.stopped {
@@ -75,6 +83,8 @@ func (am *AlertManager) schedulePendingStatusAlert(systemName string, alertData 
 
 	alert := &alertInfo{
 		systemName: systemName,
+		systemID:   systemID,
+		reason:     reason,
 		alertData:  alertData,
 		expireTime: time.Now().Add(delay),
 	}
@@ -104,7 +114,7 @@ func (am *AlertManager) handleSystemUp(systemName string, alerts []CachedAlertDa
 		if !alertData.Triggered {
 			continue
 		}
-		if err := am.sendStatusAlert("up", systemName, alertData); err != nil {
+		if err := am.sendStatusAlert("up", systemName, "", alertData); err != nil {
 			am.hub.Logger().Error("Failed to send alert", "err", err)
 		}
 	}
@@ -148,13 +158,21 @@ func (am *AlertManager) processPendingAlert(alertID string) {
 	if !ok || refreshedAlertData.Triggered {
 		return
 	}
-	if err := am.sendStatusAlert("down", info.systemName, refreshedAlertData); err != nil {
+	// prefer the freshest failure reason at send time; fall back to the one
+	// captured when the system went down
+	reason := info.reason
+	if record, err := am.hub.FindRecordById("systems", info.systemID); err == nil {
+		if fresh := record.GetString("status_info"); fresh != "" {
+			reason = fresh
+		}
+	}
+	if err := am.sendStatusAlert("down", info.systemName, reason, refreshedAlertData); err != nil {
 		am.hub.Logger().Error("Failed to send alert", "err", err)
 	}
 }
 
 // sendStatusAlert sends a status alert ("up" or "down") to the users associated with the alert records.
-func (am *AlertManager) sendStatusAlert(alertStatus string, systemName string, alertData CachedAlertData) error {
+func (am *AlertManager) sendStatusAlert(alertStatus string, systemName string, reason string, alertData CachedAlertData) error {
 	// Update trigger state for alert record before sending alert
 	triggered := alertStatus == "down"
 	if err := am.setAlertTriggered(alertData, triggered); err != nil {
@@ -163,13 +181,15 @@ func (am *AlertManager) sendStatusAlert(alertStatus string, systemName string, a
 
 	var emoji string
 	if alertStatus == "up" {
-		emoji = "\u2705" // Green checkmark emoji
+		emoji = "✅" // Green checkmark emoji
 	} else {
-		emoji = "\U0001F534" // Red alert emoji
+		emoji = "🔴" // Red alert emoji
 	}
-
 	title := fmt.Sprintf("Connection to %s is %s %v", systemName, alertStatus, emoji)
 	message := strings.TrimSuffix(title, emoji)
+	if reason = strings.TrimSpace(reason); reason != "" {
+		message += "\n" + reason
+	}
 
 	// Get system ID for the link
 	systemID := alertData.SystemID
@@ -223,11 +243,12 @@ func (am *AlertManager) restorePendingStatusAlerts() error {
 		AlertID    string `db:"alert_id"`
 		SystemID   string `db:"system_id"`
 		SystemName string `db:"system_name"`
+		StatusInfo string `db:"status_info"`
 	}
 
 	var pending []pendingStatusAlert
 	err := am.hub.DB().NewQuery(`
-		SELECT a.id AS alert_id, a.system AS system_id, s.name AS system_name
+		SELECT a.id AS alert_id, a.system AS system_id, s.name AS system_name, s.status_info AS status_info
 		FROM alerts a
 		JOIN systems s ON a.system = s.id
 		WHERE a.name = 'Status'
@@ -247,7 +268,7 @@ func (am *AlertManager) restorePendingStatusAlerts() error {
 			continue
 		}
 		min := max(1, int(alertData.Min))
-		am.schedulePendingStatusAlert(item.SystemName, alertData, time.Duration(min)*time.Minute)
+		am.schedulePendingStatusAlert(item.SystemID, item.SystemName, item.StatusInfo, alertData, time.Duration(min)*time.Minute)
 	}
 
 	return nil

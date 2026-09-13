@@ -96,8 +96,9 @@ func (h *Hub) registerApiRoutes(se *core.ServeEvent) error {
 	// send test notification
 	apiAuth.POST("/test-notification", h.SendTestNotification)
 	// heartbeat status and test
-	apiAuth.GET("/heartbeat-status", h.getHeartbeatStatus).BindFunc(requireAdminRole)
-	apiAuth.POST("/test-heartbeat", h.testHeartbeat).BindFunc(requireAdminRole)
+		apiAuth.GET("/heartbeat-status", h.getHeartbeatStatus).BindFunc(requireAdminRole)
+		apiAuth.POST("/test-heartbeat", h.testHeartbeat).BindFunc(requireAdminRole)
+		apiAuth.GET("/hub-logs", getHubLogs).BindFunc(requireAdminRole)
 	// get config.yml content
 	apiAuth.GET("/config-yaml", config.GetYamlConfig).BindFunc(requireAdminRole)
 	apiAuth.GET("/ssh-hosts", getSSHHosts).BindFunc(excludeReadOnlyRole)

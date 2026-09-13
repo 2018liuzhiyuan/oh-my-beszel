@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"encoding/base64"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -29,6 +30,53 @@ func TestParseAgentPlatform_rejectsUnsupportedOperatingSystem(t *testing.T) {
 	require.ErrorIs(t, err, errAgentPlatformUnsupported)
 }
 
+func TestParseAgentProbe(t *testing.T) {
+	// Given
+	probeOutput := "Linux\nx86_64\nsystemd\nglibc\n0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\nhealthy\n"
+
+	// When
+	probe, err := parseAgentProbe(probeOutput)
+
+	// Then
+	require.NoError(t, err)
+	require.Equal(t, agentPlatform{os: "linux", arch: "amd64", init: agentInitSystemd, libc: "glibc"}, probe.platform)
+	require.Equal(t, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", probe.installedSha256)
+	require.True(t, probe.healthy)
+}
+
+func TestParseAgentProbe_defaultsWithoutAgent(t *testing.T) {
+	// Given
+	probeOutput := "Linux\naarch64\nnone\nunknown\nnone\nunhealthy\n"
+
+	// When
+	probe, err := parseAgentProbe(probeOutput)
+
+	// Then
+	require.NoError(t, err)
+	require.Equal(t, agentPlatform{os: "linux", arch: "arm64", init: agentInitNohup, libc: "unknown"}, probe.platform)
+	require.Equal(t, "none", probe.installedSha256)
+	require.False(t, probe.healthy)
+}
+
+func TestParseAgentProbe_toleratesMissingTrailingLines(t *testing.T) {
+	// Given: a BusyBox-like host without sha256sum still reports the platform
+	probeOutput := "Linux\nx86_64\nnone\nunknown\n"
+
+	// When
+	probe, err := parseAgentProbe(probeOutput)
+
+	// Then
+	require.NoError(t, err)
+	require.Equal(t, "amd64", probe.platform.arch)
+	require.Equal(t, "none", probe.installedSha256)
+	require.False(t, probe.healthy)
+}
+
+func TestParseAgentProbe_rejectsShortOutput(t *testing.T) {
+	_, err := parseAgentProbe("Linux\nx86_64\n")
+	require.Error(t, err)
+}
+
 func TestAgentInstallCommand_keepsRecordValuesOutOfShellSource(t *testing.T) {
 	// Given
 	target := agentDeploymentTarget{
@@ -39,14 +87,17 @@ func TestAgentInstallCommand_keepsRecordValuesOutOfShellSource(t *testing.T) {
 		sshConfig: "/tmp/ssh config",
 	}
 	stageName := "beszel-agent-0123456789abcdef"
+	checksum := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
 	// When
-	command, args := agentInstallCommand(target, stageName, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	command := agentInstallCommand(target, stageName, checksum)
 
-	// Then
-	require.Equal(t, "sh -s --", command)
+	// Then: upload and install share one connection, values are base64 encoded
+	require.Contains(t, command, "umask 077; cat > /tmp/"+stageName+" && ")
+	require.Contains(t, command, "printf %s "+base64.StdEncoding.EncodeToString([]byte(agentInstallScript()))+" | base64 -d | sh -s -- ")
+	require.Contains(t, command, "45876 "+base64.StdEncoding.EncodeToString([]byte(target.publicKey))+" "+stageName+" "+checksum)
+	require.Contains(t, command, "test -x /opt/beszel-agent/beszel-agent")
 	require.NotContains(t, command, target.publicKey)
-	require.Equal(t, []string{"45876", "c3NoLWVkMjU1MTkgQUFBQUMzTnphQzFsWkRJMU5URTVBQUFBSVRlc3RLZXk=", stageName, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}, args)
 }
 
 func TestAgentInstallScript_supportsSystemdAndDetachedFallback(t *testing.T) {

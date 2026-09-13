@@ -29,6 +29,7 @@ func getSSHHosts(e *core.RequestEvent) error {
 	path := resolveSSHConfigPath(requestedPath)
 	hosts, err := readSSHHosts(path)
 	if err != nil {
+		e.App.Logger().Warn("Unable to read the local SSH config", "path", path, "err", err)
 		return e.InternalServerError("Unable to read the local SSH config.", nil)
 	}
 	return e.JSON(http.StatusOK, sshHostsResponse{Path: path, Hosts: hosts})
@@ -39,23 +40,7 @@ func readLocalSSHHosts() ([]sshHost, error) {
 }
 
 func resolveSSHConfigPath(requestedPath string) string {
-	homes := make([]string, 0, 5)
-	if home, err := os.UserHomeDir(); err == nil {
-		homes = append(homes, home)
-	}
-	if currentUser, err := user.Current(); err == nil {
-		homes = append(homes, currentUser.HomeDir)
-	}
-	homes = append(homes, os.Getenv("USERPROFILE"))
-	if runtime.GOOS == "windows" {
-		systemDrive := os.Getenv("SystemDrive")
-		if systemDrive == "" {
-			systemDrive = "C:"
-		}
-		if username := os.Getenv("USERNAME"); username != "" {
-			homes = append(homes, filepath.Join(systemDrive+string(os.PathSeparator), "Users", username))
-		}
-	}
+	homes := sshHomeCandidates()
 	home := ""
 	for _, candidate := range homes {
 		if strings.TrimSpace(candidate) != "" {
@@ -91,6 +76,31 @@ func resolveSSHConfigPath(requestedPath string) string {
 	return filepath.Join(home, ".ssh", "config")
 }
 
+// sshHomeCandidates lists home directories in priority order for resolving
+// `~` and the default config location. On Windows the list tolerates service
+// accounts where USERPROFILE is empty by falling back to the profile implied
+// by SystemDrive and USERNAME.
+func sshHomeCandidates() []string {
+	homes := make([]string, 0, 5)
+	if home, err := os.UserHomeDir(); err == nil {
+		homes = append(homes, home)
+	}
+	if currentUser, err := user.Current(); err == nil {
+		homes = append(homes, currentUser.HomeDir)
+	}
+	homes = append(homes, os.Getenv("USERPROFILE"))
+	if runtime.GOOS == "windows" {
+		systemDrive := os.Getenv("SystemDrive")
+		if systemDrive == "" {
+			systemDrive = "C:"
+		}
+		if username := os.Getenv("USERNAME"); username != "" {
+			homes = append(homes, filepath.Join(systemDrive+string(os.PathSeparator), "Users", username))
+		}
+	}
+	return homes
+}
+
 func expandSSHConfigPath(path, home string) string {
 	path = os.ExpandEnv(strings.TrimSpace(path))
 	if path == "~" {
@@ -101,72 +111,168 @@ func expandSSHConfigPath(path, home string) string {
 	return filepath.Clean(path)
 }
 
+// maxSSHConfigIncludeDepth bounds recursive Include processing so a cyclic
+// set of config files cannot stall the hub.
+const maxSSHConfigIncludeDepth = 8
+
 func readSSHHosts(path string) ([]sshHost, error) {
-	file, err := os.Open(path)
-	if os.IsNotExist(err) {
-		return []sshHost{}, nil
-	}
-	if err != nil {
+	parser := newSSHConfigParser()
+	if err := parser.parseFile(path, 0, true); err != nil {
 		return nil, err
 	}
-	defer file.Close()
-	return parseSSHHosts(file)
+	return parser.finish(), nil
 }
 
+// parseSSHHosts parses a single stream. Includes with relative paths are
+// skipped because the containing file's directory is unknown; file-based
+// parsing in readSSHHosts resolves them like OpenSSH does.
 func parseSSHHosts(reader io.Reader) ([]sshHost, error) {
-	hosts := make([]sshHost, 0)
-	byName := make(map[string]int)
-	current := make([]int, 0)
+	parser := newSSHConfigParser()
+	if err := parser.parseReader(reader, "", 0); err != nil {
+		return nil, err
+	}
+	return parser.finish(), nil
+}
 
+type sshConfigParser struct {
+	hosts   []sshHost
+	byName  map[string]int
+	current []int
+	home    string
+	seen    map[string]struct{}
+}
+
+func newSSHConfigParser() *sshConfigParser {
+	home := ""
+	for _, candidate := range sshHomeCandidates() {
+		if strings.TrimSpace(candidate) != "" {
+			home = candidate
+			break
+		}
+	}
+	return &sshConfigParser{
+		byName: make(map[string]int),
+		home:   home,
+		seen:   make(map[string]struct{}),
+	}
+}
+
+// parseFile reads one config file. Missing files and unreadable includes are
+// skipped like OpenSSH; when strict is true an existing-but-unopenable top
+// level file is reported so users can distinguish a permissions problem from
+// an absent config.
+func (p *sshConfigParser) parseFile(path string, depth int, strict bool) error {
+	if path == "" || depth > maxSSHConfigIncludeDepth {
+		return nil
+	}
+	lookup := strings.ToLower(filepath.Clean(path))
+	if _, included := p.seen[lookup]; included {
+		return nil
+	}
+	p.seen[lookup] = struct{}{}
+	info, err := os.Stat(path)
+	if err != nil || !info.Mode().IsRegular() {
+		return nil
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		if strict {
+			return err
+		}
+		return nil
+	}
+	defer file.Close()
+	return p.parseReader(file, filepath.Dir(path), depth)
+}
+
+func (p *sshConfigParser) parseReader(reader io.Reader, baseDir string, depth int) error {
 	scanner := bufio.NewScanner(reader)
 	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
 	for scanner.Scan() {
 		key, value := splitSSHDirective(scanner.Text())
 		switch strings.ToLower(key) {
 		case "host":
-			current = current[:0]
+			p.current = p.current[:0]
 			for _, alias := range splitSSHWords(value) {
 				if alias == "" || strings.ContainsAny(alias, "*?!") {
 					continue
 				}
 				lookup := strings.ToLower(alias)
-				index, exists := byName[lookup]
+				index, exists := p.byName[lookup]
 				if !exists {
-					index = len(hosts)
-					byName[lookup] = index
-					hosts = append(hosts, sshHost{Name: alias})
+					index = len(p.hosts)
+					p.byName[lookup] = index
+					p.hosts = append(p.hosts, sshHost{Name: alias})
 				}
-				current = append(current, index)
+				p.current = append(p.current, index)
 			}
 		case "hostname":
 			valueWords := splitSSHWords(value)
 			if len(valueWords) == 0 {
 				continue
 			}
-			for _, index := range current {
-				if hosts[index].HostName == "" {
-					hosts[index].HostName = expandSSHHostName(valueWords[0], hosts[index].Name)
+			for _, index := range p.current {
+				if p.hosts[index].HostName == "" {
+					p.hosts[index].HostName = expandSSHHostName(valueWords[0], p.hosts[index].Name)
 				}
+			}
+		case "include":
+			if err := p.parseIncludes(value, baseDir, depth); err != nil {
+				return err
 			}
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
+	return scanner.Err()
+}
 
-	for index := range hosts {
-		if hosts[index].HostName == "" {
-			hosts[index].HostName = hosts[index].Name
+// parseIncludes expands one Include directive at the point it appears, so the
+// first-wins precedence across the merged files matches OpenSSH. Each word may
+// be an absolute path, a `~` path, an environment-variable path, or a relative
+// path resolved against the including file's directory; wildcards follow
+// filepath.Glob and patterns without matches are ignored.
+func (p *sshConfigParser) parseIncludes(value, baseDir string, depth int) error {
+	for _, word := range splitSSHWords(value) {
+		if word == "" {
+			continue
+		}
+		path := expandSSHConfigPath(word, p.home)
+		if !filepath.IsAbs(path) {
+			if baseDir == "" {
+				continue
+			}
+			path = filepath.Join(baseDir, path)
+		}
+		matches, err := filepath.Glob(path)
+		if err != nil {
+			continue
+		}
+		for _, match := range matches {
+			if err := p.parseFile(match, depth+1, false); err != nil {
+				return err
+			}
 		}
 	}
-	sort.Slice(hosts, func(i, j int) bool {
-		return strings.ToLower(hosts[i].Name) < strings.ToLower(hosts[j].Name)
+	return nil
+}
+
+func (p *sshConfigParser) finish() []sshHost {
+	if p.hosts == nil {
+		return []sshHost{}
+	}
+	for index := range p.hosts {
+		if p.hosts[index].HostName == "" {
+			p.hosts[index].HostName = p.hosts[index].Name
+		}
+	}
+	sort.Slice(p.hosts, func(i, j int) bool {
+		return strings.ToLower(p.hosts[i].Name) < strings.ToLower(p.hosts[j].Name)
 	})
-	return hosts, nil
+	return p.hosts
 }
 
 func splitSSHDirective(line string) (string, string) {
-	line = strings.TrimSpace(line)
+	// tolerate a UTF-8 BOM, which Windows editors commonly prepend
+	line = strings.TrimPrefix(strings.TrimSpace(line), string(rune(0xfeff)))
 	if line == "" || strings.HasPrefix(line, "#") {
 		return "", ""
 	}
@@ -212,7 +318,6 @@ func splitSSHWords(value string) []string {
 		case '\'', '"':
 			quote = char
 		case '#':
-			flush()
 			return words
 		case ' ', '\t':
 			flush()
