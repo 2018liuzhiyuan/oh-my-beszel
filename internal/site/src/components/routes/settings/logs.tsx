@@ -41,7 +41,10 @@ export default function LogsSettings() {
 		async (signal?: AbortSignal) => {
 			try {
 				setIsLoading(true)
-				const options: Record<string, unknown> = { query: { level: minLevel }, signal }
+				const options: { query: { level: number; q?: string }; signal?: AbortSignal } = {
+					query: { level: minLevel },
+				}
+				if (signal) options.signal = signal
 				const trimmed = query.trim()
 				if (trimmed) options.query.q = trimmed
 				const res = await pb.send<{ entries: HubLogEntry[] }>("/api/beszel/hub-logs", options)

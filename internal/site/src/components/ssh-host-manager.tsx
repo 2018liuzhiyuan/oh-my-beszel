@@ -66,7 +66,7 @@ export function SSHHostManager() {
 				setLoadedPath(response.path)
 				setDiscoveredHosts(response.hosts)
 				if (response.path) {
-					void persistSSHConfigPath(response.path)
+					persistSSHConfigPath(response.path).catch(console.error)
 				}
 				const newNames = new Set<string>()
 				for (const host of response.hosts) {
