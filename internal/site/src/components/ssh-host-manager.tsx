@@ -4,7 +4,7 @@ import { RefreshCwIcon, SaveIcon, UploadIcon } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { isReadOnlyUser, pb } from "@/lib/api"
 import { $publicKey, $systems, $userSettings } from "@/lib/stores"
-import { cn } from "@/lib/utils"
+import { cn, generateToken, tokenMap } from "@/lib/utils"
 import { Button } from "./ui/button"
 import { DialogFooter } from "./ui/dialog"
 import { Input } from "./ui/input"
@@ -104,23 +104,28 @@ export function SSHHostManager() {
 		}
 		setImporting(true)
 		setFeedback("")
-		try {
-			const results = await Promise.allSettled(
-				actionTargets.importHosts.map((host) =>
-					pb.collection("systems").create(
-						{
-							name: host.name,
-							host: host.name,
-							port,
-							ssh_config: loadedPath,
-							pkey: $publicKey.get(),
-							users: userId,
-							status: "pending",
-						},
-						{ requestKey: null }
-					)
-				)
+		const publicKey = $publicKey.get()
+		const importHost = async (host: SSHHost) => {
+			const createdSystem = await pb.collection("systems").create(
+				{
+					name: host.name,
+					host: host.name,
+					port,
+					ssh_config: loadedPath,
+					pkey: publicKey,
+					users: userId,
+					status: "pending",
+				},
+				{ requestKey: null }
 			)
+			// The token lives on a fingerprints record, not on the system: skip
+			// this and the edit dialog shows an empty token.
+			const token = generateToken()
+			await pb.collection("fingerprints").create({ system: createdSystem.id, token }, { requestKey: null })
+			tokenMap.set(createdSystem.id, token)
+		}
+		try {
+			const results = await Promise.allSettled(actionTargets.importHosts.map(importHost))
 			let imported = 0
 			const failedHosts: SSHHost[] = []
 			for (const [index, result] of results.entries()) {

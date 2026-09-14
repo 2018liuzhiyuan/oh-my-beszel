@@ -154,7 +154,24 @@ export const SystemDialog = ({
 				setToken(token)
 			})
 			.catch((error: unknown) => {
-				if (active) console.error(error)
+				if (!active) return
+				const status = error instanceof Error ? (error as Error & { status?: number }).status : undefined
+				if (isReadOnlyUser() || status !== 404) {
+					console.error(error)
+					return
+				}
+				// Systems imported via the SSH host manager before it assigned
+				// tokens have no fingerprints record: mint one so the shown
+				// token is always usable, not just displayed.
+				const newToken = generateToken()
+				pb.collection("fingerprints")
+					.create({ system: systemId, token: newToken }, { requestKey: null })
+					.then(() => {
+						if (!active) return
+						tokenMap.set(systemId, newToken)
+						setToken(newToken)
+					})
+					.catch((createError: unknown) => console.error(createError))
 			})
 		return () => {
 			active = false
