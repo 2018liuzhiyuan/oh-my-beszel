@@ -163,8 +163,10 @@ export default function SystemsTable() {
 	const normalizedColumnOrder = useMemo(() => {
 		// materialize the full order: TanStack appends unlisted columns after
 		// listed ones, so the far-right checkbox column must be listed last
-		const movable = columnDefs.map((column) => column.id ?? "").filter((id) => id !== "actions" && id !== "select")
-		const storedMovable = columnOrder.filter((id) => movable.includes(id))
+		const movable = columnDefs
+			.map((column) => column.id ?? "")
+			.filter((id: string) => id !== "actions" && id !== "select")
+		const storedMovable = columnOrder.filter((id: string) => movable.includes(id))
 		const orderedMovable = mergeOrderedIds(storedMovable, movable, movable)
 		const endIds = canSelectRows ? ["actions", "select"] : ["actions"]
 		return [...orderedMovable, ...endIds.filter((id) => columnDefs.some((column) => column.id === id))]

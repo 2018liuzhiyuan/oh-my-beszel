@@ -73,7 +73,7 @@ function DraggableSystemTableCell({ cell, columnSizing, rowHeight }: SystemTable
 			data-column-id={cell.column.id}
 			data-dragging={dragOffset !== null || undefined}
 			style={{
-				width: columnSizing[cell.column.id] ?? cell.getSize(),
+				width: columnSizing[cell.column.id] ?? cell.column.getSize(),
 				height: rowHeight,
 				transform: dragOffset === null ? undefined : `translate3d(${dragOffset}px, 0, 0)`,
 			}}
@@ -90,7 +90,7 @@ function FixedSystemTableCell({ cell, columnSizing, rowHeight }: SystemTableCell
 	return (
 		<TableCell
 			data-column-id={cell.column.id}
-			style={{ width: columnSizing[cell.column.id] ?? cell.getSize(), height: rowHeight }}
+			style={{ width: columnSizing[cell.column.id] ?? cell.column.getSize(), height: rowHeight }}
 			className="py-0 px-0.5"
 		>
 			{flexRender(cell.column.columnDef.cell, cell.getContext())}

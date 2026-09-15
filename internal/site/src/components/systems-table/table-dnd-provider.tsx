@@ -151,7 +151,7 @@ export function TableDndProvider({
 			onDragCancel={() => setDragState(initialDragState)}
 		>
 			{/* the header renders its own SortableContext for columns; this one serves the rows */}
-			<SortableContext items={orderedRowIds} strategy={verticalListSortingStrategy}>
+			<SortableContext items={[...orderedRowIds]} strategy={verticalListSortingStrategy}>
 				<DragStateContext.Provider value={dragState}>{children}</DragStateContext.Provider>
 			</SortableContext>
 		</DndContext>
