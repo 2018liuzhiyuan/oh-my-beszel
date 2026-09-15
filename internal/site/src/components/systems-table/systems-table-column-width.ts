@@ -14,25 +14,30 @@ type SystemsTableColumnWidthRequest = {
 }
 
 const FIXED_ACTIONS_WIDTH = 80
+const FIXED_SELECT_WIDTH = 44
+// the system cell hosts the row drag handle next to the name
+const ROW_HANDLE_WIDTH = 36
 
 function getColumnWidthLimits(id: string): { readonly min: number; readonly max: number } {
+	// minimums stay low enough that the fixed select column plus every
+	// visible column still fits a 1280px viewport (see distributeColumnWidths)
 	switch (id) {
 		case "system":
 			return { min: 104, max: 320 }
 		case "gpuFree":
-			return { min: 120, max: 220 }
+			return { min: 112, max: 220 }
 		case "net":
-			return { min: 112, max: 176 }
+			return { min: 104, max: 176 }
 		case "services":
-			return { min: 136, max: 240 }
+			return { min: 128, max: 240 }
 		case "uptime":
-			return { min: 104, max: 192 }
+			return { min: 100, max: 192 }
 		case "agent":
 			return { min: 96, max: 160 }
 		case "temperature":
-			return { min: 108, max: 176 }
+			return { min: 100, max: 176 }
 		default:
-			return { min: 108, max: 176 }
+			return { min: 100, max: 176 }
 	}
 }
 
@@ -86,8 +91,14 @@ function getColumnValues(request: SystemsTableColumnWidthRequest): readonly stri
 	}
 }
 
+/** Minimum width a column may shrink to when the table must fit the viewport. */
+export function getSystemsTableColumnMinimum(id: string): number {
+	return getColumnWidthLimits(id).min
+}
+
 export function getSystemsTableColumnWidth(request: SystemsTableColumnWidthRequest): number {
 	if (request.id === "actions") return FIXED_ACTIONS_WIDTH
+	if (request.id === "select") return FIXED_SELECT_WIDTH
 	const limits = getColumnWidthLimits(request.id)
 	return getContentAwareColumnWidth({
 		header: request.header,
@@ -95,6 +106,6 @@ export function getSystemsTableColumnWidth(request: SystemsTableColumnWidthReque
 		min: limits.min,
 		max: limits.max,
 		headerControls: request.hasSortControl ? 52 : 36,
-		cellPadding: 24,
+		cellPadding: 24 + (request.id === "system" ? ROW_HANDLE_WIDTH : 0),
 	})
 }

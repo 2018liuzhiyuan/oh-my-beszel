@@ -1,13 +1,15 @@
 import { useLingui } from "@lingui/react"
 import { type Cell, type ColumnSizingState, flexRender, type Row } from "@tanstack/react-table"
 import type { VirtualItem } from "@tanstack/react-virtual"
+import { useSortable } from "@dnd-kit/sortable"
 import { memo } from "react"
 import { TableCell, TableRow } from "@/components/ui/table"
 import { SystemStatus } from "@/lib/enums"
 import { cn } from "@/lib/utils"
 import type { SystemRecord } from "@/types"
 import { orderCellsByColumnIds } from "./column-order"
-import { useColumnDragOffset } from "./column-dnd-provider"
+import { RowDragHandleProvider } from "./row-dnd-provider"
+import { useColumnDragOffset, useRowDrag } from "./table-dnd-provider"
 
 type SystemTableRowProps = {
 	readonly row: Row<SystemRecord>
@@ -20,22 +22,38 @@ export const SystemTableRow = memo(({ row, virtualRow, columnIds, columnSizing }
 	const system = row.original
 	useLingui()
 	const orderedCells = orderCellsByColumnIds(row.getAllCells(), columnIds)
-	const draggableCells = orderedCells.filter((cell) => cell.column.id !== "actions")
-	const actionsCell = orderedCells.find((cell) => cell.column.id === "actions")
+	// actions and the checkbox pin to the row end, mirroring the header layout
+	const draggableCells = orderedCells.filter((cell) => cell.column.id !== "select" && cell.column.id !== "actions")
+	const endCells = orderedCells.filter((cell) => cell.column.id === "actions" || cell.column.id === "select")
+
+	const { dragOffset, dropPosition } = useRowDrag(system.id)
+	const { attributes, listeners, setActivatorNodeRef, setNodeRef } = useSortable({ id: system.id })
 
 	return (
 		<TableRow
+			ref={setNodeRef}
 			data-system-id={system.id}
+			data-row-dragging={dragOffset !== null || undefined}
+			data-row-drop-position={dropPosition}
+			style={{
+				transform: dragOffset === null ? undefined : `translate3d(0, ${dragOffset}px, 0)`,
+			}}
 			className={cn("cursor-pointer transition-opacity relative safari:transform-3d", {
+				// drop target highlight; a tr::before line would consume a
+				// table-fixed column slot in Chrome, shifting every cell
+				"bg-accent/60": dropPosition !== undefined,
 				"opacity-50": system.status === SystemStatus.Paused,
+				"z-20 opacity-60": dragOffset !== null,
 			})}
 		>
-			{draggableCells.map((cell) => (
-				<DraggableSystemTableCell key={cell.id} cell={cell} columnSizing={columnSizing} rowHeight={virtualRow.size} />
-			))}
-			{actionsCell && (
-				<FixedSystemTableCell cell={actionsCell} columnSizing={columnSizing} rowHeight={virtualRow.size} />
-			)}
+			<RowDragHandleProvider bindings={{ attributes, listeners, setActivatorNodeRef }}>
+				{draggableCells.map((cell) => (
+					<DraggableSystemTableCell key={cell.id} cell={cell} columnSizing={columnSizing} rowHeight={virtualRow.size} />
+				))}
+				{endCells.map((cell) => (
+					<FixedSystemTableCell key={cell.id} cell={cell} columnSizing={columnSizing} rowHeight={virtualRow.size} />
+				))}
+			</RowDragHandleProvider>
 		</TableRow>
 	)
 })
@@ -55,7 +73,7 @@ function DraggableSystemTableCell({ cell, columnSizing, rowHeight }: SystemTable
 			data-column-id={cell.column.id}
 			data-dragging={dragOffset !== null || undefined}
 			style={{
-				width: columnSizing[cell.column.id] ?? cell.column.getSize(),
+				width: columnSizing[cell.column.id] ?? cell.getSize(),
 				height: rowHeight,
 				transform: dragOffset === null ? undefined : `translate3d(${dragOffset}px, 0, 0)`,
 			}}
@@ -68,11 +86,11 @@ function DraggableSystemTableCell({ cell, columnSizing, rowHeight }: SystemTable
 	)
 }
 
-function FixedSystemTableCell({ cell, rowHeight }: SystemTableCellProps) {
+function FixedSystemTableCell({ cell, columnSizing, rowHeight }: SystemTableCellProps) {
 	return (
 		<TableCell
 			data-column-id={cell.column.id}
-			style={{ width: cell.column.getSize(), height: rowHeight }}
+			style={{ width: columnSizing[cell.column.id] ?? cell.getSize(), height: rowHeight }}
 			className="py-0 px-0.5"
 		>
 			{flexRender(cell.column.columnDef.cell, cell.getContext())}

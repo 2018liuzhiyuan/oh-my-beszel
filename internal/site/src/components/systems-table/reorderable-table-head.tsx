@@ -11,10 +11,13 @@ type ReorderableTableHeadProps<TData> = {
 
 type DropPosition = "before" | "after"
 
+// columns that never participate in header drag reordering
+const FIXED_COLUMN_IDS = new Set(["actions", "select"])
+
 export function ReorderableTableHead<TData>({ table, columnSizing = {} }: ReorderableTableHeadProps<TData>) {
 	const draggableColumnIds = table
 		.getVisibleLeafColumns()
-		.filter((column) => column.id !== "actions")
+		.filter((column) => !FIXED_COLUMN_IDS.has(column.id))
 		.map((column) => column.id)
 
 	return (
@@ -29,7 +32,7 @@ export function ReorderableTableHead<TData>({ table, columnSizing = {} }: Reorde
 					<SortableContext key={headerGroup.id} items={draggableColumnIds} strategy={horizontalListSortingStrategy}>
 						<tr>
 							{headerGroup.headers.map((header) =>
-								header.column.id === "actions" ? (
+								FIXED_COLUMN_IDS.has(header.column.id) ? (
 									<FixedHeaderCell key={header.id} header={header} />
 								) : (
 									<DraggableHeaderCell

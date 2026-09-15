@@ -25,6 +25,11 @@ msgstr "{0} available"
 msgid "{0} of {1} row(s) selected."
 msgstr "{0} of {1} row(s) selected."
 
+#. placeholder {0}: systems.length
+#: src/components/systems-table/bulk-actions-bar.tsx
+msgid "{0} selected"
+msgstr "{0} selected"
+
 #. placeholder {0}: updatePathSystems.length
 #: src/components/ssh-host-manager.tsx
 msgid "{0} SSH config paths updated."
@@ -358,6 +363,7 @@ msgstr "Can stop"
 
 #: src/components/routes/settings/alerts-history-data-table.tsx
 #: src/components/routes/settings/quiet-hours.tsx
+#: src/components/systems-table/bulk-actions-bar.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Cancel"
 msgstr "Cancel"
@@ -429,6 +435,10 @@ msgstr "Choose how to add or connect a Beszel system."
 #: src/components/systems-table/systems-table.tsx
 msgid "Clear"
 msgstr "Clear"
+
+#: src/components/systems-table/bulk-actions-bar.tsx
+msgid "Clear selection"
+msgstr "Clear selection"
 
 #: src/components/containers-table/containers-table.tsx
 msgid "Click on a container to view more information."
@@ -650,13 +660,23 @@ msgstr "Default: 60 minutes."
 msgid "Delete"
 msgstr "Delete"
 
+#. placeholder {0}: systems.length
+#: src/components/systems-table/bulk-actions-bar.tsx
+msgid "Delete {0} systems"
+msgstr "Delete {0} systems"
+
+#. placeholder {0}: systems.length
+#: src/components/systems-table/bulk-actions-bar.tsx
+msgid "Delete {0} systems?"
+msgstr "Delete {0} systems?"
+
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Delete fingerprint"
 msgstr "Delete fingerprint"
 
-#: src/components/ssh-host-manager.tsx
-#~ msgid "Delete selected"
-#~ msgstr "Delete selected"
+#: src/components/systems-table/bulk-actions-bar.tsx
+msgid "Delete selected"
+msgstr "Delete selected"
 
 #: src/components/ssh-host-manager.tsx
 #~ msgid "Delete selected SSH systems?"
@@ -665,6 +685,10 @@ msgstr "Delete fingerprint"
 #: src/components/ssh-host-manager.tsx
 #~ msgid "Delete systems"
 #~ msgstr "Delete systems"
+
+#: src/components/systems-table/bulk-actions-bar.tsx
+msgid "Deleting..."
+msgstr "Deleting..."
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Description"
@@ -887,6 +911,10 @@ msgstr "Failed Attributes:"
 #: src/lib/api.ts
 msgid "Failed to authenticate"
 msgstr "Failed to authenticate"
+
+#: src/components/systems-table/bulk-actions-bar.tsx
+msgid "Failed to delete {failedCount} systems."
+msgstr "Failed to delete {failedCount} systems."
 
 #: src/components/active-alerts.tsx
 #~ msgid "Failed to dismiss alert"
@@ -1684,11 +1712,16 @@ msgstr "Seconds between pings (default: 60)"
 msgid "See <0>notification settings</0> to configure how you receive alerts."
 msgstr "See <0>notification settings</0> to configure how you receive alerts."
 
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "Select"
+msgstr "Select"
+
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Select {foo}"
 msgstr "Select {foo}"
 
 #: src/components/ssh-host-list.tsx
+#: src/components/systems-table/systems-table-columns.tsx
 msgid "Select all"
 msgstr "Select all"
 
@@ -1897,6 +1930,11 @@ msgstr "The overall status is <0>ok</0> when all systems are up, <1>warn</1> whe
 #: src/components/login/forgot-pass-form.tsx
 msgid "Then log into the backend and reset your user account password in the users table."
 msgstr "Then log into the backend and reset your user account password in the users table."
+
+#. placeholder {0}: extraCount > 0 ? `${preview} (+${extraCount})` : preview
+#: src/components/systems-table/bulk-actions-bar.tsx
+msgid "This action cannot be undone. All current records for {0} will be permanently deleted from the database."
+msgstr "This action cannot be undone. All current records for {0} will be permanently deleted from the database."
 
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "This action cannot be undone. This will permanently delete all current records for {name} from the database."

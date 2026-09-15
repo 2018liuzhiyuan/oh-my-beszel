@@ -52,7 +52,9 @@ import {
 	DropdownMenuTrigger,
 } from "../ui/dropdown-menu"
 import { EthernetIcon, GpuIcon, WebSocketIcon } from "../ui/icons"
+import { Checkbox } from "../ui/checkbox"
 import { ColumnDragHandle } from "./column-drag-handle"
+import { RowDragHandle } from "./row-dnd-provider"
 import { getGpuUtilization } from "./systems-table-gpu-value"
 import { STATUS_COLORS, TableCellWithMeter, getMeterStateByThresholds } from "./systems-table-meter"
 
@@ -64,6 +66,38 @@ const SystemDialog = lazy(() => import("../add-system").then(({ SystemDialog }) 
  */
 export function SystemsTableColumns(viewMode: "table" | "grid"): ColumnDef<SystemRecord>[] {
 	const columns: SystemTableColumnDefinition[] = [
+		...(viewMode === "table"
+			? [
+					{
+						id: "select",
+						name: () => t`Select`,
+						enableHiding: false,
+						enableSorting: false,
+						size: 44,
+						header: ({ table }: HeaderContext<SystemRecord, unknown>) => (
+							<div className="flex h-12 items-center justify-center pe-1">
+								<Checkbox
+									aria-label={t`Select all`}
+									checked={
+										table.getIsAllRowsSelected() ? true : table.getIsSomeRowsSelected() ? "indeterminate" : false
+									}
+									onCheckedChange={(value) => table.toggleAllRowsSelected(!!value)}
+								/>
+							</div>
+						),
+						cell: ({ row }: CellContext<SystemRecord, unknown>) => (
+							<div className="flex h-full items-center justify-center">
+								<Checkbox
+									aria-label={row.original.name}
+									className="relative z-10"
+									checked={row.getIsSelected()}
+									onCheckedChange={(value) => row.toggleSelected(!!value)}
+								/>
+							</div>
+						),
+					} satisfies SystemTableColumnDefinition,
+				]
+			: []),
 		{
 			// size: 200,
 			size: 100,
@@ -114,6 +148,7 @@ export function SystemsTableColumns(viewMode: "table" | "grid"): ColumnDef<Syste
 				return (
 					<>
 						<span className="flex w-full min-w-0 gap-0.5 items-center font-medium text-sm text-nowrap">
+							{viewMode === "table" && <RowDragHandle label={t`Drag to reorder`} />}
 							<IndicatorDot system={info.row.original} />
 							<Link
 								href={linkUrl}
@@ -367,6 +402,7 @@ export function SystemsTableColumns(viewMode: "table" | "grid"): ColumnDef<Syste
 		"services",
 		"agent",
 		"actions",
+		"select",
 	]
 	const orderIndex = new Map(preferredOrder.map((id, index) => [id, index]))
 	return columns.sort((a, b) => {

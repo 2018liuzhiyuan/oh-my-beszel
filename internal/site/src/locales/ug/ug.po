@@ -1817,7 +1817,7 @@ msgstr ""
 #: src/components/routes/system/info-bar.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Uptime"
-msgstr ""
+msgstr "ئىشلەش"
 
 #: src/components/routes/system/charts/disk-charts.tsx
 #: src/components/routes/system/charts/gpu-charts.tsx
@@ -1932,3 +1932,6 @@ msgstr ""
 msgid "Your user settings have been updated."
 msgstr ""
 
+
+msgid "VRAM Free"
+msgstr "بىكار VRAM"

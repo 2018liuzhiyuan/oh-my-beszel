@@ -15,15 +15,22 @@ const SPACE_GLYPH_WIDTH = 4
 export function distributeColumnWidths(
 	columnWidths: Readonly<Record<string, number>>,
 	viewportWidth: number,
-	fixedColumnIds: ReadonlySet<string>
+	fixedColumnIds: ReadonlySet<string>,
+	minimumWidths: Readonly<Record<string, number>> = {}
 ): Record<string, number> {
 	const distributed = { ...columnWidths }
 	const entries = Object.entries(columnWidths)
 	const intrinsicWidth = entries.reduce((total, [, width]) => total + width, 0)
-	if (viewportWidth <= intrinsicWidth) return distributed
 
 	const flexibleEntries = entries.filter(([id]) => !fixedColumnIds.has(id))
 	if (!flexibleEntries.length) return distributed
+
+	if (viewportWidth < intrinsicWidth) {
+		// shrink flexible columns proportionally, never below their minimum;
+		// if the minimums still overflow, keep the overflow so the table scrolls
+		shrinkColumns(distributed, flexibleEntries, viewportWidth, minimumWidths)
+		return distributed
+	}
 
 	const fixedWidth = entries.reduce((total, [id, width]) => total + (fixedColumnIds.has(id) ? width : 0), 0)
 	let remainingTargetWidth = viewportWidth - fixedWidth
@@ -40,6 +47,41 @@ export function distributeColumnWidths(
 	}
 
 	return distributed
+}
+
+function shrinkColumns(
+	distributed: Record<string, number>,
+	flexibleEntries: readonly (readonly [string, number])[],
+	viewportWidth: number,
+	minimumWidths: Readonly<Record<string, number>>
+) {
+	const flexibleIds = flexibleEntries.map(([id]) => id)
+	const fixedTotal = Object.entries(distributed).reduce(
+		(total, [id, width]) => total + (flexibleIds.includes(id) ? 0 : width),
+		0
+	)
+	const target = viewportWidth - fixedTotal
+	let flexibleTotal = flexibleEntries.reduce((total, [, width]) => total + width, 0)
+	if (target >= flexibleTotal) return
+
+	const original = { ...distributed }
+	const atMinimum = new Set<string>()
+	while (flexibleTotal > target) {
+		const shrinkable = flexibleIds.filter((id) => !atMinimum.has(id))
+		if (!shrinkable.length) {
+			// minimums overflow the viewport: restore and let the table scroll
+			Object.assign(distributed, original)
+			return
+		}
+		const step = Math.min((flexibleTotal - target) / shrinkable.length, 1)
+		for (const id of shrinkable) {
+			const width = distributed[id] ?? 0
+			const next = Math.max(minimumWidths[id] ?? 0, width - step)
+			if (next === width) atMinimum.add(id)
+			flexibleTotal -= width - next
+			distributed[id] = next
+		}
+	}
 }
 
 function isWideGlyph(glyph: string): boolean {

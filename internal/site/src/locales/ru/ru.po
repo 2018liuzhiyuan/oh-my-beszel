@@ -30,6 +30,11 @@ msgstr "{0} доступно"
 msgid "{0} of {1} row(s) selected."
 msgstr "Выбрано {0} из {1} строк."
 
+#. placeholder {0}: systems.length
+#: src/components/systems-table/bulk-actions-bar.tsx
+msgid "{0} selected"
+msgstr ""
+
 #. placeholder {0}: updatePathSystems.length
 #: src/components/ssh-host-manager.tsx
 msgid "{0} SSH config paths updated."
@@ -363,6 +368,7 @@ msgstr "Может остановить"
 
 #: src/components/routes/settings/alerts-history-data-table.tsx
 #: src/components/routes/settings/quiet-hours.tsx
+#: src/components/systems-table/bulk-actions-bar.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Cancel"
 msgstr "Отмена"
@@ -434,6 +440,10 @@ msgstr ""
 #: src/components/systems-table/systems-table.tsx
 msgid "Clear"
 msgstr "Очистить"
+
+#: src/components/systems-table/bulk-actions-bar.tsx
+msgid "Clear selection"
+msgstr ""
 
 #: src/components/containers-table/containers-table.tsx
 msgid "Click on a container to view more information."
@@ -655,13 +665,23 @@ msgstr ""
 msgid "Delete"
 msgstr "Удалить"
 
+#. placeholder {0}: systems.length
+#: src/components/systems-table/bulk-actions-bar.tsx
+msgid "Delete {0} systems"
+msgstr ""
+
+#. placeholder {0}: systems.length
+#: src/components/systems-table/bulk-actions-bar.tsx
+msgid "Delete {0} systems?"
+msgstr ""
+
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Delete fingerprint"
 msgstr "Удалить отпечаток"
 
-#: src/components/ssh-host-manager.tsx
-#~ msgid "Delete selected"
-#~ msgstr ""
+#: src/components/systems-table/bulk-actions-bar.tsx
+msgid "Delete selected"
+msgstr ""
 
 #: src/components/ssh-host-manager.tsx
 #~ msgid "Delete selected SSH systems?"
@@ -670,6 +690,10 @@ msgstr "Удалить отпечаток"
 #: src/components/ssh-host-manager.tsx
 #~ msgid "Delete systems"
 #~ msgstr ""
+
+#: src/components/systems-table/bulk-actions-bar.tsx
+msgid "Deleting..."
+msgstr ""
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Description"
@@ -892,6 +916,10 @@ msgstr "Неудачные атрибуты:"
 #: src/lib/api.ts
 msgid "Failed to authenticate"
 msgstr "Не удалось аутентифицировать"
+
+#: src/components/systems-table/bulk-actions-bar.tsx
+msgid "Failed to delete {failedCount} systems."
+msgstr ""
 
 #: src/components/active-alerts.tsx
 #~ msgid "Failed to dismiss alert"
@@ -1689,11 +1717,16 @@ msgstr "Секунды между пингами (по умолчанию: 60)"
 msgid "See <0>notification settings</0> to configure how you receive alerts."
 msgstr "Смотрите <0>настройки уведомлений</0>, чтобы настроить, как вы получаете оповещения."
 
+#: src/components/systems-table/systems-table-columns.tsx
+msgid "Select"
+msgstr ""
+
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Select {foo}"
 msgstr "Выбрать {foo}"
 
 #: src/components/ssh-host-list.tsx
+#: src/components/systems-table/systems-table-columns.tsx
 msgid "Select all"
 msgstr ""
 
@@ -1902,6 +1935,11 @@ msgstr "Общий статус: <0>ok</0>, когда все системы р�
 #: src/components/login/forgot-pass-form.tsx
 msgid "Then log into the backend and reset your user account password in the users table."
 msgstr "Затем войдите в бэкенд и сбросьте пароль вашей учетной записи в таблице пользователей."
+
+#. placeholder {0}: extraCount > 0 ? `${preview} (+${extraCount})` : preview
+#: src/components/systems-table/bulk-actions-bar.tsx
+msgid "This action cannot be undone. All current records for {0} will be permanently deleted from the database."
+msgstr ""
 
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "This action cannot be undone. This will permanently delete all current records for {name} from the database."
@@ -2124,7 +2162,7 @@ msgstr "Отдача"
 #: src/components/routes/system/info-bar.tsx
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Uptime"
-msgstr "Время работы"
+msgstr "Работа"
 
 #: src/components/routes/system/charts/disk-charts.tsx
 #: src/components/routes/system/charts/gpu-charts.tsx
@@ -2184,7 +2222,7 @@ msgstr ""
 #. Free VRAM of the GPU with the most VRAM, systems table column
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "VRAM Free"
-msgstr ""
+msgstr "Свободно"
 
 #: src/components/routes/system/chart-card.tsx
 msgid "Waiting for enough records to display"

@@ -11,6 +11,22 @@ export function pinColumnsToEnd(columnIds: readonly string[], pinnedEndColumnIds
 	return [...movableColumns, ...pinnedColumns]
 }
 
+/** Keep fixed columns in place: select pinned first, actions pinned last. */
+export function pinFixedColumns(
+	columnIds: readonly string[],
+	pinnedStartColumnIds: readonly string[],
+	pinnedEndColumnIds: readonly string[]
+): string[] {
+	const startSet = new Set(pinnedStartColumnIds)
+	const endSet = new Set(pinnedEndColumnIds)
+	const movable = columnIds.filter((columnId) => !startSet.has(columnId) && !endSet.has(columnId))
+	return [
+		...pinnedStartColumnIds.filter((columnId) => columnIds.includes(columnId)),
+		...movable,
+		...pinnedEndColumnIds.filter((columnId) => columnIds.includes(columnId)),
+	]
+}
+
 export function moveColumn(
 	columnIds: readonly string[],
 	activeId: string,

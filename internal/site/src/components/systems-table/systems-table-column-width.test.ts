@@ -64,8 +64,17 @@ describe("distributeColumnWidths", () => {
 		expect(widths.gpu).toBeGreaterThan(widths.system)
 	})
 
-	test("keeps intrinsic widths when the viewport is narrower than the table", () => {
+	test("shrinks flexible columns to fit a narrower viewport", () => {
 		const widths = { system: 108, gpu: 116, actions: 80 }
-		expect(distributeColumnWidths(widths, 240, new Set(["actions"]))).toEqual(widths)
+		const distributed = distributeColumnWidths(widths, 240, new Set(["actions"]), { system: 60, gpu: 60 })
+		expect(distributed.actions).toBe(80)
+		expect(distributed.system).toBeGreaterThanOrEqual(60)
+		expect(distributed.gpu).toBeGreaterThanOrEqual(60)
+		expect(distributed.system + distributed.gpu + distributed.actions).toBeLessThanOrEqual(240)
+	})
+
+	test("keeps intrinsic widths when column minimums still overflow the viewport", () => {
+		const widths = { system: 108, gpu: 116, actions: 80 }
+		expect(distributeColumnWidths(widths, 240, new Set(["actions"]), { system: 104, gpu: 108 })).toEqual(widths)
 	})
 })

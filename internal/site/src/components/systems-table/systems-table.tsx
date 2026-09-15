@@ -12,6 +12,7 @@ import {
 	getFilteredRowModel,
 	getSortedRowModel,
 	type Row,
+	type RowSelectionState,
 	type SortingState,
 	type Table as TableType,
 	useReactTable,
@@ -29,7 +30,7 @@ import {
 	Settings2Icon,
 	XIcon,
 } from "lucide-react"
-import { Fragment, memo, useEffect, useMemo, useRef, useState } from "react"
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
 	DropdownMenu,
@@ -44,6 +45,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { TableBody, TableCell, TableRow } from "@/components/ui/table"
 import { SystemStatus } from "@/lib/enums"
+import { isReadOnlyUser } from "@/lib/api"
 import { $downSystems, $pausedSystems, $systems, $upSystems, $userSettings } from "@/lib/stores"
 import { cn, runOnce, useBrowserStorage } from "@/lib/utils"
 import type { SystemRecord } from "@/types"
@@ -51,18 +53,21 @@ import AlertButton from "../alerts/alert-button"
 import { Link } from "../router"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
 import { SystemsTableColumns, ActionsButton, IndicatorDot } from "./systems-table-columns"
-import { moveColumn, pinColumnsToEnd } from "./column-order"
-import { ColumnDndProvider } from "./column-dnd-provider"
+import { moveColumn, pinFixedColumns } from "./column-order"
+import { TableDndProvider } from "./table-dnd-provider"
 import { distributeColumnWidths } from "./content-aware-column-width"
+import { MANUAL_SORT_ID, mergeOrderedIds, moveRowOrderedIds, rowPositionMap } from "./row-order"
+import { BulkActionsBar } from "./bulk-actions-bar"
 import { ReorderableTableHead } from "./reorderable-table-head"
 import { SystemTableRow } from "./system-table-row"
-import { getSystemsTableColumnWidth } from "./systems-table-column-width"
+import { getSystemsTableColumnMinimum, getSystemsTableColumnWidth } from "./systems-table-column-width"
 import { VisibleColumnsMenu } from "./visible-columns-menu"
 
 type ViewMode = "table" | "grid"
 type StatusFilter = "all" | SystemRecord["status"]
 type NamedColumnDef = { readonly name: () => string; readonly hideSort?: boolean }
-const FIXED_WIDTH_COLUMN_IDS = new Set(["actions"])
+const FIXED_WIDTH_COLUMN_IDS = new Set(["actions", "select"])
+const MANUAL_SORTING: SortingState = [{ id: MANUAL_SORT_ID, desc: false }]
 
 function hasColumnName(columnDef: object): columnDef is NamedColumnDef {
 	return "name" in columnDef && typeof columnDef.name === "function"
@@ -94,29 +99,38 @@ export default function SystemsTable() {
 		agent: false,
 	})
 	const [columnOrder, setColumnOrder] = useBrowserStorage<ColumnOrderState>("systemsTableColumnOrderV1", [])
-	const normalizedColumnOrder = useMemo(() => pinColumnsToEnd(columnOrder, ["actions"]), [columnOrder])
+	const [rowOrder, setRowOrder] = useBrowserStorage<string[]>("systemsTableRowOrderV1", [])
+	const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+	const manualSortActive = sorting[0]?.id === MANUAL_SORT_ID
 
 	const locale = i18n.locale
 
 	// Filter data based on status filter
 	const filteredData = useMemo(() => {
-		if (statusFilter === "all") {
-			return data
-		}
+		let systems = data
 		if (statusFilter === SystemStatus.Up) {
-			return Object.values(upSystems) ?? []
+			systems = Object.values(upSystems) ?? []
+		} else if (statusFilter === SystemStatus.Down) {
+			systems = Object.values(downSystems) ?? []
+		} else if (statusFilter === SystemStatus.Paused) {
+			systems = Object.values(pausedSystems) ?? []
 		}
-		if (statusFilter === SystemStatus.Down) {
-			return Object.values(downSystems) ?? []
-		}
-		return Object.values(pausedSystems) ?? []
-	}, [data, statusFilter])
+		if (!manualSortActive) return systems
+		// manual row order: known positions first, then untracked systems by name
+		const positions = rowPositionMap(rowOrder)
+		return [...systems].sort((a, b) => {
+			const positionA = positions.get(a.id) ?? Number.MAX_SAFE_INTEGER
+			const positionB = positions.get(b.id) ?? Number.MAX_SAFE_INTEGER
+			return positionA !== positionB ? positionA - positionB : a.name.localeCompare(b.name)
+		})
+	}, [data, statusFilter, upSystems, downSystems, pausedSystems, manualSortActive, rowOrder])
 
 	const [viewMode, setViewMode] = useBrowserStorage<ViewMode>(
 		"viewMode",
 		// show grid view on mobile if there are less than 200 systems (looks better but table is more efficient)
 		window.innerWidth < 1024 && filteredData.length < 200 ? "grid" : "table"
 	)
+	const canSelectRows = viewMode === "table" && !isReadOnlyUser()
 
 	useEffect(() => {
 		if (filter !== undefined) {
@@ -126,39 +140,56 @@ export default function SystemsTable() {
 
 	const columnDefs = useMemo(
 		() =>
-			SystemsTableColumns(viewMode).map((column) => {
-				const id = column.id ?? ""
-				const namedColumn = hasColumnName(column)
-				const size = getSystemsTableColumnWidth({
-					id,
-					header: namedColumn ? column.name() : id,
-					hasSortControl: namedColumn && !column.hideSort,
-					systems: filteredData,
-					unitNet,
-					unitTemp,
-					failedLabel: t`Failed`.toLowerCase(),
-				})
-				return { ...column, minSize: size, size, maxSize: size, enableResizing: false }
-			}),
+			SystemsTableColumns(viewMode)
+				// the checkbox column only exists for the desktop table view
+				.filter((column) => column.id !== "select" || (viewMode === "table" && !isReadOnlyUser()))
+				.map((column) => {
+					const id = column.id ?? ""
+					const namedColumn = hasColumnName(column)
+					const size = getSystemsTableColumnWidth({
+						id,
+						header: namedColumn ? column.name() : id,
+						hasSortControl: namedColumn && !column.hideSort,
+						systems: filteredData,
+						unitNet,
+						unitTemp,
+						failedLabel: t`Failed`.toLowerCase(),
+					})
+					return { ...column, minSize: size, size, maxSize: size, enableResizing: false }
+				}),
 		[filteredData, locale, t, unitNet, unitTemp, viewMode]
 	)
+
+	const normalizedColumnOrder = useMemo(() => {
+		// materialize the full order: TanStack appends unlisted columns after
+		// listed ones, so the far-right checkbox column must be listed last
+		const movable = columnDefs.map((column) => column.id ?? "").filter((id) => id !== "actions" && id !== "select")
+		const storedMovable = columnOrder.filter((id) => movable.includes(id))
+		const orderedMovable = mergeOrderedIds(storedMovable, movable, movable)
+		const endIds = canSelectRows ? ["actions", "select"] : ["actions"]
+		return [...orderedMovable, ...endIds.filter((id) => columnDefs.some((column) => column.id === id))]
+	}, [columnDefs, columnOrder, canSelectRows])
 
 	const table = useReactTable({
 		data: filteredData,
 		columns: columnDefs,
 		getCoreRowModel: getCoreRowModel(),
+		getRowId: (row) => row.id,
 		onSortingChange: setSorting,
 		getSortedRowModel: getSortedRowModel(),
 		onColumnFiltersChange: setColumnFilters,
 		getFilteredRowModel: getFilteredRowModel(),
 		onColumnVisibilityChange: setColumnVisibility,
 		onColumnOrderChange: setColumnOrder,
+		onRowSelectionChange: setRowSelection,
+		enableRowSelection: viewMode === "table" && !isReadOnlyUser(),
 		enableColumnResizing: false,
 		state: {
 			sorting,
 			columnFilters,
 			columnVisibility,
 			columnOrder: normalizedColumnOrder,
+			rowSelection,
 		},
 		defaultColumn: {
 			invertSorting: true,
@@ -174,9 +205,27 @@ export default function SystemsTable() {
 	const rows = table.getRowModel().rows
 	const columns = table.getAllLeafColumns()
 	const visibleColumns = table.getVisibleLeafColumns()
+	const selectedSystems = useMemo(() => rows.filter((row) => row.getIsSelected()).map((row) => row.original), [rows])
 	const visibleColumnIds = useMemo(
 		() => table.getVisibleLeafColumns().map((column) => column.id),
 		[table, normalizedColumnOrder, columnVisibility, viewMode]
+	)
+
+	const handleMoveRow = useCallback(
+		(activeId: string, overId: string) => {
+			const visibleIds = rows.map((row) => row.original.id)
+			setRowOrder(
+				moveRowOrderedIds(
+					visibleIds,
+					rowOrder,
+					data.map(({ id }) => id),
+					activeId,
+					overId
+				)
+			)
+			if (!manualSortActive) setSorting(MANUAL_SORTING)
+		},
+		[rows, rowOrder, data, manualSortActive, setRowOrder, setSorting]
 	)
 
 	const [upSystemsLength, downSystemsLength, pausedSystemsLength] = useMemo(() => {
@@ -326,11 +375,15 @@ export default function SystemsTable() {
 												}))}
 											onMoveColumn={(activeId, targetId) => {
 												setColumnOrder(
-													moveColumn(
-														table.getAllLeafColumns().map((column) => column.id),
-														activeId,
-														targetId,
-														["actions"]
+													pinFixedColumns(
+														moveColumn(
+															table.getAllLeafColumns().map((column) => column.id),
+															activeId,
+															targetId,
+															["actions"]
+														),
+														[],
+														["actions", "select"]
 													)
 												)
 											}}
@@ -359,10 +412,22 @@ export default function SystemsTable() {
 	return (
 		<Card className="w-full px-3 py-5 sm:py-6 sm:px-6">
 			{CardHead}
+			{selectedSystems.length > 0 && (
+				<BulkActionsBar
+					systems={selectedSystems}
+					onFinished={(failedIds) => setRowSelection(Object.fromEntries(failedIds.map((id) => [id, true])))}
+				/>
+			)}
 			{viewMode === "table" ? (
 				// table layout
 				<div className="rounded-md">
-					<AllSystemsTable table={table} rows={rows} columnIds={visibleColumnIds} columnSizing={columnSizing} />
+					<AllSystemsTable
+						table={table}
+						rows={rows}
+						columnIds={visibleColumnIds}
+						columnSizing={columnSizing}
+						onMoveRow={handleMoveRow}
+					/>
 				</div>
 			) : (
 				// grid layout
@@ -396,11 +461,13 @@ const AllSystemsTable = memo(
 		rows,
 		columnIds,
 		columnSizing,
+		onMoveRow,
 	}: {
 		readonly table: TableType<SystemRecord>
 		readonly rows: Row<SystemRecord>[]
 		readonly columnIds: readonly string[]
 		readonly columnSizing: ColumnSizingState
+		readonly onMoveRow: (activeId: string, overId: string) => void
 	}) => {
 		// The virtualizer will need a reference to the scrollable container element
 		const scrollRef = useRef<HTMLDivElement>(null)
@@ -430,12 +497,20 @@ const AllSystemsTable = memo(
 			() => Object.fromEntries(columnIds.map((id) => [id, columnSizing[id] ?? table.getColumn(id)?.getSize() ?? 0])),
 			[columnIds, columnSizing, table]
 		)
-		const baseTableWidth = Object.values(visibleColumnSizing).reduce((total, width) => total + width, 0)
-		const renderedColumnSizing = useMemo(
-			() => distributeColumnWidths(visibleColumnSizing, viewportWidth, FIXED_WIDTH_COLUMN_IDS),
-			[viewportWidth, visibleColumnSizing]
+		const minimumColumnWidths = useMemo(
+			() => Object.fromEntries(columnIds.map((id) => [id, getSystemsTableColumnMinimum(id)])),
+			[columnIds]
 		)
-		const renderedTableWidth = Math.max(baseTableWidth, viewportWidth)
+		const renderedColumnSizing = useMemo(
+			() => distributeColumnWidths(visibleColumnSizing, viewportWidth, FIXED_WIDTH_COLUMN_IDS, minimumColumnWidths),
+			[viewportWidth, visibleColumnSizing, minimumColumnWidths]
+		)
+		// base the table width on the DISTRIBUTED widths so a shrunk layout does not overflow
+		const renderedTableWidth = Math.max(
+			Object.values(renderedColumnSizing).reduce((total, width) => total + width, 0),
+			viewportWidth
+		)
+		const orderedRowIds = useMemo(() => rows.map((row) => row.original.id), [rows])
 
 		return (
 			<div
@@ -448,20 +523,30 @@ const AllSystemsTable = memo(
 			>
 				{/* add header height to table size */}
 				<div style={{ height: `${virtualizer.getTotalSize() + 50}px`, paddingTop, paddingBottom }}>
-					<ColumnDndProvider
+					{/* single DndContext outside the table: its helper divs must never
+					    land inside <table>, where they would consume column slots */}
+					<TableDndProvider
+						orderedColumnIds={columnIds}
+						orderedRowIds={orderedRowIds}
 						onMoveColumn={(activeId, targetId) => {
 							table.setColumnOrder(
-								moveColumn(
-									table.getAllLeafColumns().map((column) => column.id),
-									activeId,
-									targetId,
-									["actions"]
+								pinFixedColumns(
+									moveColumn(
+										table.getAllLeafColumns().map((column) => column.id),
+										activeId,
+										targetId,
+										["actions"]
+									),
+									[],
+									["actions", "select"]
 								)
 							)
 						}}
+						onMoveRow={onMoveRow}
 					>
 						<table className="table-fixed text-sm h-full" style={{ width: renderedTableWidth }}>
-							<SystemsTableHead table={table} columnSizing={renderedColumnSizing} />
+							{/* remount on order change so the head can never render a stale header order */}
+							<SystemsTableHead key={columnIds.join(",")} table={table} columnSizing={renderedColumnSizing} />
 							<TableBody onPointerEnter={preloadSystemDetail}>
 								{rows.length ? (
 									virtualRows.map((virtualRow) => {
@@ -485,7 +570,7 @@ const AllSystemsTable = memo(
 								)}
 							</TableBody>
 						</table>
-					</ColumnDndProvider>
+					</TableDndProvider>
 				</div>
 			</div>
 		)
@@ -550,7 +635,7 @@ const SystemCard = memo(
 						style={{ gridTemplateColumns: "24px minmax(80px, max-content) minmax(0, 1fr)" }}
 					>
 						{columnIds.map((columnId) => {
-							if (columnId === "system" || columnId === "actions") return null
+							if (columnId === "system" || columnId === "actions" || columnId === "select") return null
 							const column = table.getColumn(columnId)
 							if (!column) return null
 							const cell = cellsById.get(column.id)
