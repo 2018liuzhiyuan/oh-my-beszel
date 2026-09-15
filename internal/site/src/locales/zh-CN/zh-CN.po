@@ -33,7 +33,7 @@ msgstr "已选择 {0} / {1} 行"
 #. placeholder {0}: systems.length
 #: src/components/systems-table/bulk-actions-bar.tsx
 msgid "{0} selected"
-msgstr ""
+msgstr "已选 {0} 个"
 
 #. placeholder {0}: updatePathSystems.length
 #: src/components/ssh-host-manager.tsx
@@ -443,7 +443,7 @@ msgstr "清除"
 
 #: src/components/systems-table/bulk-actions-bar.tsx
 msgid "Clear selection"
-msgstr ""
+msgstr "清除选择"
 
 #: src/components/containers-table/containers-table.tsx
 msgid "Click on a container to view more information."
@@ -668,12 +668,12 @@ msgstr "删除"
 #. placeholder {0}: systems.length
 #: src/components/systems-table/bulk-actions-bar.tsx
 msgid "Delete {0} systems"
-msgstr ""
+msgstr "删除 {0} 个系统"
 
 #. placeholder {0}: systems.length
 #: src/components/systems-table/bulk-actions-bar.tsx
 msgid "Delete {0} systems?"
-msgstr ""
+msgstr "删除 {0} 个系统？"
 
 #: src/components/routes/settings/tokens-fingerprints.tsx
 msgid "Delete fingerprint"
@@ -693,7 +693,7 @@ msgstr "删除选中项"
 
 #: src/components/systems-table/bulk-actions-bar.tsx
 msgid "Deleting..."
-msgstr ""
+msgstr "删除中…"
 
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Description"
@@ -919,7 +919,7 @@ msgstr "认证失败"
 
 #: src/components/systems-table/bulk-actions-bar.tsx
 msgid "Failed to delete {failedCount} systems."
-msgstr ""
+msgstr "{failedCount} 个系统删除失败。"
 
 #: src/components/active-alerts.tsx
 #~ msgid "Failed to dismiss alert"
@@ -1719,7 +1719,7 @@ msgstr "查看<0>通知设置</0>以配置您接收警报的方式。"
 
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "Select"
-msgstr ""
+msgstr "选择"
 
 #: src/components/routes/settings/quiet-hours.tsx
 msgid "Select {foo}"
@@ -1939,7 +1939,7 @@ msgstr "然后登录到后台并在用户表中重置您的用户账户密码。
 #. placeholder {0}: extraCount > 0 ? `${preview} (+${extraCount})` : preview
 #: src/components/systems-table/bulk-actions-bar.tsx
 msgid "This action cannot be undone. All current records for {0} will be permanently deleted from the database."
-msgstr ""
+msgstr "此操作无法撤销，{0} 的所有记录将从数据库中永久删除。"
 
 #: src/components/systems-table/systems-table-columns.tsx
 msgid "This action cannot be undone. This will permanently delete all current records for {name} from the database."
