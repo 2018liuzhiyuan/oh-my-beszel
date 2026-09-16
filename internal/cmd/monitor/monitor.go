@@ -2,11 +2,15 @@
 
 // Monitor is the local deployment helper for the Beszel hub. It replaces the
 // previous C# launcher, task runner, and BeszelLauncher with one static binary
-// and has two modes:
+// and has these modes:
 //
 //	Monitor.exe              start tasks, wait for the dashboard, open browser
 //	Monitor.exe task <ps1>   run a PowerShell script hidden (used by tasks)
+//	Monitor.exe install-task [name]    register + start the logon task
+//	Monitor.exe uninstall-task [name]  stop + remove the logon task
 //
+// The task subcommands use schtasks.exe directly instead of a .ps1 wrapper so
+// they work on machines where the execution policy blocks downloaded scripts.
 // Both modes read config.json next to the executable; see loadConfig for the
 // supported options and their defaults.
 package main
@@ -20,6 +24,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 	"unsafe"
 
@@ -28,11 +33,16 @@ import (
 
 const mutexName = `Local\BeszelMonitorLauncher`
 
+// hubTaskName is the scheduled task that starts run-hub.ps1 at logon. The
+// optional CLI argument of install-task/uninstall-task overrides it (tests).
+const hubTaskName = "Beszel Hub"
+
 type HubConfig struct {
 	UserEmail    string `json:"userEmail"`
 	UserPassword string `json:"userPassword"`
 	AutoLogin    string `json:"autoLogin"`
 	CheckUpdates *bool  `json:"checkUpdates"`
+	LogLevel     string `json:"logLevel"`
 }
 
 type Config struct {
@@ -42,6 +52,7 @@ type Config struct {
 	OpenBrowser           *bool     `json:"openBrowser"`
 	StartupTimeoutSeconds int       `json:"startupTimeoutSeconds"`
 	Tasks                 []string  `json:"tasks"`
+	HubScript             string    `json:"hubScript"`
 	Hub                   HubConfig `json:"hub"`
 }
 
@@ -51,6 +62,7 @@ func loadConfig() (*Config, error) {
 		Port:                  8090,
 		OpenBrowser:           new(bool),
 		StartupTimeoutSeconds: 45,
+		HubScript:             `app\run-hub.ps1`,
 	}
 	*cfg.OpenBrowser = true
 
@@ -81,18 +93,69 @@ func loadConfig() (*Config, error) {
 	if cfg.StartupTimeoutSeconds <= 0 {
 		cfg.StartupTimeoutSeconds = 45
 	}
+	if strings.TrimSpace(cfg.HubScript) == "" {
+		cfg.HubScript = `app\run-hub.ps1`
+	}
 	return cfg, nil
 }
 
 func main() {
-	if len(os.Args) == 3 && os.Args[1] == "task" {
+	if len(os.Args) >= 3 && os.Args[1] == "task" {
 		os.Exit(runTask(os.Args[2]))
+	}
+	if len(os.Args) >= 2 && os.Args[1] == "install-task" {
+		name := hubTaskName
+		if len(os.Args) >= 3 && os.Args[2] != "" {
+			name = os.Args[2]
+		}
+		if err := installTask(name); err != nil {
+			reportTaskResult("Beszel autostart install failed", err.Error(), true)
+			os.Exit(1)
+		}
+		reportTaskResult("Beszel autostart installed", fmt.Sprintf(
+			"Scheduled task %q registered and started. The hub now starts at logon.", name), false)
+		return
+	}
+	if len(os.Args) >= 2 && os.Args[1] == "uninstall-task" {
+		name := hubTaskName
+		if len(os.Args) >= 3 && os.Args[2] != "" {
+			name = os.Args[2]
+		}
+		if err := uninstallTask(name); err != nil {
+			reportTaskResult("Beszel autostart removal failed", err.Error(), true)
+			os.Exit(1)
+		}
+		reportTaskResult("Beszel autostart removed", fmt.Sprintf(
+			"Scheduled task %q stopped and removed.", name), false)
+		return
 	}
 	if err := launch(); err != nil {
 		appendLog(err)
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+}
+
+// reportTaskResult surfaces install/uninstall outcomes to double-click users:
+// the binary is built with -H windowsgui, so there is no console to read and
+// a message box is the only visible channel. BESZEL_MONITOR_NO_MSGBOX=1 keeps
+// automation and tests non-interactive (result goes to stdout/stderr instead).
+func reportTaskResult(title, message string, isError bool) {
+	if os.Getenv("BESZEL_MONITOR_NO_MSGBOX") == "1" {
+		if isError {
+			fmt.Fprintln(os.Stderr, title+": "+message)
+			return
+		}
+		fmt.Println(title + ": " + message)
+		return
+	}
+	caption, _ := windows.UTF16PtrFromString(title)
+	text, _ := windows.UTF16PtrFromString(message)
+	icon := uint32(windows.MB_ICONINFORMATION)
+	if isError {
+		icon = windows.MB_ICONERROR
+	}
+	windows.MessageBox(0, text, caption, icon|windows.MB_SETFOREGROUND)
 }
 
 func launch() error {
@@ -103,22 +166,177 @@ func launch() error {
 	if err != nil {
 		return err
 	}
-	for _, task := range cfg.Tasks {
-		if err := startScheduledTask(task); err != nil {
-			return fmt.Errorf("start scheduled task %q: %w", task, err)
-		}
-	}
 	url := fmt.Sprintf("http://%s:%d", cfg.Host, cfg.Port)
-	if !waitUntilReady(url, time.Duration(cfg.StartupTimeoutSeconds)*time.Second) {
-		return fmt.Errorf(
-			"dashboard at %s did not become ready within %ds; check the scheduled tasks and local hub.log",
-			url, cfg.StartupTimeoutSeconds,
-		)
+	if !isReady(url) {
+		missingTask := false
+		for _, task := range cfg.Tasks {
+			if err := startScheduledTask(task); err != nil {
+				if taskExists(task) {
+					return fmt.Errorf("start scheduled task %q: %w", task, err)
+				}
+				// fresh unzip without install-task: note it and bring the hub
+				// up directly below instead of failing with a cryptic
+				// "file not found" from schtasks
+				appendLog(fmt.Errorf("scheduled task %q is not registered; starting the hub directly", task))
+				missingTask = true
+			}
+		}
+		if missingTask || len(cfg.Tasks) == 0 {
+			if err := startHubScript(cfg.HubScript); err != nil {
+				return err
+			}
+		}
+		if !waitUntilReady(url, time.Duration(cfg.StartupTimeoutSeconds)*time.Second) {
+			return fmt.Errorf(
+				"dashboard at %s did not become ready within %ds; check the scheduled tasks and local hub.log",
+				url, cfg.StartupTimeoutSeconds,
+			)
+		}
 	}
 	if *cfg.OpenBrowser {
 		openBrowser(url)
 	}
 	return nil
+}
+
+// startHubScript starts the hub without a scheduled task by spawning a
+// detached runner (`Monitor.exe task <script>`). The child outlives this
+// launcher, so a fresh unzip works with a plain double-click; install-task
+// remains the way to get logon autostart and watchdog restarts.
+func startHubScript(rel string) error {
+	exePath, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	script, err := filepath.Abs(filepath.Join(filepath.Dir(exePath), filepath.FromSlash(rel)))
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(script); err != nil {
+		return fmt.Errorf(
+			"hub script %s not found; run install-task.cmd or start app\\run-hub.ps1 manually: %w", script, err)
+	}
+	cmd := exec.Command(exePath, "task", script)
+	cmd.Dir = filepath.Dir(script)
+	hideWindow(cmd)
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("start hub script %s: %w", script, err)
+	}
+	// deliberately not waited on: the runner owns the hub for the session
+	return nil
+}
+
+func schtasksPath() string {
+	return filepath.Join(os.Getenv("WINDIR"), "System32", "schtasks.exe")
+}
+
+// taskExists reports whether the scheduled task is registered. A query
+// failure for any other reason is also treated as missing, which only ever
+// results in the direct-start fallback, never a wrong success.
+func taskExists(name string) bool {
+	cmd := exec.Command(schtasksPath(), "/Query", "/TN", name)
+	hideWindow(cmd)
+	return cmd.Run() == nil
+}
+
+// installTask registers the logon task that starts run-hub.ps1 via this
+// binary's task-runner mode, then starts it. Equivalent to the previous
+// install-task.ps1 (RestartCount 10 / no time limit / hidden) but immune to
+// PowerShell execution policies.
+func installTask(name string) error {
+	exePath, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	exeDir := filepath.Dir(exePath)
+	script := filepath.Join(exeDir, "app", "run-hub.ps1")
+	if _, err := os.Stat(script); err != nil {
+		return fmt.Errorf("app\\run-hub.ps1 not found next to Monitor.exe: %w", err)
+	}
+	xml := taskXML(exePath, script, exeDir, os.Getenv("USERDOMAIN")+"\\"+os.Getenv("USERNAME"))
+	xmlPath := filepath.Join(os.TempDir(), "beszel-task-"+name+".xml")
+	// schtasks /XML requires UTF-16 with a BOM
+	if err := writeUTF16(xmlPath, xml); err != nil {
+		return err
+	}
+	defer os.Remove(xmlPath)
+
+	cmd := exec.Command(schtasksPath(), "/Create", "/TN", name, "/XML", xmlPath, "/F")
+	hideWindow(cmd)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("register task: %w: %s", err, out)
+	}
+	cmd = exec.Command(schtasksPath(), "/Run", "/TN", name)
+	hideWindow(cmd)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("start task: %w: %s", err, out)
+	}
+	return nil
+}
+
+func uninstallTask(name string) error {
+	// ending a stopped or missing task fails harmlessly; deletion is the goal
+	cmd := exec.Command(schtasksPath(), "/End", "/TN", name)
+	hideWindow(cmd)
+	_ = cmd.Run()
+	cmd = exec.Command(schtasksPath(), "/Delete", "/TN", name, "/F")
+	hideWindow(cmd)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("delete task: %w: %s", err, out)
+	}
+	return nil
+}
+
+// taskXML builds the Task Scheduler definition; schtasks requires UTF-16, so
+// non-ASCII installation paths and user names are safe.
+func taskXML(exe, script, workingDir, userID string) string {
+	escape := strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&quot;")
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <Description>Run the local Beszel monitoring hub.</Description>
+  </RegistrationInfo>
+  <Triggers>
+    <LogonTrigger>
+      <Enabled>true</Enabled>
+      <UserId>%s</UserId>
+    </LogonTrigger>
+  </Triggers>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <StartWhenAvailable>true</StartWhenAvailable>
+    <RestartOnFailure>
+      <Count>10</Count>
+      <Interval>PT1M</Interval>
+    </RestartOnFailure>
+    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+    <Enabled>true</Enabled>
+    <Hidden>true</Hidden>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>%s</Command>
+      <Arguments>task "%s"</Arguments>
+      <WorkingDirectory>%s</WorkingDirectory>
+    </Exec>
+  </Actions>
+</Task>
+`, escape.Replace(userID), escape.Replace(exe), escape.Replace(script), escape.Replace(workingDir))
+}
+
+func writeUTF16(path, text string) error {
+	encoded, err := windows.UTF16FromString(text)
+	if err != nil {
+		return err
+	}
+	buf := make([]byte, 0, 2+2*len(encoded))
+	buf = append(buf, 0xFF, 0xFE) // little-endian BOM
+	for _, u := range encoded {
+		buf = append(buf, byte(u), byte(u>>8))
+	}
+	return os.WriteFile(path, buf, 0o600)
 }
 
 func acquireSingleInstanceLock() bool {
@@ -138,8 +356,7 @@ func acquireSingleInstanceLock() bool {
 }
 
 func startScheduledTask(name string) error {
-	schtasks := filepath.Join(os.Getenv("WINDIR"), "System32", "schtasks.exe")
-	cmd := exec.Command(schtasks, "/Run", "/TN", name)
+	cmd := exec.Command(schtasksPath(), "/Run", "/TN", name)
 	hideWindow(cmd)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("%w: %s", err, out)
@@ -147,18 +364,29 @@ func startScheduledTask(name string) error {
 	return nil
 }
 
-func waitUntilReady(url string, timeout time.Duration) bool {
-	client := &http.Client{
-		Timeout:   time.Second,
-		Transport: &http.Transport{Proxy: nil, DialContext: (&net.Dialer{Timeout: time.Second}).DialContext},
+// probeClient never uses a proxy and times out fast: readiness of the local
+// dashboard is all it measures.
+var probeClient = &http.Client{
+	Timeout:   time.Second,
+	Transport: &http.Transport{Proxy: nil, DialContext: (&net.Dialer{Timeout: time.Second}).DialContext},
+}
+
+// isReady does a single probe of the dashboard, so a double-click while the
+// hub is already up just opens the browser instead of re-running tasks.
+func isReady(url string) bool {
+	resp, err := probeClient.Get(url)
+	if err != nil {
+		return false
 	}
+	defer resp.Body.Close()
+	return resp.StatusCode == http.StatusOK
+}
+
+func waitUntilReady(url string, timeout time.Duration) bool {
 	deadline := time.Now().Add(timeout)
 	for {
-		if resp, err := client.Get(url); err == nil {
-			resp.Body.Close()
-			if resp.StatusCode == http.StatusOK {
-				return true
-			}
+		if isReady(url) {
+			return true
 		}
 		if time.Now().After(deadline) {
 			return false

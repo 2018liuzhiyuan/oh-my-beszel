@@ -103,4 +103,4 @@ if (-not (Test-Path (Join-Path $outDir 'config.json'))) {
 }
 
 Write-Host "Package ready: $outDir"
-Write-Host 'Next: edit config.json, then run install-task.ps1 (autostart) or double-click Monitor.exe.'
+Write-Host 'Next: double-click Monitor.exe (zero config), or install-task.cmd for logon autostart.'

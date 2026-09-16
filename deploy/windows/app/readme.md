@@ -22,9 +22,10 @@
    ```
    产物在 `build\windows\`。构建需要 Go 1.26.1+，前端使用 Bun 和 Node.js 22.12+；运行便携包需要 PowerShell 7，不需要这些构建工具。
 2. **改配置**：编辑便携目录的 `config.json`，设置自己的 `hub.userEmail` 和 `hub.userPassword`。模板默认开启免登录；需要密码登录时将 `hub.autoLogin` 改为 `""`。
-3. **启动**（二选一）：
-   - 持久运行：用 PowerShell 7 执行 `install-task.ps1`，注册并启动 `Beszel Hub` 任务，此后在当前用户登录时自动启动；再双击 `Monitor.exe` 打开面板。Monitor 不会注册缺失的任务。
-   - 前台试运行：用 PowerShell 7 执行 `run-hub.ps1`，保持终端开启，手动访问 `http://127.0.0.1:8090`。
+3. **启动**（三选一）：
+   - 直接使用：**双击 `Monitor.exe`**。无需任何前置步骤：未注册计划任务时 Monitor 会自动在后台拉起 Hub 并打开面板；关机或注销后进程自然结束，下次使用再双击即可。
+   - 登录自启：双击 `install-task.cmd`（弹窗确认注册结果）。此后 Hub 随当前用户登录自动启动；双击 `Monitor.exe` 只负责打开面板。
+   - 前台试运行：用 PowerShell 7 执行 `app\run-hub.ps1`，保持终端开启，手动访问 `http://127.0.0.1:8090`。
 
 源仓库的 `docs/guide.md`（英文）和 `docs/guide.zh-CN.md`（中文）提供完整配置、SSH 部署和故障排查步骤。
 
@@ -46,7 +47,8 @@ Start-ScheduledTask -TaskName 'Beszel Hub'
 | host / port | 127.0.0.1 / 8090 | Hub 监听地址；仅供本机访问保持默认 |
 | openBrowser | true | Monitor 启动后是否自动打开浏览器 |
 | startupTimeoutSeconds | 45 | Monitor 等待面板就绪的超时 |
-| tasks | ["Beszel Hub"] | Monitor 启动时要拉起的计划任务名 |
+| tasks | ["Beszel Hub"] | Monitor 启动时要拉起的计划任务名；任务未注册时自动改为直接启动 Hub |
+| hubScript | app\run-hub.ps1 | 任务未注册时 Monitor 直接运行的 Hub 启动脚本 |
 | hub.userEmail / userPassword | — | **首次启动**创建的登录账号（改密码对已有库无效，需走 UI） |
 | hub.autoLogin | admin@beszel.local | 模板填写了邮箱，启用以该用户身份免密码访问；需要认证时清空，并避免继承 AUTO_LOGIN / BESZEL_HUB_AUTO_LOGIN 环境变量 |
 | hub.checkUpdates | false | 传给 Hub 的保留字段 CHECK_UPDATES，不是本分支的安装器或更新渠道 |
@@ -65,4 +67,4 @@ Start-ScheduledTask -TaskName 'Beszel Hub'
 - 日志：`app\hub.log`（Hub，超过 10 MB 自动轮转为 `hub.log.1`；连接失败原因也会显示在面板红点悬停、系统页与“设置 → Hub 日志”）、`launcher.log`（Monitor 启动失败原因，在根目录）。
 - 修改配置后重启对应 Hub 实例；初始账号字段不能重置已有数据库中的密码。
 - 备份/迁移：先停止 Hub，再复制完整的 `app\beszel_data\`，并保留 `config.json` 与 SSH 设置。
-- `uninstall-task.ps1` 只注销任务，不删除数据，也不保证已运行的 Hub 停止；移动便携目录前需停止对应实例。
+- `uninstall-task.cmd` 只注销任务，不删除数据，也不保证已运行的 Hub 停止；移动便携目录前需停止对应实例。
