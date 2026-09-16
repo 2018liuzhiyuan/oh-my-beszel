@@ -20,12 +20,9 @@
    bun run --cwd ./internal/site build
    pwsh -NoLogo -NoProfile -File ./deploy/windows/build.ps1
    ```
-   产物在 `build\windows\`。构建需要 Go 1.26.1+，前端使用 Bun 和 Node.js 22.12+；运行便携包需要 PowerShell 7，不需要这些构建工具。
+   产物在 `build\windows\`。构建需要 Go 1.26.1+，前端使用 Bun 和 Node.js 22.12+；运行便携包零依赖，系统自带的 PowerShell（5.1 或 7）即可，不需要这些构建工具。
 2. **改配置**：编辑便携目录的 `config.json`，设置自己的 `hub.userEmail` 和 `hub.userPassword`。模板默认开启免登录；需要密码登录时将 `hub.autoLogin` 改为 `""`。
-3. **启动**（三选一）：
-   - 直接使用：**双击 `Monitor.exe`**。无需任何前置步骤：未注册计划任务时 Monitor 会自动在后台拉起 Hub 并打开面板；关机或注销后进程自然结束，下次使用再双击即可。
-   - 登录自启：双击 `install-task.cmd`（弹窗确认注册结果）。此后 Hub 随当前用户登录自动启动；双击 `Monitor.exe` 只负责打开面板。
-   - 前台试运行：用 PowerShell 7 执行 `app\run-hub.ps1`，保持终端开启，手动访问 `http://127.0.0.1:8090`。
+3. **启动**：**双击 `Monitor.exe`** 即可，无需任何前置步骤。首次运行会直接在后台拉起 Hub 并打开面板，同时自动注册 `Beszel Hub` 登录自启任务（此后开机登录即自动运行）。需要前台调试时，也可以用 PowerShell 执行 `app\run-hub.ps1` 并手动访问 `http://127.0.0.1:8090`。
 
 源仓库的 `docs/guide.md`（英文）和 `docs/guide.zh-CN.md`（中文）提供完整配置、SSH 部署和故障排查步骤。
 
@@ -67,4 +64,4 @@ Start-ScheduledTask -TaskName 'Beszel Hub'
 - 日志：`app\hub.log`（Hub，超过 10 MB 自动轮转为 `hub.log.1`；连接失败原因也会显示在面板红点悬停、系统页与“设置 → Hub 日志”）、`launcher.log`（Monitor 启动失败原因，在根目录）。
 - 修改配置后重启对应 Hub 实例；初始账号字段不能重置已有数据库中的密码。
 - 备份/迁移：先停止 Hub，再复制完整的 `app\beszel_data\`，并保留 `config.json` 与 SSH 设置。
-- `uninstall-task.cmd` 只注销任务，不删除数据，也不保证已运行的 Hub 停止；移动便携目录前需停止对应实例。
+- 取消登录自启：在 PowerShell 中运行 `.\Monitor.exe uninstall-task`（只注销任务，不删除数据，也不停止已运行的 Hub）；移动便携目录前需先停止对应实例并重新注册。

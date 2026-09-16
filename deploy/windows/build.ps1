@@ -103,4 +103,4 @@ if (-not (Test-Path (Join-Path $outDir 'config.json'))) {
 }
 
 Write-Host "Package ready: $outDir"
-Write-Host 'Next: double-click Monitor.exe (zero config), or install-task.cmd for logon autostart.'
+Write-Host 'Next: double-click Monitor.exe - zero config, autostart registers itself on first run.'

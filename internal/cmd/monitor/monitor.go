@@ -185,6 +185,7 @@ func launch() error {
 			if err := startHubScript(cfg.HubScript); err != nil {
 				return err
 			}
+			registerAutostart()
 		}
 		if !waitUntilReady(url, time.Duration(cfg.StartupTimeoutSeconds)*time.Second) {
 			return fmt.Errorf(
@@ -199,22 +200,38 @@ func launch() error {
 	return nil
 }
 
+// resolveHubScript finds the hub start script next to the executable: the
+// configured hubScript (package layout: app\run-hub.ps1), falling back to a
+// script beside the exe (flat layout used by earlier deployments).
+func resolveHubScript(rel string) (string, error) {
+	exePath, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	dir := filepath.Dir(exePath)
+	for _, candidate := range []string{rel, "run-hub.ps1"} {
+		path, err := filepath.Abs(filepath.Join(dir, filepath.FromSlash(candidate)))
+		if err != nil {
+			continue
+		}
+		if _, err := os.Stat(path); err == nil {
+			return path, nil
+		}
+	}
+	return "", fmt.Errorf("hub script not found beside Monitor.exe (tried %s and run-hub.ps1)", rel)
+}
+
 // startHubScript starts the hub without a scheduled task by spawning a
 // detached runner (`Monitor.exe task <script>`). The child outlives this
-// launcher, so a fresh unzip works with a plain double-click; install-task
-// remains the way to get logon autostart and watchdog restarts.
+// launcher, so a fresh unzip works with a plain double-click.
 func startHubScript(rel string) error {
+	script, err := resolveHubScript(rel)
+	if err != nil {
+		return err
+	}
 	exePath, err := os.Executable()
 	if err != nil {
 		return err
-	}
-	script, err := filepath.Abs(filepath.Join(filepath.Dir(exePath), filepath.FromSlash(rel)))
-	if err != nil {
-		return err
-	}
-	if _, err := os.Stat(script); err != nil {
-		return fmt.Errorf(
-			"hub script %s not found; run install-task.cmd or start app\\run-hub.ps1 manually: %w", script, err)
 	}
 	cmd := exec.Command(exePath, "task", script)
 	cmd.Dir = filepath.Dir(script)
@@ -224,6 +241,25 @@ func startHubScript(rel string) error {
 	}
 	// deliberately not waited on: the runner owns the hub for the session
 	return nil
+}
+
+// registerAutostart installs the logon task on first use, so a portable
+// install gains autostart without any extra step. Best-effort: failures are
+// logged, never fatal. BESZEL_MONITOR_NO_AUTOREG=1 keeps automation and the
+// E2E gate (which must not clobber a developer machine's real task) away
+// from the scheduler.
+func registerAutostart() {
+	if os.Getenv("BESZEL_MONITOR_NO_AUTOREG") == "1" {
+		return
+	}
+	if taskExists(hubTaskName) {
+		return
+	}
+	if err := installTask(hubTaskName); err != nil {
+		appendLog(fmt.Errorf("autostart registration failed: %w", err))
+		return
+	}
+	appendLog(fmt.Errorf("registered logon task %q; run %q to remove it", hubTaskName, "Monitor.exe uninstall-task"))
 }
 
 func schtasksPath() string {
@@ -239,7 +275,7 @@ func taskExists(name string) bool {
 	return cmd.Run() == nil
 }
 
-// installTask registers the logon task that starts run-hub.ps1 via this
+// installTask registers the logon task that starts the hub script via this
 // binary's task-runner mode, then starts it. Equivalent to the previous
 // install-task.ps1 (RestartCount 10 / no time limit / hidden) but immune to
 // PowerShell execution policies.
@@ -248,12 +284,11 @@ func installTask(name string) error {
 	if err != nil {
 		return err
 	}
-	exeDir := filepath.Dir(exePath)
-	script := filepath.Join(exeDir, "app", "run-hub.ps1")
-	if _, err := os.Stat(script); err != nil {
-		return fmt.Errorf("app\\run-hub.ps1 not found next to Monitor.exe: %w", err)
+	script, err := resolveHubScript(`app\run-hub.ps1`)
+	if err != nil {
+		return err
 	}
-	xml := taskXML(exePath, script, exeDir, os.Getenv("USERDOMAIN")+"\\"+os.Getenv("USERNAME"))
+	xml := taskXML(exePath, script, filepath.Dir(exePath), os.Getenv("USERDOMAIN")+"\\"+os.Getenv("USERNAME"))
 	xmlPath := filepath.Join(os.TempDir(), "beszel-task-"+name+".xml")
 	// schtasks /XML requires UTF-16 with a BOM
 	if err := writeUTF16(xmlPath, xml); err != nil {
