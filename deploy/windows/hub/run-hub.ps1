@@ -8,8 +8,10 @@ $listenHost = if ($config.host) { [string]$config.host } else { '127.0.0.1' }
 $port = if ($config.port) { [int]$config.port } else { 8090 }
 
 $logPath = Join-Path $PSScriptRoot 'hub.log'
-# rotate once the log grows beyond 10 MB so a long-running hub cannot fill the disk
-if ((Get-Item -LiteralPath $logPath -ErrorAction SilentlyContinue)?.Length -gt 10MB) {
+# rotate once the log grows beyond 10 MB so a long-running hub cannot fill the disk.
+# plain if instead of ?. so the stock Windows PowerShell 5.1 can run this too
+$logFile = Get-Item -LiteralPath $logPath -ErrorAction SilentlyContinue
+if ($logFile -and $logFile.Length -gt 10MB) {
     Move-Item -LiteralPath $logPath -Destination (Join-Path $PSScriptRoot 'hub.log.1') -Force
 }
 
