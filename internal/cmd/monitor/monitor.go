@@ -419,7 +419,10 @@ func runTask(scriptPath string) int {
 	if err != nil {
 		return 3
 	}
-	cmd := exec.Command(shell, "-NoLogo", "-NoProfile", "-NonInteractive", "-File", scriptPath)
+	// Bypass keeps the runner working on machines whose execution policy is
+	// Restricted or RemoteSigned: scripts downloaded inside the release zip
+	// carry the mark-of-the-web and would otherwise be refused.
+	cmd := exec.Command(shell, "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", scriptPath)
 	cmd.Dir = filepath.Dir(scriptPath)
 	hideWindow(cmd)
 	if err := cmd.Start(); err != nil {
