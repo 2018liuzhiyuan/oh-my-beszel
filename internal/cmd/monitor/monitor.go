@@ -189,6 +189,14 @@ func launch() error {
 	}
 	url := fmt.Sprintf("http://%s:%d", cfg.Host, cfg.Port)
 	if !isReady(url) {
+		// config.json is reread on every start of the hub script, so a hub
+		// from THIS install that is running while our configured URL is not
+		// serving must be on an outdated config (e.g. the user just changed
+		// the port). Stop it; the task or direct start below brings the hub
+		// back with the current settings. Other installs are never touched.
+		if stopped := stopOwnHubs(); stopped > 0 {
+			appendInfo(fmt.Sprintf("stopped %d hub process(es) running an outdated config", stopped))
+		}
 		missingTask := false
 		for _, task := range cfg.Tasks {
 			if err := startScheduledTask(task); err != nil {
@@ -208,8 +216,9 @@ func launch() error {
 			}
 			registerAutostart(cfg)
 		} else if !waitUntilReady(url, taskStartGrace) {
-			// the tasks started but this port never came up - most likely the
-			// task belongs to another install; run our own hub instead
+			// the tasks run but this port never came up - the task with our
+			// name belongs to a different install (shared default name);
+			// run our own hub directly
 			appendInfo(fmt.Sprintf("scheduled tasks did not serve %s within %s; starting the hub directly", url, taskStartGrace))
 			if err := startHubScript(cfg.HubScript); err != nil {
 				return err
@@ -307,6 +316,65 @@ func taskExists(name string) bool {
 	cmd := exec.Command(schtasksPath(), "/Query", "/TN", name)
 	hideWindow(cmd)
 	return cmd.Run() == nil
+}
+
+// stopOwnHubs terminates hub processes started from THIS install (matched by
+// the full path of app\beszel.exe / beszel.exe next to Monitor.exe) and
+// returns how many were stopped. Called when the configured dashboard URL is
+// not serving: any hub of ours that is alive then runs an outdated
+// config.json. Killing the hub also unwinds its run-hub.ps1 runner, so the
+// subsequent task or direct start rereads the config. Hubs of other installs
+// have different executable paths and are never matched.
+func stopOwnHubs() int {
+	exePath, err := os.Executable()
+	if err != nil {
+		return 0
+	}
+	exeDir := filepath.Dir(exePath)
+	candidates := []string{
+		filepath.Join(exeDir, "app", "beszel.exe"),
+		filepath.Join(exeDir, "beszel.exe"),
+	}
+
+	snapshot, err := windows.CreateToolhelp32Snapshot(windows.TH32CS_SNAPPROCESS, 0)
+	if err != nil {
+		return 0
+	}
+	defer windows.CloseHandle(snapshot)
+
+	stopped := 0
+	var entry windows.ProcessEntry32
+	entry.Size = uint32(unsafe.Sizeof(entry))
+	for err = windows.Process32First(snapshot, &entry); err == nil; err = windows.Process32Next(snapshot, &entry) {
+		if !strings.EqualFold(windows.UTF16ToString(entry.ExeFile[:]), "beszel.exe") {
+			continue
+		}
+		handle, openErr := windows.OpenProcess(
+			windows.PROCESS_QUERY_LIMITED_INFORMATION|windows.PROCESS_TERMINATE, false, entry.ProcessID,
+		)
+		if openErr != nil {
+			continue
+		}
+		var buf [windows.MAX_LONG_PATH]uint16
+		size := uint32(len(buf))
+		if windows.QueryFullProcessImageName(handle, 0, &buf[0], &size) == nil {
+			fullPath := windows.UTF16ToString(buf[:size])
+			for _, candidate := range candidates {
+				if strings.EqualFold(fullPath, candidate) {
+					if windows.TerminateProcess(handle, 1) == nil {
+						stopped++
+					}
+					break
+				}
+			}
+		}
+		windows.CloseHandle(handle)
+	}
+	if stopped > 0 {
+		// give the terminated hub a moment to release its port and database
+		time.Sleep(time.Second)
+	}
+	return stopped
 }
 
 // installTask registers the logon task that starts the hub script via this

@@ -49,16 +49,11 @@ To remove the autostart entry: `.\Monitor.exe uninstall-task` in PowerShell
 
 ## Changing the port
 
-Edit `port` in `config.json`, then restart the hub:
-
-```powershell
-Stop-ScheduledTask -TaskName 'Beszel Hub'; Start-ScheduledTask -TaskName 'Beszel Hub'
-```
-
-(or sign out/in, or reboot). Re-run `Monitor.exe` afterwards — it opens the
-new address. Note: each install on a machine needs its own task name; if you
-run two copies, give the second one a different `tasks[0]` in its
-config.json before first launch.
+Edit `port` in `config.json`, then double-click `Monitor.exe` again — it
+notices the hub is serving the old port, restarts its scheduled task so the
+new config is picked up, and opens the new address. Note: each install on a
+machine needs its own task name; if you run two copies, give the second one
+a different `tasks[0]` in its config.json before first launch.
 
 ## Monitoring Linux machines
 
