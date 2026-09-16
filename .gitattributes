@@ -1,1 +1,2 @@
 *.tsx linguist-language=Go
+*.sh text eol=lf
