@@ -141,6 +141,11 @@ func main() {
 	if err := launch(); err != nil {
 		appendLog(err)
 		fmt.Fprintln(os.Stderr, err)
+		// windowsgui binary: stderr is invisible to a double-click user, so
+		// failures must surface in a message box or they look like "nothing
+		// happened"
+		reportTaskResult("Beszel failed to start",
+			err.Error()+"\n\nDetails: launcher.log and app\\hub.log next to Monitor.exe.", true)
 		os.Exit(1)
 	}
 }
@@ -186,7 +191,7 @@ func launch() error {
 				// fresh unzip without install-task: note it and bring the hub
 				// up directly below instead of failing with a cryptic
 				// "file not found" from schtasks
-				appendLog(fmt.Errorf("scheduled task %q is not registered; starting the hub directly", task))
+				appendInfo(fmt.Sprintf("scheduled task %q is not registered; starting the hub directly", task))
 				missingTask = true
 			}
 		}
@@ -269,7 +274,7 @@ func registerAutostart() {
 		appendLog(fmt.Errorf("autostart registration failed: %w", err))
 		return
 	}
-	appendLog(fmt.Errorf("registered logon task %q; run %q to remove it", name, "Monitor.exe uninstall-task"))
+	appendInfo(fmt.Sprintf("registered logon task %q; run %q to remove it", name, "Monitor.exe uninstall-task"))
 }
 
 func schtasksPath() string {
@@ -449,13 +454,30 @@ func waitUntilReady(url string, timeout time.Duration) bool {
 	}
 }
 
+// openBrowser opens the dashboard. ShellExecuteW is the canonical path; the
+// old rundll32 url.dll route fails silently on machines where AV policy
+// blocks rundll32 or the http handler registration is broken, leaving the
+// user staring at nothing after a successful start. If no browser can be
+// launched at all, a message box hands over the URL so the start is never
+// invisible.
 func openBrowser(url string) {
+	verb, _ := windows.UTF16PtrFromString("open")
+	target, _ := windows.UTF16PtrFromString(url)
+	if err := windows.ShellExecute(0, verb, target, nil, nil, windows.SW_SHOWNORMAL); err == nil {
+		appendInfo("dashboard ready, browser opened at " + url)
+		return
+	}
 	cmd := exec.Command(
 		filepath.Join(os.Getenv("WINDIR"), "System32", "rundll32.exe"),
 		"url.dll,FileProtocolHandler", url,
 	)
 	hideWindow(cmd)
-	_ = cmd.Start()
+	if err := cmd.Start(); err == nil {
+		appendInfo("dashboard ready, browser opened (fallback) at " + url)
+		return
+	}
+	appendLog(fmt.Errorf("could not open a browser; dashboard is at %s", url))
+	reportTaskResult("Beszel is running", "The dashboard is at "+url+" - open it in your browser.", false)
 }
 
 // runTask executes a PowerShell script with no window and returns its exit
@@ -599,6 +621,17 @@ func hideWindow(cmd *exec.Cmd) {
 }
 
 func appendLog(err error) {
+	writeLauncherLog("ERROR", err.Error())
+}
+
+// appendInfo records normal launcher activity. The severity prefix matters:
+// launcher.log used to hold only failures, so a release user reading the
+// autostart-registration note reported it as an error.
+func appendInfo(message string) {
+	writeLauncherLog("INFO", message)
+}
+
+func writeLauncherLog(level, message string) {
 	exePath, pathErr := os.Executable()
 	if pathErr != nil {
 		return
@@ -609,5 +642,5 @@ func appendLog(err error) {
 		return
 	}
 	defer file.Close()
-	fmt.Fprintf(file, "%s %s\r\n", time.Now().Format(time.RFC3339), err)
+	fmt.Fprintf(file, "%s %s %s\r\n", time.Now().Format(time.RFC3339), level, message)
 }
