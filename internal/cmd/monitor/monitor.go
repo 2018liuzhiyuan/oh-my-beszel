@@ -172,6 +172,13 @@ func reportTaskResult(title, message string, isError bool) {
 	windows.MessageBox(0, text, caption, icon|windows.MB_SETFOREGROUND)
 }
 
+// taskStartGrace is how long a started scheduled task gets to serve the
+// dashboard before the launcher falls back to starting the hub directly.
+// The fallback covers a same-named task that belongs to a DIFFERENT install
+// (two portable extracts on one machine collide on "Beszel Hub": the task
+// brings up the other install's port and this one would time out).
+const taskStartGrace = 12 * time.Second
+
 func launch() error {
 	if !acquireSingleInstanceLock() {
 		return nil // another instance is already bringing up the dashboard
@@ -199,7 +206,14 @@ func launch() error {
 			if err := startHubScript(cfg.HubScript); err != nil {
 				return err
 			}
-			registerAutostart()
+			registerAutostart(cfg)
+		} else if !waitUntilReady(url, taskStartGrace) {
+			// the tasks started but this port never came up - most likely the
+			// task belongs to another install; run our own hub instead
+			appendInfo(fmt.Sprintf("scheduled tasks did not serve %s within %s; starting the hub directly", url, taskStartGrace))
+			if err := startHubScript(cfg.HubScript); err != nil {
+				return err
+			}
 		}
 		if !waitUntilReady(url, time.Duration(cfg.StartupTimeoutSeconds)*time.Second) {
 			return fmt.Errorf(
@@ -258,15 +272,20 @@ func startHubScript(rel string) error {
 }
 
 // registerAutostart installs the logon task on first use, so a portable
-// install gains autostart without any extra step. Best-effort: failures are
-// logged, never fatal. BESZEL_MONITOR_NO_AUTOREG=1 keeps automation and the
-// E2E gate (which must not clobber a developer machine's real task) away
-// from the scheduler.
-func registerAutostart() {
+// install gains autostart without any extra step. The name comes from
+// BESZEL_MONITOR_TASK_NAME (tests), else the first configured task, else the
+// default - so a second install that customized tasks[] in config.json gets
+// its own entry instead of colliding with another install's "Beszel Hub".
+// Best-effort: failures are logged, never fatal. BESZEL_MONITOR_NO_AUTOREG=1
+// keeps automation and the E2E gate away from the scheduler.
+func registerAutostart(cfg *Config) {
 	if os.Getenv("BESZEL_MONITOR_NO_AUTOREG") == "1" {
 		return
 	}
 	name := autostartTaskName()
+	if os.Getenv("BESZEL_MONITOR_TASK_NAME") == "" && len(cfg.Tasks) > 0 && strings.TrimSpace(cfg.Tasks[0]) != "" {
+		name = strings.TrimSpace(cfg.Tasks[0])
+	}
 	if taskExists(name) {
 		return
 	}
