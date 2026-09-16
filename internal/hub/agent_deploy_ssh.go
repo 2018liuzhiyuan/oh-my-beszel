@@ -46,7 +46,7 @@ func deployAgentOverSSH(ctx context.Context, app core.App, target agentDeploymen
 	if err != nil {
 		return err
 	}
-	if probe.installedSha256 == artifact.sha256 && probe.healthy {
+	if probe.installedSha256 == artifact.sha256 && probe.healthy && probe.listening {
 		app.Logger().Info("Agent already installed and healthy; skipping redeploy", "system", target.id, "host", target.host)
 		slog.Info("Agent already installed and healthy; skipping redeploy", "system", target.id, "host", target.host)
 		return nil
@@ -65,16 +65,21 @@ func deployAgentOverSSH(ctx context.Context, app core.App, target agentDeploymen
 }
 
 // agentProbeCommand reports the platform (four fields), the SHA-256 of any
-// installed agent binary (or "none"), and whether that binary answers its
-// health check, all through one connection.
+// installed agent binary (or "none"), whether that binary answers its health
+// check, and whether anything accepts connections on the agent port. The
+// health check alone cannot be trusted: agents up to 0.18.8 touch the health
+// file at process start, so their `health` subcommand always reports healthy
+// even when the agent died. The listener check catches that case, so a dead
+// agent is reinstalled instead of skipped.
 func agentProbeCommand(port uint16) string {
-	return fmt.Sprintf(`sh -c 'printf "%%s\n%%s\n%%s\n%%s\n" "$(uname -s)" "$(uname -m)" "$([ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1 && echo systemd || echo none)" "$(getconf GNU_LIBC_VERSION >/dev/null 2>&1 && echo glibc || echo unknown)"; BIN=/opt/beszel-agent/beszel-agent; if [ -f "$BIN" ]; then sha256sum "$BIN" | cut -d" " -f1; else echo none; fi; if LISTEN="127.0.0.1:%d" "$BIN" health >/dev/null 2>&1; then echo healthy; else echo unhealthy; fi'`, port)
+	return fmt.Sprintf(`sh -c 'printf "%%s\n%%s\n%%s\n%%s\n" "$(uname -s)" "$(uname -m)" "$([ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1 && echo systemd || echo none)" "$(getconf GNU_LIBC_VERSION >/dev/null 2>&1 && echo glibc || echo unknown)"; BIN=/opt/beszel-agent/beszel-agent; if [ -f "$BIN" ]; then sha256sum "$BIN" | cut -d" " -f1; else echo none; fi; if LISTEN="127.0.0.1:%[1]d" "$BIN" health >/dev/null 2>&1; then echo healthy; else echo unhealthy; fi; if command -v bash >/dev/null 2>&1 && bash -c "exec 3<>/dev/tcp/127.0.0.1/%[1]d" 2>/dev/null; then echo listening; elif command -v nc >/dev/null 2>&1 && nc -z 127.0.0.1 %[1]d >/dev/null 2>&1; then echo listening; else echo notlistening; fi'`, port)
 }
 
 type agentProbe struct {
 	platform        agentPlatform
 	installedSha256 string
 	healthy         bool
+	listening       bool
 }
 
 func parseAgentProbe(output string) (agentProbe, error) {
@@ -92,6 +97,9 @@ func parseAgentProbe(output string) (agentProbe, error) {
 	}
 	if len(lines) > 5 && strings.TrimSpace(lines[5]) == "healthy" {
 		probe.healthy = true
+	}
+	if len(lines) > 6 && strings.TrimSpace(lines[6]) == "listening" {
+		probe.listening = true
 	}
 	return probe, nil
 }

@@ -77,6 +77,57 @@ func TestParseAgentProbe_rejectsShortOutput(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestParseAgentProbe_reportsListenerState(t *testing.T) {
+	// Given: a running agent
+	probeOutput := "Linux\nx86_64\nnone\nglibc\n0123\nhealthy\nlistening\n"
+
+	// When
+	probe, err := parseAgentProbe(probeOutput)
+
+	// Then
+	require.NoError(t, err)
+	require.True(t, probe.healthy)
+	require.True(t, probe.listening)
+}
+
+func TestParseAgentProbe_detectsDeadAgentDespiteLyingHealthCheck(t *testing.T) {
+	// Given: agents up to 0.18.8 touch the health file at process start, so
+	// their health subcommand reports healthy even when the agent died
+	probeOutput := "Linux\nx86_64\nnone\nglibc\n0123\nhealthy\nnotlistening\n"
+
+	// When
+	probe, err := parseAgentProbe(probeOutput)
+
+	// Then: the listener check exposes the dead agent so deploy reinstalls it
+	require.NoError(t, err)
+	require.True(t, probe.healthy)
+	require.False(t, probe.listening)
+}
+
+func TestParseAgentProbe_defaultsListeningWithoutTrailingLine(t *testing.T) {
+	// Given: six-line output from an older probe without the listener line
+	probeOutput := "Linux\nx86_64\nnone\nglibc\n0123\nhealthy\n"
+
+	// When
+	probe, err := parseAgentProbe(probeOutput)
+
+	// Then
+	require.NoError(t, err)
+	require.True(t, probe.healthy)
+	require.False(t, probe.listening)
+}
+
+func TestAgentProbeCommand_checksAgentListener(t *testing.T) {
+	// When
+	command := agentProbeCommand(45876)
+
+	// Then: the listener check tries bash's /dev/tcp first and falls back to nc
+	require.Contains(t, command, `/dev/tcp/127.0.0.1/45876`)
+	require.Contains(t, command, `nc -z 127.0.0.1 45876`)
+	require.Contains(t, command, `echo listening`)
+	require.Contains(t, command, `echo notlistening`)
+}
+
 func TestAgentInstallCommand_keepsRecordValuesOutOfShellSource(t *testing.T) {
 	// Given
 	target := agentDeploymentTarget{

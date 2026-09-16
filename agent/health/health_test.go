@@ -63,3 +63,32 @@ func TestHealth(t *testing.T) {
 		})
 	})
 }
+
+// The writability probe must never create or touch the health file itself:
+// refreshing its mtime on every process start made the health subcommand
+// report a healthy agent even when none was running.
+func TestDirWritable_leavesHealthFileUntouched(t *testing.T) {
+	// Given: a directory holding a health file with a stale mtime
+	dir := t.TempDir()
+	healthPath := filepath.Join(dir, "beszel_health")
+	require.NoError(t, os.WriteFile(healthPath, nil, 0o600))
+	stale := time.Now().Add(-2 * time.Hour)
+	require.NoError(t, os.Chtimes(healthPath, stale, stale))
+
+	// When
+	writable := dirWritable(dir)
+
+	// Then: the directory qualifies and the probe file is cleaned up, but the
+	// health file keeps its stale timestamp
+	require.True(t, writable)
+	entries, err := os.ReadDir(dir)
+	require.NoError(t, err)
+	require.Len(t, entries, 1, "probe file was not removed")
+	info, err := os.Stat(healthPath)
+	require.NoError(t, err)
+	require.WithinDuration(t, stale, info.ModTime(), time.Second, "health file mtime was refreshed")
+}
+
+func TestDirWritable_rejectsMissingDirectory(t *testing.T) {
+	assert.False(t, dirWritable(filepath.Join(t.TempDir(), "does-not-exist")))
+}

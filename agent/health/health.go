@@ -18,13 +18,26 @@ var healthFile = getHealthFilePath()
 
 func getHealthFilePath() string {
 	filename := "beszel_health"
-	if runtime.GOOS == "linux" {
-		fullPath := filepath.Join("/dev/shm", filename)
-		if err := updateHealthFile(fullPath); err == nil {
-			return fullPath
-		}
+	if runtime.GOOS == "linux" && dirWritable("/dev/shm") {
+		return filepath.Join("/dev/shm", filename)
 	}
 	return filepath.Join(os.TempDir(), filename)
+}
+
+// dirWritable reports whether the directory can hold the health file. It must
+// not create or touch the health file itself: refreshing its mtime on every
+// process start would make the `health` subcommand report a healthy agent even
+// when none is running (the file only ages out 91s after the last touch, so a
+// startup touch defeats the check entirely).
+func dirWritable(dir string) bool {
+	probe, err := os.CreateTemp(dir, ".beszel-health-probe-*")
+	if err != nil {
+		return false
+	}
+	name := probe.Name()
+	_ = probe.Close()
+	_ = os.Remove(name)
+	return true
 }
 
 func updateHealthFile(path string) error {
