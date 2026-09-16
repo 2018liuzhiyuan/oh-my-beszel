@@ -34,8 +34,17 @@ import (
 const mutexName = `Local\BeszelMonitorLauncher`
 
 // hubTaskName is the scheduled task that starts run-hub.ps1 at logon. The
-// optional CLI argument of install-task/uninstall-task overrides it (tests).
+// optional CLI argument of install-task/uninstall-task overrides it, and
+// BESZEL_MONITOR_TASK_NAME lets tests exercise the real registration path
+// against a scratch task instead of the production entry.
 const hubTaskName = "Beszel Hub"
+
+func autostartTaskName() string {
+	if name := strings.TrimSpace(os.Getenv("BESZEL_MONITOR_TASK_NAME")); name != "" {
+		return name
+	}
+	return hubTaskName
+}
 
 type HubConfig struct {
 	UserEmail    string `json:"userEmail"`
@@ -104,11 +113,11 @@ func main() {
 		os.Exit(runTask(os.Args[2]))
 	}
 	if len(os.Args) >= 2 && os.Args[1] == "install-task" {
-		name := hubTaskName
+		name := autostartTaskName()
 		if len(os.Args) >= 3 && os.Args[2] != "" {
 			name = os.Args[2]
 		}
-		if err := installTask(name); err != nil {
+		if err := installTask(name, true); err != nil {
 			reportTaskResult("Beszel autostart install failed", err.Error(), true)
 			os.Exit(1)
 		}
@@ -117,7 +126,7 @@ func main() {
 		return
 	}
 	if len(os.Args) >= 2 && os.Args[1] == "uninstall-task" {
-		name := hubTaskName
+		name := autostartTaskName()
 		if len(os.Args) >= 3 && os.Args[2] != "" {
 			name = os.Args[2]
 		}
@@ -252,14 +261,15 @@ func registerAutostart() {
 	if os.Getenv("BESZEL_MONITOR_NO_AUTOREG") == "1" {
 		return
 	}
-	if taskExists(hubTaskName) {
+	name := autostartTaskName()
+	if taskExists(name) {
 		return
 	}
-	if err := installTask(hubTaskName); err != nil {
+	if err := installTask(name, false); err != nil {
 		appendLog(fmt.Errorf("autostart registration failed: %w", err))
 		return
 	}
-	appendLog(fmt.Errorf("registered logon task %q; run %q to remove it", hubTaskName, "Monitor.exe uninstall-task"))
+	appendLog(fmt.Errorf("registered logon task %q; run %q to remove it", name, "Monitor.exe uninstall-task"))
 }
 
 func schtasksPath() string {
@@ -276,10 +286,13 @@ func taskExists(name string) bool {
 }
 
 // installTask registers the logon task that starts the hub script via this
-// binary's task-runner mode, then starts it. Equivalent to the previous
-// install-task.ps1 (RestartCount 10 / no time limit / hidden) but immune to
-// PowerShell execution policies.
-func installTask(name string) error {
+// binary's task-runner mode; with start it also runs it immediately.
+// Equivalent to the previous install-task.ps1 (RestartCount 10 / no time
+// limit / hidden) but immune to PowerShell execution policies. The autostart
+// registration passes start=false because the hub is already running from the
+// direct start; running the task then would just lose a port-bind race and
+// churn through the task's failure-restart budget.
+func installTask(name string, start bool) error {
 	exePath, err := os.Executable()
 	if err != nil {
 		return err
@@ -288,7 +301,11 @@ func installTask(name string) error {
 	if err != nil {
 		return err
 	}
-	xml := taskXML(exePath, script, filepath.Dir(exePath), os.Getenv("USERDOMAIN")+"\\"+os.Getenv("USERNAME"))
+	userID := os.Getenv("USERNAME")
+	if domain := os.Getenv("USERDOMAIN"); domain != "" {
+		userID = domain + "\\" + userID
+	}
+	xml := taskXML(exePath, script, filepath.Dir(exePath), userID)
 	xmlPath := filepath.Join(os.TempDir(), "beszel-task-"+name+".xml")
 	// schtasks /XML requires UTF-16 with a BOM
 	if err := writeUTF16(xmlPath, xml); err != nil {
@@ -301,10 +318,12 @@ func installTask(name string) error {
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("register task: %w: %s", err, out)
 	}
-	cmd = exec.Command(schtasksPath(), "/Run", "/TN", name)
-	hideWindow(cmd)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("start task: %w: %s", err, out)
+	if start {
+		cmd = exec.Command(schtasksPath(), "/Run", "/TN", name)
+		hideWindow(cmd)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("start task: %w: %s", err, out)
+		}
 	}
 	return nil
 }
