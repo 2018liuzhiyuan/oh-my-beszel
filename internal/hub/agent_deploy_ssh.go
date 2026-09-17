@@ -34,7 +34,7 @@ type agentPlatform struct {
 }
 
 func deployAgentOverSSH(ctx context.Context, app core.App, target agentDeploymentTarget) error {
-	probeOutput, err := runAgentSSH(ctx, target, agentProbeCommand(target.port), nil, false)
+	probeOutput, err := runAgentSSH(ctx, target, agentProbeCommand(target.port, target.publicKey), nil, false)
 	if err != nil {
 		return fmt.Errorf("probe remote platform: %w", err)
 	}
@@ -46,7 +46,7 @@ func deployAgentOverSSH(ctx context.Context, app core.App, target agentDeploymen
 	if err != nil {
 		return err
 	}
-	if probe.installedSha256 == artifact.sha256 && probe.healthy && probe.listening {
+	if probe.installedSha256 == artifact.sha256 && probe.healthy && probe.listening && probe.authorized {
 		app.Logger().Info("Agent already installed and healthy; skipping redeploy", "system", target.id, "host", target.host)
 		slog.Info("Agent already installed and healthy; skipping redeploy", "system", target.id, "host", target.host)
 		return nil
@@ -71,8 +71,9 @@ func deployAgentOverSSH(ctx context.Context, app core.App, target agentDeploymen
 // file at process start, so their `health` subcommand always reports healthy
 // even when the agent died. The listener check catches that case, so a dead
 // agent is reinstalled instead of skipped.
-func agentProbeCommand(port uint16) string {
-	return fmt.Sprintf(`sh -c 'printf "%%s\n%%s\n%%s\n%%s\n" "$(uname -s)" "$(uname -m)" "$([ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1 && echo systemd || echo none)" "$(getconf GNU_LIBC_VERSION >/dev/null 2>&1 && echo glibc || echo unknown)"; BIN=/opt/beszel-agent/beszel-agent; if [ -f "$BIN" ]; then sha256sum "$BIN" | cut -d" " -f1; else echo none; fi; if LISTEN="127.0.0.1:%[1]d" "$BIN" health >/dev/null 2>&1; then echo healthy; else echo unhealthy; fi; if command -v bash >/dev/null 2>&1 && bash -c "exec 3<>/dev/tcp/127.0.0.1/%[1]d" 2>/dev/null; then echo listening; elif command -v nc >/dev/null 2>&1 && nc -z 127.0.0.1 %[1]d >/dev/null 2>&1; then echo listening; else echo notlistening; fi'`, port)
+func agentProbeCommand(port uint16, publicKey string) string {
+	publicKeyBase64 := base64.StdEncoding.EncodeToString([]byte(publicKey))
+	return fmt.Sprintf(`sh -c 'printf "%%s\n%%s\n%%s\n%%s\n" "$(uname -s)" "$(uname -m)" "$([ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1 && echo systemd || echo none)" "$(getconf GNU_LIBC_VERSION >/dev/null 2>&1 && echo glibc || echo unknown)"; BIN="$HOME/oh-my-beszel/bin/beszel-agent"; KEY_FILE="$HOME/oh-my-beszel/config/hub_keys"; KEY="$(printf %%s %[2]s | base64 -d)"; if [ -f "$BIN" ]; then sha256sum "$BIN" | cut -d" " -f1; else echo none; fi; if LISTEN="127.0.0.1:%[1]d" "$BIN" health >/dev/null 2>&1; then echo healthy; else echo unhealthy; fi; if command -v bash >/dev/null 2>&1 && bash -c "exec 3<>/dev/tcp/127.0.0.1/%[1]d" 2>/dev/null; then echo listening; elif command -v nc >/dev/null 2>&1 && nc -z 127.0.0.1 %[1]d >/dev/null 2>&1; then echo listening; else echo notlistening; fi; if [ -f "$KEY_FILE" ] && grep -Fqx "$KEY" "$KEY_FILE"; then echo authorized; else echo unauthorized; fi'`, port, publicKeyBase64)
 }
 
 type agentProbe struct {
@@ -80,6 +81,7 @@ type agentProbe struct {
 	installedSha256 string
 	healthy         bool
 	listening       bool
+	authorized      bool
 }
 
 func parseAgentProbe(output string) (agentProbe, error) {
@@ -100,6 +102,9 @@ func parseAgentProbe(output string) (agentProbe, error) {
 	}
 	if len(lines) > 6 && strings.TrimSpace(lines[6]) == "listening" {
 		probe.listening = true
+	}
+	if len(lines) > 7 && strings.TrimSpace(lines[7]) == "authorized" {
+		probe.authorized = true
 	}
 	return probe, nil
 }
@@ -144,7 +149,7 @@ func agentInstallCommand(target agentDeploymentTarget, stageName, checksum strin
 	script := base64.StdEncoding.EncodeToString([]byte(agentInstallScript()))
 	publicKey := base64.StdEncoding.EncodeToString([]byte(target.publicKey))
 	return fmt.Sprintf(
-		"umask 077; cat > /tmp/%[1]s && printf %%s %[2]s | base64 -d | sh -s -- %[3]d %[4]s %[1]s %[5]s && test -x /opt/beszel-agent/beszel-agent",
+		`umask 077; cat > /tmp/%[1]s && printf %%s %[2]s | base64 -d | sh -s -- %[3]d %[4]s %[1]s %[5]s && test -x "$HOME/oh-my-beszel/bin/beszel-agent"`,
 		stageName, script, target.port, publicKey, checksum,
 	)
 }
@@ -191,11 +196,20 @@ KEY_B64="$2"
 STAGE_NAME="$3"
 EXPECTED_SHA="$4"
 STAGE="/tmp/$STAGE_NAME"
-DIR="/opt/beszel-agent"
-BIN="$DIR/beszel-agent"
-ENV_FILE="$DIR/env"
-RUNNER="$DIR/run.sh"
-PID_FILE="$DIR/beszel-agent.pid"
+BASE="${HOME:?}/oh-my-beszel"
+BIN_DIR="$BASE/bin"
+CONFIG_DIR="$BASE/config"
+DATA_DIR="$BASE/data"
+LOG_DIR="$BASE/logs"
+BIN="$BASE/bin/beszel-agent"
+ENV_FILE="$BASE/config/env"
+KEY_FILE="$BASE/config/hub_keys"
+RUNNER="$BASE/bin/run-agent"
+PID_FILE="$DATA_DIR/agent.pid"
+SERVICE_NAME="oh-my-beszel-agent.service"
+SERVICE_FILE="$CONFIG_DIR/$SERVICE_NAME"
+USER_UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+USER_UNIT="$USER_UNIT_DIR/$SERVICE_NAME"
 
 cleanup() {
   rm -f "$STAGE" "/tmp/$STAGE_NAME.env" "/tmp/$STAGE_NAME.run" "/tmp/$STAGE_NAME.service"
@@ -207,92 +221,123 @@ if [ "$(sha256sum "$STAGE" | awk '{print $1}')" != "$EXPECTED_SHA" ]; then
   exit 20
 fi
 
-if [ "$(id -u)" -eq 0 ]; then
-  SUDO=""
-elif sudo -n true >/dev/null 2>&1; then
-  SUDO="sudo -n"
-else
-  echo "root or passwordless sudo is required" >&2
-  exit 21
-fi
-
-run() {
-  if [ -n "$SUDO" ]; then
-    sudo -n "$@"
-  else
-    "$@"
-  fi
-}
-
 KEY="$(printf '%s' "$KEY_B64" | base64 -d)"
-printf 'LISTEN="127.0.0.1:%s"\nKEY="%s"\n' "$PORT" "$KEY" > "/tmp/$STAGE_NAME.env"
+printf 'LISTEN="127.0.0.1:%s"\nKEY_FILE="$HOME/oh-my-beszel/config/hub_keys"\nDATA_DIR="$HOME/oh-my-beszel/data"\n' "$PORT" > "/tmp/$STAGE_NAME.env"
 cat > "/tmp/$STAGE_NAME.run" <<'RUNNER'
 #!/bin/sh
+set -eu
 set -a
-. /opt/beszel-agent/env
+. "$HOME/oh-my-beszel/config/env"
 set +a
-exec /opt/beszel-agent/beszel-agent
+exec "$HOME/oh-my-beszel/bin/beszel-agent"
 RUNNER
 cat > "/tmp/$STAGE_NAME.service" <<'SERVICE'
 [Unit]
-Description=Beszel Agent
+Description=Oh My Beszel Agent
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-EnvironmentFile=/opt/beszel-agent/env
-ExecStart=/opt/beszel-agent/beszel-agent
+ExecStart=%h/oh-my-beszel/bin/run-agent
+WorkingDirectory=%h/oh-my-beszel/data
+StandardOutput=append:%h/oh-my-beszel/logs/agent.log
+StandardError=append:%h/oh-my-beszel/logs/agent.log
 Restart=always
 RestartSec=5
 NoNewPrivileges=true
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
 SERVICE
 
-run install -d -m 0755 "$DIR"
-if run test -f "$BIN"; then
-  run cp -f "$BIN" "$BIN.previous"
+install -d -m 0755 "$BASE" "$BIN_DIR" "$DATA_DIR" "$LOG_DIR"
+install -d -m 0700 "$CONFIG_DIR"
+if test -f "$BIN"; then
+  cp -f "$BIN" "$BIN.previous"
 fi
-run install -m 0755 "$STAGE" "$BIN"
-run install -m 0600 "/tmp/$STAGE_NAME.env" "$ENV_FILE"
-run install -m 0755 "/tmp/$STAGE_NAME.run" "$RUNNER"
+install -m 0755 "$STAGE" "$BIN"
+install -m 0600 "/tmp/$STAGE_NAME.env" "$ENV_FILE"
+install -m 0755 "/tmp/$STAGE_NAME.run" "$RUNNER"
+install -m 0644 "/tmp/$STAGE_NAME.service" "$SERVICE_FILE"
+touch "$KEY_FILE"
+chmod 0600 "$KEY_FILE"
+if ! grep -Fqx "$KEY" "$KEY_FILE"; then
+  printf '%s\n' "$KEY" >> "$KEY_FILE"
+fi
 
 rollback() {
-  if run test -f "$BIN.previous"; then
-    run cp -f "$BIN.previous" "$BIN"
+  if test -f "$BIN.previous"; then
+    cp -f "$BIN.previous" "$BIN"
   fi
 }
 
-if [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1; then
-  run install -m 0644 "/tmp/$STAGE_NAME.service" /etc/systemd/system/beszel-agent.service
-  run systemctl daemon-reload
-  run systemctl enable beszel-agent.service >/dev/null
-  if ! run systemctl restart beszel-agent.service; then
+stop_detached() {
+  if [ ! -f "$PID_FILE" ]; then
+    return
+  fi
+  pid="$(cat "$PID_FILE")"
+  case "$pid" in
+    *[!0-9]*|"") return ;;
+  esac
+  if [ "$pid" -gt 1 ] && [ -e "/proc/$pid/exe" ] && [ "$(readlink "/proc/$pid/exe")" = "$BIN" ]; then
+    kill "$pid" || true
+  fi
+  rm -f "$PID_FILE"
+}
+
+port_listening() {
+  if command -v bash >/dev/null 2>&1 && bash -c "exec 3<>/dev/tcp/127.0.0.1/$PORT" 2>/dev/null; then
+    return 0
+  fi
+  command -v nc >/dev/null 2>&1 && nc -z 127.0.0.1 "$PORT" >/dev/null 2>&1
+}
+
+SYSTEMD_USER=0
+RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+if [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1 && [ -d "$RUNTIME_DIR" ]; then
+  export XDG_RUNTIME_DIR="$RUNTIME_DIR"
+  if systemctl --user show-environment >/dev/null 2>&1; then
+    SYSTEMD_USER=1
+  fi
+fi
+
+if [ "$SYSTEMD_USER" -eq 1 ]; then
+  stop_detached
+  install -d -m 0755 "$USER_UNIT_DIR"
+  ln -sfn "$SERVICE_FILE" "$USER_UNIT"
+  systemctl --user daemon-reload
+  systemctl --user enable oh-my-beszel-agent.service >/dev/null
+  if ! systemctl --user restart oh-my-beszel-agent.service; then
     rollback
-    run systemctl restart beszel-agent.service || true
+    systemctl --user restart oh-my-beszel-agent.service || true
     exit 22
   fi
 else
-  run sh -c 'if [ -f /opt/beszel-agent/beszel-agent.pid ]; then pid=$(cat /opt/beszel-agent/beszel-agent.pid); case "$pid" in *[!0-9]*|"") pid=0;; esac; if [ "$pid" -gt 1 ] && [ -e "/proc/$pid/exe" ] && [ "$(readlink "/proc/$pid/exe")" = "/opt/beszel-agent/beszel-agent" ]; then kill "$pid" || true; fi; fi'
+  stop_detached
   if command -v setsid >/dev/null 2>&1; then
-    run sh -c 'cd /opt/beszel-agent; setsid ./run.sh >agent.log 2>&1 </dev/null & echo $! >beszel-agent.pid'
+    setsid "$RUNNER" >>"$LOG_DIR/agent.log" 2>&1 </dev/null &
   else
-    run sh -c 'cd /opt/beszel-agent; nohup ./run.sh >agent.log 2>&1 </dev/null & echo $! >beszel-agent.pid'
+    nohup "$RUNNER" >>"$LOG_DIR/agent.log" 2>&1 </dev/null &
   fi
+  echo $! > "$PID_FILE"
 fi
 
 attempt=0
 while [ "$attempt" -lt 8 ]; do
-  if LISTEN="127.0.0.1:$PORT" "$BIN" health >/dev/null 2>&1; then
-    exit 0
+  if port_listening; then
+    if [ "$SYSTEMD_USER" -eq 0 ] || systemctl --user is-active --quiet oh-my-beszel-agent.service; then
+      exit 0
+    fi
   fi
   attempt=$((attempt + 1))
   sleep 1
 done
 
 rollback
+if [ "$SYSTEMD_USER" -eq 1 ]; then
+  systemctl --user restart oh-my-beszel-agent.service || true
+fi
 echo "agent failed its health check" >&2
 exit 23
 `

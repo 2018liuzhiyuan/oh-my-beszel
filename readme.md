@@ -58,7 +58,7 @@ Isolated demo instance with synthetic hosts and metrics. The shared home screens
 
 Run one **Hub** for the dashboard and an **Agent** on each monitored node. Use builds from this repository to get the fork's features; upstream binaries and images do not include them.
 
-**Already have a `build/` directory?** It is not tracked in git, but a release package or an earlier build may already contain ready-to-run binaries. If `build/windows/beszel.exe` and `Monitor.exe` exist, skip the build commands below and start from the `config.json` step. If `build/linux/beszel` exists, verify it with `sha256sum --check build/linux/sha256sums.txt` and start from step 2 of the [Linux guide](docs/guide.md#linux). Binaries match the code as of their build date (`build/linux/build-info.txt`); rebuild as shown below to pick up newer changes.
+**Already have a `build/` directory?** It is not tracked in git, but a release package or an earlier build may already contain ready-to-run binaries. If `build/windows/app/beszel.exe` and `build/windows/Monitor.exe` exist, skip the build commands below and start from the `config.json` step. If `build/linux/beszel` exists, verify it with `sha256sum --check build/linux/sha256sums.txt` and start from step 2 of the [Linux guide](docs/guide.md#linux). Binaries match the code as of their build date (`build/linux/build-info.txt`); rebuild as shown below to pick up newer changes.
 
 **Windows** · Requires Go 1.26.1+, Bun, and PowerShell 7. From the repository root:
 
@@ -71,16 +71,40 @@ pwsh -NoLogo -NoProfile -File ./deploy/windows/build.ps1
 In `build/windows/config.json`, set `hub.userEmail` and `hub.userPassword`, and clear `hub.autoLogin` for password login. Keep `host` at `127.0.0.1` for local access. These credentials initialize a new database; see the [Windows guide](docs/guide.md#windows) for existing accounts and inherited auto-login settings.
 
 ```powershell
-pwsh -NoLogo -NoProfile -File ./build/windows/run-hub.ps1
+Start-Process -FilePath ./build/windows/Monitor.exe
 ```
 
-Open **http://127.0.0.1:8090**, sign in, and keep the terminal open. Use **Add System → SSH** to import nodes once the Hub's SSH access is ready.
+Open **http://127.0.0.1:8090** and sign in. The release itself has no PowerShell scripts or PowerShell runtime dependency. Use **Add System → SSH** to import nodes once the Hub's SSH access is ready.
 
 **Change the web port:** edit `port` in `config.json` beside the running `Monitor.exe` (for example, `8091`), then restart the Hub and open `http://127.0.0.1:8091`. See [port and restart instructions](docs/guide.md#web-port).
 
 **Linux / WSL** · Follow the [build and startup guide](docs/guide.md#linux).
 
 [SSH deployment](docs/guide.md#ssh) · [Manual Agent setup](docs/guide.md#manual-agent) · [Windows launcher and auto-start](docs/guide.md#windows)
+
+### User-owned Agent directory
+
+SSH auto-deployment installs the Agent without root access under one removable directory:
+
+```text
+~/oh-my-beszel/
+├── bin/beszel-agent
+├── config/env
+├── config/hub_keys
+├── data/
+└── logs/
+```
+
+Multiple Hubs may share the same Agent: their public keys are stored one per line in `config/hub_keys`. To remove the SSH-installed Agent and its data, stop its user service first, then remove the service link and directory:
+
+```bash
+systemctl --user disable --now oh-my-beszel-agent.service 2>/dev/null || true
+rm -f "$HOME/.config/systemd/user/oh-my-beszel-agent.service"
+rm -rf "$HOME/oh-my-beszel"
+systemctl --user daemon-reload 2>/dev/null || true
+```
+
+Removing `data/` also removes the Agent identity. See the [SSH deployment guide](docs/guide.md#ssh) for service and fallback behavior.
 
 ## Documentation and contributing
 

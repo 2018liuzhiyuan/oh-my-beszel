@@ -64,7 +64,7 @@
 
 运行一个 **Hub** 提供面板，在每台被监控节点运行 **Agent**。请使用本仓库构建的程序；上游二进制与镜像不包含本分支增强功能。
 
-**已经有 `build/` 目录？** 该目录不纳入 git，但发布包或此前的构建可能已包含可直接运行的程序。若存在 `build/windows/beszel.exe` 和 `Monitor.exe`，可跳过下面的构建命令，直接从 `config.json` 配置一步开始。若存在 `build/linux/beszel`，先用 `sha256sum --check build/linux/sha256sums.txt` 校验，再从[ Linux 指南](docs/guide.zh-CN.md#linux)的第 2 步开始。二进制只包含其构建时间之前的改动（见 `build/linux/build-info.txt`）；需要最新代码时按下面的命令重新构建。
+**已经有 `build/` 目录？** 该目录不纳入 git，但发布包或此前的构建可能已包含可直接运行的程序。若存在 `build/windows/app/beszel.exe` 和 `build/windows/Monitor.exe`，可跳过下面的构建命令，直接从 `config.json` 配置一步开始。若存在 `build/linux/beszel`，先用 `sha256sum --check build/linux/sha256sums.txt` 校验，再从[ Linux 指南](docs/guide.zh-CN.md#linux)的第 2 步开始。二进制只包含其构建时间之前的改动（见 `build/linux/build-info.txt`）；需要最新代码时按下面的命令重新构建。
 
 **Windows** · 需要 Go 1.26.1+、Bun 和 PowerShell 7。在仓库根目录执行：
 
@@ -77,16 +77,40 @@ pwsh -NoLogo -NoProfile -File ./deploy/windows/build.ps1
 编辑 `build/windows/config.json`，设置 `hub.userEmail` 和 `hub.userPassword`，清空 `hub.autoLogin` 以使用密码登录。仅本机访问时保留 `host` 为 `127.0.0.1`。这些凭据用于初始化新数据库；已有账号和继承的自动登录设置见 [Windows 指南](docs/guide.zh-CN.md#windows)。
 
 ```powershell
-pwsh -NoLogo -NoProfile -File ./build/windows/run-hub.ps1
+Start-Process -FilePath ./build/windows/Monitor.exe
 ```
 
-打开 **http://127.0.0.1:8090** 登录，保持终端运行。准备好 Hub 的 SSH 访问后，在 **添加系统 → SSH** 中导入节点。
+打开 **http://127.0.0.1:8090** 登录。发布包内不含 PowerShell 脚本，也不依赖用户安装的 PowerShell 版本。准备好 Hub 的 SSH 访问后，在 **添加系统 → SSH** 中导入节点。
 
 **修改网页端口：** 编辑实际运行的 `Monitor.exe` 同目录下 `config.json` 的 `port`（例如 `8091`），重启 Hub 后访问 `http://127.0.0.1:8091`。详见[端口与重启步骤](docs/guide.zh-CN.md#web-port)。
 
 **Linux / WSL** · 请参阅[构建与启动指南](docs/guide.zh-CN.md#linux)。
 
 [SSH 部署](docs/guide.zh-CN.md#ssh) · [手动安装 Agent](docs/guide.zh-CN.md#manual-agent) · [Windows 启动器与自动启动](docs/guide.zh-CN.md#windows)
+
+### Agent 用户目录
+
+SSH 自动部署不需要 root 权限，Agent 默认集中安装在一个可整体删除的用户目录：
+
+```text
+~/oh-my-beszel/
+├── bin/beszel-agent
+├── config/env
+├── config/hub_keys
+├── data/
+└── logs/
+```
+
+同一个 Agent 可以同时信任多套 Hub；各 Hub 公钥按行保存在 `config/hub_keys`。卸载 SSH 自动部署的 Agent 及其数据时，先停止用户服务，再删除服务链接和整个目录：
+
+```bash
+systemctl --user disable --now oh-my-beszel-agent.service 2>/dev/null || true
+rm -f "$HOME/.config/systemd/user/oh-my-beszel-agent.service"
+rm -rf "$HOME/oh-my-beszel"
+systemctl --user daemon-reload 2>/dev/null || true
+```
+
+删除 `data/` 会同时删除 Agent 身份。服务与后台运行回退机制详见 [SSH 部署指南](docs/guide.zh-CN.md#ssh)。
 
 ## 文档与贡献
 

@@ -102,36 +102,29 @@ pwsh -NoLogo -NoProfile -File ./deploy/windows/build.ps1
 | `openBrowser` / `startupTimeoutSeconds` | 控制 Monitor 是否打开浏览器，以及等待 Hub 就绪的秒数。 |
 | `hub.checkUpdates` | 保留的启动器字段，会传为 `CHECK_UPDATES`；它不是本分支的安装器或更新渠道。 |
 
-**3. 注册并启动计划任务，然后打开面板：
+**3. 启动便携 Hub，然后打开面板：**
 
 ```powershell
-pwsh -NoLogo -NoProfile -File ./build/windows/install-task.ps1
 Start-Process -FilePath ./build/windows/Monitor.exe
 ```
 
-任务会在**当前用户登录时**运行，并非机器开机但尚未登录时运行。`Monitor.exe` 负责启动已配置的任务并打开浏览器，不会注册缺失的任务。访问 `http://127.0.0.1:8090`，使用配置的邮箱和密码登录。
+`Monitor.exe` 首次运行时会直接启动 Hub、打开浏览器，并注册 `tasks[0]` 指定的计划任务。任务会在**当前用户登录时**运行，并非机器开机但尚未登录时运行。访问 `http://127.0.0.1:8090`，使用配置的邮箱和密码登录。
 
-若只想前台试运行、不注册任务，改为执行下面的命令，并手动打开网页；运行期间保持终端开启：
+发布包不含 PowerShell 脚本，也不依赖用户安装的 PowerShell 版本。需要显式安装或删除登录任务时，可在任意终端运行：
 
-```powershell
-pwsh -NoLogo -NoProfile -File ./build/windows/run-hub.ps1
+```text
+Monitor.exe install-task
+Monitor.exe uninstall-task
 ```
 
-修改配置后需重启 Hub 才会生效。需要密码登录时，不要在启动账号的环境中定义 `AUTO_LOGIN` 或 `BESZEL_HUB_AUTO_LOGIN`：JSON 字段留空不会清除继承的环境变量。数据保存在 `build/windows/beszel_data/`，日志为同一便携目录中的 `hub.log` 和 `launcher.log`。
+修改配置后需重启 Hub 才会生效。原生启动器以 `config.json` 为准，不继承旧的 Hub 启动变量。数据保存在 `build/windows/app/beszel_data/`，日志为 `build/windows/app/hub.log` 和 `build/windows/launcher.log`。
 
 <a id="web-port"></a>
 
 #### 修改 Windows 网页端口
 
 1. 编辑**实际运行的 `Monitor.exe` 同目录下的 `config.json`**。新构建的文件在 `build/windows/config.json`；如果已部署到其他目录，应修改部署目录里的那份。将顶层的 `"port": 8090` 改为未占用的端口，例如 `"port": 8091`。仅本机访问时保留 `"host": "127.0.0.1"`，其他配置保持原样，无需重新编译。
-2. 重启 Hub。使用计划任务安装的，在 PowerShell 中执行：
-
-   ```powershell
-   Stop-ScheduledTask -TaskName 'Beszel Hub'
-   Start-ScheduledTask -TaskName 'Beszel Hub'
-   ```
-
-   若自定义了任务名，请替换为实际名称。若通过 `run-hub.ps1` 前台运行，先按 Ctrl+C，再重新运行同一个脚本。只重新打开 Monitor 不会重启已经运行的任务。
+2. 再次双击 `Monitor.exe`。若当前包仍在旧端口运行，它会只停止当前包的 Hub，再按新配置启动；不会停止其他解压目录中的实例。
 3. 访问 `http://127.0.0.1:8091`。Monitor 下次启动会读取同一份配置并打开新地址。同步更新书签及指向旧网页端口的代理或隧道；Agent 的 `45876` 和操作系统 SSH 端口无需修改。
 
 Linux / WSL 则在启动命令或服务配置中同步修改 `serve --http 127.0.0.1:8091` 和 `APP_URL=http://127.0.0.1:8091`，使用原数据目录重启该 Hub。
@@ -211,10 +204,10 @@ Host gpu-node-a
 
 ```bash
 ssh -F ~/.ssh/config -o BatchMode=yes gpu-node-a "uname -s; uname -m"
-ssh -F ~/.ssh/config -o BatchMode=yes gpu-node-a "id -u; sudo -n true"
+ssh -F ~/.ssh/config -o BatchMode=yes gpu-node-a 'test -n "$HOME" && test -w "$HOME"'
 ```
 
-目标必须是 Linux amd64 或 arm64。部署需要 root，或执行 `sudo -n true` 无需密码的用户。若已经以 root 登录，则不需要 sudo，即使第二条命令提示 sudo 不存在也不影响此前提。后台部署无法使用需要交互输入密码的普通 SSH 登录。
+目标必须是 Linux amd64 或 arm64，SSH 账号需要拥有可写的用户目录。部署不需要 root 或 sudo。Hub 会以批处理模式调用 SSH，因此仍不能使用需要交互输入密码的普通 SSH 登录。
 
 **2. 告诉 Hub 使用哪个配置文件。** Windows 在便携目录的 `config.json` 中设置 `sshConfigPath`；Linux 在重启 Hub 前设置：
 
@@ -240,18 +233,18 @@ cp ./build/linux/beszel-agent-glibc ./build/linux/agents/beszel-agent_linux_amd6
 
 **4. 在面板打开“添加系统 → SSH”。** 核对显示的配置路径，修改后先重新加载。通过 `Include` 引入的主机同样会列出，相对路径按包含文件所在目录解析，与 OpenSSH 一致。选择主机，通常保留 Agent 端口 `45876`，然后导入。此处**不是**操作系统 SSH 端口；只读账号不能管理这些设置。“二进制”页签的快速添加使用同一套发现逻辑，并保存**别名**和配置路径，跳板机别名因此能通过 `ssh -W` 连接并自动部署。
 
-Hub 会上传本地程序、校验 SHA-256，并安装到 `/opt/beszel-agent/`。systemd 节点上会启用并启动 `beszel-agent.service`；其他节点使用独立后台进程，不保证重启机器后自动运行。此路径下 Agent 默认监听 `127.0.0.1:45876`，Hub 通过 `ssh -W` 连接。节点需要允许 SSH TCP 转发，无需将 Agent 端口暴露到公网。部署只需一条探测连接加一条压缩上传连接；已安装的二进制与产物 SHA-256 一致且健康检查通过时会直接跳过上传（记录在 `hub.log`），Hub 重启因此不会重复搬运。
+Hub 会上传本地程序、校验 SHA-256，并集中安装到 `~/oh-my-beszel/` 下的 `bin/`、`config/`、`data/` 和 `logs/`，不会写入 `/opt`。账号的用户级 systemd 可用时，会启用并启动 `oh-my-beszel-agent.service`；否则使用独立后台进程，不保证重启机器后自动运行。此路径下 Agent 默认监听 `127.0.0.1:45876`，Hub 通过 `ssh -W` 连接。节点需要允许 SSH TCP 转发，无需将 Agent 端口暴露到公网。每套 Hub 的公钥只会向 `config/hub_keys` 追加一次，因此多个 Hub 可以共用同一个 Agent。仅当二进制一致、端口正在监听、Agent 健康且当前 Hub 公钥已授权时才会跳过部署。
 
 **5. 确认节点变为在线，CPU/内存图表开始更新。** 必要时在节点上检查服务和 Agent 健康状态：
 
 ```bash
-systemctl status beszel-agent --no-pager
-LISTEN=127.0.0.1:45876 /opt/beszel-agent/beszel-agent health
+systemctl --user status oh-my-beszel-agent.service --no-pager
+LISTEN=127.0.0.1:45876 "$HOME/oh-my-beszel/bin/beszel-agent" health
 ```
 
-`systemctl` 命令仅适用于 systemd 节点。NVIDIA 节点还应检查本机的 `nvidia-smi`，并核对面板中的 GPU 数量和显存容量。
+`systemctl --user` 命令仅适用于该账号已有运行中的用户级 systemd。若希望无人登录时也能在重启后自动启动 Agent，建议为该账号启用 linger。NVIDIA 节点还应检查本机的 `nvidia-smi`，并核对面板中的 GPU 数量和显存容量。
 
-如果终端里 `ssh <别名>` 正常但节点一直不上线，检查三点：Hub 与自动部署都以**批处理模式**调用系统 `ssh`，链路上每一跳（包括 `ProxyJump` 跳板机）都必须免密码认证，部署还要求目标节点具备 root 或免密码 sudo；节点上 Agent 必须真的在运行（部署失败会保持 `down` 状态）。失败原因会保存在系统记录上：悬停状态指示点或打开系统页即可看到，管理员还可在“设置 → Hub 日志”查看最近事件，同样的错误也会镜像到 `hub.log`（`System down` 条目附带 ssh 子进程的 stderr，跳过或失败的部署以带主机名的 `Agent auto-deploy ...` 警告记录）。状态变更通知同样附带原因。
+如果终端里 `ssh <别名>` 正常但节点一直不上线，检查三点：Hub 与自动部署都以**批处理模式**调用系统 `ssh`，链路上每一跳（包括 `ProxyJump` 跳板机）都必须免密码认证，目标账号还必须有可写的用户目录；节点上 Agent 必须真的在运行（部署失败会保持 `down` 状态）。失败原因会保存在系统记录上：悬停状态指示点或打开系统页即可看到，管理员还可在“设置 → Hub 日志”查看最近事件，同样的错误也会镜像到 `hub.log`（`System down` 条目附带 ssh 子进程的 stderr，跳过或失败的部署以带主机名的 `Agent auto-deploy ...` 警告记录）。状态变更通知同样附带原因。
 
 <a id="manual-agent"></a>
 
@@ -290,15 +283,15 @@ export KEY="REPLACE_WITH_HUB_PUBLIC_KEY"
 
 | 项目 | 位置 / 操作 |
 | --- | --- |
-| Windows Hub 数据 | 便携目录中的 `beszel_data/`。 |
+| Windows Hub 数据 | 便携目录中的 `app/beszel_data/`。 |
 | Linux Hub 数据 | `--dir` 指定的目录；省略时默认为相对于工作目录的 `beszel_data`。 |
 | 手动 Agent 数据 | 上文设置的 `DATA_DIR`，保留该目录以保留 Agent 身份。 |
-| SSH 安装的 Agent | `/opt/beszel-agent/`；日志位于 systemd journal，或后台进程的 `agent.log`。 |
-| Windows 重启 | 修改配置后重启 `Beszel Hub` 任务；未使用任务时，停止并重新启动前台进程。 |
+| SSH 安装的 Agent | `~/oh-my-beszel/`；配置和 Hub 公钥在 `config/`，身份数据在 `data/`，日志在 `logs/`。 |
+| Windows 重启 | 修改 `config.json` 后再次运行 `Monitor.exe`，需要时会自动重启当前包。 |
 | 备份 / 迁移 | 文件系统复制前先停止 Hub，再复制完整数据目录；同时保留配置与 SSH 设置。 |
 | 升级 | 备份并停止旧进程，替换为本分支的新程序/便携包，再使用相同数据目录启动并检查节点。不要用示例覆盖本地配置。 |
 
-Windows 的 `uninstall-task.ps1` 会注销任务，但不会删除数据，也不保证正在运行的 Hub 已停止。移动或删除便携目录前，请停止它对应的运行实例。
+运行 `Monitor.exe uninstall-task` 会注销 Windows 任务，但不会删除数据，也不保证正在运行的 Hub 已停止。移动或删除便携目录前，请停止它对应的运行实例。
 
 真实密码、token、SSH 私钥、数据库和日志应留在 Git 之外。仓库已忽略构建目录和测试证据。
 
@@ -308,7 +301,7 @@ Windows 的 `uninstall-task.ps1` 会注销任务，但不会删除数据，也�
 
 | 现象 | 检查项 |
 | --- | --- |
-| Monitor 首次启动失败 | 先运行 `install-task.ps1` 注册任务，或直接运行 `run-hub.ps1`；检查 `launcher.log` 和 `hub.log`。 |
+| Monitor 首次启动失败 | 检查 `launcher.log` 和 `app/hub.log`，确认 `app/beszel.exe` 存在并选择未占用端口。 |
 | 登录不需要密码 / 修改 JSON 密码无效 | 清空免登录字段并清除继承的免登录环境变量，然后重启 Hub；已有账号密码通过账号管理修改。 |
 | 远端浏览器无法访问 Hub | 回环地址只属于各自机器。使用上文 SSH 隧道，或配置允许远程访问的监听地址与防火墙。 |
 | SSH 主机列表为空 | 检查 **Hub 上**的文件路径、服务账号读权限、具体的 `Host` 别名；修改路径后重新加载。 |

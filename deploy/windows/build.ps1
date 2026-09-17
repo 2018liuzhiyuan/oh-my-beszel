@@ -1,6 +1,6 @@
 # Builds the Windows one-click package into build\windows, ready to zip and
 # distribute. Users only see Monitor.exe and their config at the root; the hub
-# (beszel.exe, run-hub.ps1, agents, data, logs) lives inside the app\ folder.
+# (beszel.exe, agents, data, logs) lives inside the app\ folder.
 #
 # Requirements: Go 1.26+ in PATH (https://golang.google.cn/dl/ or https://go.dev/dl/).
 # Node.js is only needed if internal/site/dist is missing (or -BuildWebUi is given).
@@ -60,6 +60,13 @@ $env:GOEXPERIMENT = 'nojsonv2'
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 New-Item -ItemType Directory -Force -Path $hubDir | Out-Null
 
+foreach ($legacyPayload in @(
+    (Join-Path $outDir 'configure-example.ps1'),
+    (Join-Path $hubDir 'run-hub.ps1')
+)) {
+    Remove-Item -LiteralPath $legacyPayload -Force -ErrorAction SilentlyContinue
+}
+
 # Refuse to package runtime state: a stale database or log would ship a
 # pre-migrated hub to every user (no first-boot account creation, and
 # possibly someone else's data). The hub's runtime files land in app\.
@@ -96,10 +103,15 @@ finally {
     Pop-Location
 }
 
-Copy-Item (Join-Path $PSScriptRoot 'app\*') $outDir -Force
-Copy-Item (Join-Path $PSScriptRoot 'hub\*') $hubDir -Force
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'app\config.example.json') -Destination $outDir -Force
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'app\readme.md') -Destination $outDir -Force
 if (-not (Test-Path (Join-Path $outDir 'config.json'))) {
     Copy-Item (Join-Path $outDir 'config.example.json') (Join-Path $outDir 'config.json')
+}
+
+$packagedPowerShell = @(Get-ChildItem -LiteralPath $outDir -Recurse -File -Filter '*.ps1')
+if ($packagedPowerShell.Count -gt 0) {
+    throw "Windows release must not contain PowerShell scripts: $($packagedPowerShell.FullName -join ', ')"
 }
 
 Write-Host "Package ready: $outDir"

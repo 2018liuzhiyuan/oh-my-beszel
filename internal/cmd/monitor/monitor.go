@@ -5,7 +5,7 @@
 // and has these modes:
 //
 //	Monitor.exe              start tasks, wait for the dashboard, open browser
-//	Monitor.exe task <ps1>   run a PowerShell script hidden (used by tasks)
+//	Monitor.exe hub          run the packaged hub in the background (used by tasks)
 //	Monitor.exe install-task [name]    register + start the logon task
 //	Monitor.exe uninstall-task [name]  stop + remove the logon task
 //
@@ -33,7 +33,7 @@ import (
 
 const mutexName = `Local\BeszelMonitorLauncher`
 
-// hubTaskName is the scheduled task that starts run-hub.ps1 at logon. The
+// hubTaskName is the scheduled task that starts the packaged hub at logon. The
 // optional CLI argument of install-task/uninstall-task overrides it, and
 // BESZEL_MONITOR_TASK_NAME lets tests exercise the real registration path
 // against a scratch task instead of the production entry.
@@ -61,7 +61,6 @@ type Config struct {
 	OpenBrowser           *bool     `json:"openBrowser"`
 	StartupTimeoutSeconds int       `json:"startupTimeoutSeconds"`
 	Tasks                 []string  `json:"tasks"`
-	HubScript             string    `json:"hubScript"`
 	Hub                   HubConfig `json:"hub"`
 }
 
@@ -71,7 +70,6 @@ func loadConfig() (*Config, error) {
 		Port:                  8090,
 		OpenBrowser:           new(bool),
 		StartupTimeoutSeconds: 45,
-		HubScript:             `app\run-hub.ps1`,
 	}
 	*cfg.OpenBrowser = true
 
@@ -102,15 +100,12 @@ func loadConfig() (*Config, error) {
 	if cfg.StartupTimeoutSeconds <= 0 {
 		cfg.StartupTimeoutSeconds = 45
 	}
-	if strings.TrimSpace(cfg.HubScript) == "" {
-		cfg.HubScript = `app\run-hub.ps1`
-	}
 	return cfg, nil
 }
 
 func main() {
-	if len(os.Args) >= 3 && os.Args[1] == "task" {
-		os.Exit(runTask(os.Args[2]))
+	if len(os.Args) >= 2 && os.Args[1] == "hub" {
+		os.Exit(runHub())
 	}
 	if len(os.Args) >= 2 && os.Args[1] == "install-task" {
 		name := autostartTaskName()
@@ -211,7 +206,7 @@ func launch() error {
 			}
 		}
 		if missingTask || len(cfg.Tasks) == 0 {
-			if err := startHubScript(cfg.HubScript); err != nil {
+			if err := startHubProcess(); err != nil {
 				return err
 			}
 			registerAutostart(cfg)
@@ -220,7 +215,7 @@ func launch() error {
 			// name belongs to a different install (shared default name);
 			// run our own hub directly
 			appendInfo(fmt.Sprintf("scheduled tasks did not serve %s within %s; starting the hub directly", url, taskStartGrace))
-			if err := startHubScript(cfg.HubScript); err != nil {
+			if err := startHubProcess(); err != nil {
 				return err
 			}
 		}
@@ -237,17 +232,14 @@ func launch() error {
 	return nil
 }
 
-// resolveHubScript finds the hub start script next to the executable: the
-// configured hubScript (package layout: app\run-hub.ps1), falling back to a
-// script beside the exe (flat layout used by earlier deployments).
-func resolveHubScript(rel string) (string, error) {
+func resolveHubExecutable() (string, error) {
 	exePath, err := os.Executable()
 	if err != nil {
 		return "", err
 	}
 	dir := filepath.Dir(exePath)
-	for _, candidate := range []string{rel, "run-hub.ps1"} {
-		path, err := filepath.Abs(filepath.Join(dir, filepath.FromSlash(candidate)))
+	for _, candidate := range []string{filepath.Join(dir, "app", "beszel.exe"), filepath.Join(dir, "beszel.exe")} {
+		path, err := filepath.Abs(candidate)
 		if err != nil {
 			continue
 		}
@@ -255,28 +247,20 @@ func resolveHubScript(rel string) (string, error) {
 			return path, nil
 		}
 	}
-	return "", fmt.Errorf("hub script not found beside Monitor.exe (tried %s and run-hub.ps1)", rel)
+	return "", errors.New("hub executable not found beside Monitor.exe (tried app\\beszel.exe and beszel.exe)")
 }
 
-// startHubScript starts the hub without a scheduled task by spawning a
-// detached runner (`Monitor.exe task <script>`). The child outlives this
-// launcher, so a fresh unzip works with a plain double-click.
-func startHubScript(rel string) error {
-	script, err := resolveHubScript(rel)
-	if err != nil {
-		return err
-	}
+func startHubProcess() error {
 	exePath, err := os.Executable()
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command(exePath, "task", script)
-	cmd.Dir = filepath.Dir(script)
+	cmd := exec.Command(exePath, "hub")
+	cmd.Dir = filepath.Dir(exePath)
 	hideWindow(cmd)
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("start hub script %s: %w", script, err)
+		return fmt.Errorf("start packaged hub: %w", err)
 	}
-	// deliberately not waited on: the runner owns the hub for the session
 	return nil
 }
 
@@ -322,7 +306,7 @@ func taskExists(name string) bool {
 // the full path of app\beszel.exe / beszel.exe next to Monitor.exe) and
 // returns how many were stopped. Called when the configured dashboard URL is
 // not serving: any hub of ours that is alive then runs an outdated
-// config.json. Killing the hub also unwinds its run-hub.ps1 runner, so the
+// config.json. Killing the hub also unwinds its native Monitor runner, so the
 // subsequent task or direct start rereads the config. Hubs of other installs
 // have different executable paths and are never matched.
 func stopOwnHubs() int {
@@ -377,8 +361,8 @@ func stopOwnHubs() int {
 	return stopped
 }
 
-// installTask registers the logon task that starts the hub script via this
-// binary's task-runner mode; with start it also runs it immediately.
+// installTask registers the logon task that starts the hub via this binary's
+// native hub-runner mode; with start it also runs it immediately.
 // Equivalent to the previous install-task.ps1 (RestartCount 10 / no time
 // limit / hidden) but immune to PowerShell execution policies. The autostart
 // registration passes start=false because the hub is already running from the
@@ -389,15 +373,11 @@ func installTask(name string, start bool) error {
 	if err != nil {
 		return err
 	}
-	script, err := resolveHubScript(`app\run-hub.ps1`)
-	if err != nil {
-		return err
-	}
 	userID := os.Getenv("USERNAME")
 	if domain := os.Getenv("USERDOMAIN"); domain != "" {
 		userID = domain + "\\" + userID
 	}
-	xml := taskXML(exePath, script, filepath.Dir(exePath), userID)
+	xml := taskXML(exePath, filepath.Dir(exePath), userID)
 	xmlPath := filepath.Join(os.TempDir(), "beszel-task-"+name+".xml")
 	// schtasks /XML requires UTF-16 with a BOM
 	if err := writeUTF16(xmlPath, xml); err != nil {
@@ -435,7 +415,7 @@ func uninstallTask(name string) error {
 
 // taskXML builds the Task Scheduler definition; schtasks requires UTF-16, so
 // non-ASCII installation paths and user names are safe.
-func taskXML(exe, script, workingDir, userID string) string {
+func taskXML(exe, workingDir, userID string) string {
 	escape := strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&quot;")
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
@@ -464,12 +444,12 @@ func taskXML(exe, script, workingDir, userID string) string {
   <Actions Context="Author">
     <Exec>
       <Command>%s</Command>
-      <Arguments>task "%s"</Arguments>
+      <Arguments>hub</Arguments>
       <WorkingDirectory>%s</WorkingDirectory>
     </Exec>
   </Actions>
 </Task>
-`, escape.Replace(userID), escape.Replace(exe), escape.Replace(script), escape.Replace(workingDir))
+`, escape.Replace(userID), escape.Replace(exe), escape.Replace(workingDir))
 }
 
 func writeUTF16(path, text string) error {
@@ -567,37 +547,50 @@ func openBrowser(url string) {
 	reportTaskResult("Beszel is running", "The dashboard is at "+url+" - open it in your browser.", false)
 }
 
-// runTask executes a PowerShell script with no window and returns its exit
-// code. The script's process tree is tied to a kill-on-close job object so no
-// orphans survive if this runner is terminated.
-func runTask(scriptPath string) int {
-	scriptPath, err := filepath.Abs(scriptPath)
+const maxHubLogSize = 10 * 1024 * 1024
+
+func runHub() int {
+	cfg, err := loadConfig()
 	if err != nil {
+		appendLog(fmt.Errorf("load hub config: %w", err))
 		return 2
 	}
-	if _, err := os.Stat(scriptPath); err != nil {
-		return 2
-	}
-	shell, err := findPowerShell()
+	hubPath, err := resolveHubExecutable()
 	if err != nil {
+		appendLog(err)
 		return 3
 	}
-	// Bypass keeps the runner working on machines whose execution policy is
-	// Restricted or RemoteSigned: scripts downloaded inside the release zip
-	// carry the mark-of-the-web and would otherwise be refused.
-	cmd := exec.Command(shell, "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", scriptPath)
-	cmd.Dir = filepath.Dir(scriptPath)
+	hubDir := filepath.Dir(hubPath)
+	logPath := filepath.Join(hubDir, "hub.log")
+	if err := rotateHubLog(logPath); err != nil {
+		appendLog(fmt.Errorf("rotate hub log: %w", err))
+		return 4
+	}
+	logFile, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		appendLog(fmt.Errorf("open hub log: %w", err))
+		return 5
+	}
+	defer logFile.Close()
+
+	address := net.JoinHostPort(cfg.Host, fmt.Sprintf("%d", cfg.Port))
+	cmd := exec.Command(hubPath, "serve", "--http", address)
+	cmd.Dir = hubDir
+	cmd.Env = hubEnvironment(cfg, address)
+	cmd.Stdout = logFile
+	cmd.Stderr = logFile
 	hideWindow(cmd)
 	if err := cmd.Start(); err != nil {
-		return 4
+		fmt.Fprintf(logFile, "%s ERROR start hub: %v\r\n", time.Now().Format(time.RFC3339), err)
+		return 6
 	}
 	job, err := assignKillOnCloseJob(cmd.Process)
 	if err != nil {
 		_ = cmd.Process.Kill()
-		return 5
+		fmt.Fprintf(logFile, "%s ERROR supervise hub: %v\r\n", time.Now().Format(time.RFC3339), err)
+		return 7
 	}
 	defer windows.CloseHandle(job)
-
 	if err := cmd.Wait(); err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
@@ -608,20 +601,63 @@ func runTask(scriptPath string) int {
 	return 0
 }
 
-// findPowerShell prefers PowerShell 7, falling back to the built-in PowerShell.
-func findPowerShell() (string, error) {
-	candidates := []string{
-		filepath.Join(os.Getenv("ProgramW6432"), `PowerShell\7\pwsh.exe`),
-		filepath.Join(os.Getenv("ProgramFiles"), `PowerShell\7\pwsh.exe`),
+func rotateHubLog(logPath string) error {
+	info, err := os.Stat(logPath)
+	if errors.Is(err, os.ErrNotExist) || (err == nil && info.Size() <= maxHubLogSize) {
+		return nil
 	}
-	for _, candidate := range candidates {
-		if candidate != "" {
-			if _, err := os.Stat(candidate); err == nil {
-				return candidate, nil
-			}
+	if err != nil {
+		return err
+	}
+	rotatedPath := logPath + ".1"
+	if err := os.Remove(rotatedPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	return os.Rename(logPath, rotatedPath)
+}
+
+func hubEnvironment(cfg *Config, address string) []string {
+	values := map[string]string{
+		"APP_URL": "http://" + address,
+	}
+	if cfg.Hub.UserEmail != "" {
+		values["USER_EMAIL"] = cfg.Hub.UserEmail
+	}
+	if cfg.Hub.UserPassword != "" {
+		values["USER_PASSWORD"] = cfg.Hub.UserPassword
+	}
+	if cfg.Hub.AutoLogin != "" {
+		values["AUTO_LOGIN"] = cfg.Hub.AutoLogin
+	}
+	if cfg.Hub.CheckUpdates != nil {
+		if *cfg.Hub.CheckUpdates {
+			values["CHECK_UPDATES"] = "true"
+		} else {
+			values["CHECK_UPDATES"] = "false"
 		}
 	}
-	return exec.LookPath("powershell.exe")
+	if cfg.SSHConfigPath != "" {
+		values["SSH_CONFIG_PATH"] = cfg.SSHConfigPath
+	}
+	if cfg.Hub.LogLevel != "" {
+		values["BESZEL_LOG_LEVEL"] = cfg.Hub.LogLevel
+	}
+
+	managed := map[string]bool{}
+	for _, key := range []string{"APP_URL", "USER_EMAIL", "USER_PASSWORD", "AUTO_LOGIN", "CHECK_UPDATES", "SSH_CONFIG_PATH", "BESZEL_LOG_LEVEL"} {
+		managed[key] = true
+	}
+	env := make([]string, 0, len(os.Environ())+len(values))
+	for _, entry := range os.Environ() {
+		key, _, _ := strings.Cut(entry, "=")
+		if !managed[strings.ToUpper(key)] {
+			env = append(env, entry)
+		}
+	}
+	for key, value := range values {
+		env = append(env, key+"="+value)
+	}
+	return env
 }
 
 func assignKillOnCloseJob(proc *os.Process) (windows.Handle, error) {

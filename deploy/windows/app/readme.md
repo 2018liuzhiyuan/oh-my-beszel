@@ -10,8 +10,7 @@ is inside this package.
 |---|---|
 | `Monitor.exe` | Launcher: starts the hub, opens the dashboard, manages autostart |
 | `config.json` | The only file you may want to edit (see below) |
-| `configure-example.ps1` | Optional: bulk-register monitored systems via the REST API |
-| `app\` | The hub itself (`beszel.exe`, `run-hub.ps1`, Linux agents for SSH deployment) — no need to touch |
+| `app\` | The hub itself (`beszel.exe`, Linux agents for SSH deployment) — no need to touch |
 
 Runtime files appear next to their owners: `launcher.log` at the root,
 `app\hub.log` and the database `app\beszel_data\` inside `app\`.
@@ -29,7 +28,7 @@ Runtime files appear next to their owners: `launcher.log` at the root,
    after `tasks[0]` (default `Beszel Hub`) is registered so the hub starts
    automatically from the next sign-in.
 
-To remove the autostart entry: `.\Monitor.exe uninstall-task` in PowerShell
+To remove the autostart entry, run `Monitor.exe uninstall-task` from a terminal
 (data is kept; a running hub keeps running until sign-out).
 
 ## config.json reference
@@ -40,7 +39,6 @@ To remove the autostart entry: `.\Monitor.exe uninstall-task` in PowerShell
 | `openBrowser` | `true` | Open the dashboard after a successful start |
 | `startupTimeoutSeconds` | `45` | How long Monitor waits for the dashboard before reporting failure |
 | `tasks` | `["Beszel Hub"]` | Scheduled task(s) Monitor starts; the first name is also used when registering autostart |
-| `hubScript` | `app\run-hub.ps1` | Script Monitor runs directly when no task is registered |
 | `sshConfigPath` | `""` | Path to an OpenSSH config; enables importing monitored systems from it |
 | `hub.userEmail` / `hub.userPassword` | placeholders | Admin account, applied on first start only |
 | `hub.autoLogin` | same email | Passwordless login for that account (`""` disables) |

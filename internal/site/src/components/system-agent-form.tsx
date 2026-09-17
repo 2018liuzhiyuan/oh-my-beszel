@@ -1,7 +1,7 @@
 import { Trans } from "@lingui/react/macro"
 import { useStore } from "@nanostores/react"
 import { getPagePath } from "@nanostores/router"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { SystemStatus } from "@/lib/enums"
 import { isReadOnlyUser, pb } from "@/lib/api"
 import { $publicKey } from "@/lib/stores"
@@ -25,9 +25,9 @@ type SystemAgentFormProps = {
 
 export function SystemAgentForm({ tab, setOpen, system }: SystemAgentFormProps) {
 	const publicKey = useStore($publicKey)
-	const port = useRef<HTMLInputElement>(null)
 	const [name, setName] = useState(system?.name ?? "")
 	const [host, setHost] = useState(system?.host ?? "")
+	const [port, setPort] = useState(system?.port || "45876")
 	const [token, setToken] = useState(system?.token ?? "")
 	const isUnixSocket = host.startsWith("/")
 
@@ -76,7 +76,7 @@ export function SystemAgentForm({ tab, setOpen, system }: SystemAgentFormProps) 
 		}
 	}, [system?.id])
 
-	const getAgentPort = () => (isUnixSocket ? host : port.current?.value || system?.port || "45876")
+	const getAgentPort = () => (isUnixSocket ? host : port)
 
 	async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
 		event.preventDefault()
@@ -128,10 +128,10 @@ export function SystemAgentForm({ tab, setOpen, system }: SystemAgentFormProps) 
 						<Trans>Port</Trans>
 					</Label>
 					<Input
-						ref={port}
 						id="port"
 						name="port"
-						defaultValue={system?.port || "45876"}
+						value={port}
+						onChange={(event) => setPort(event.target.value)}
 						required={!isUnixSocket}
 						className={cn(isUnixSocket && "hidden")}
 					/>

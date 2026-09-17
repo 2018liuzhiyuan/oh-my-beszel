@@ -3,7 +3,7 @@ import { Trans } from "@lingui/react/macro"
 import { useStore } from "@nanostores/react"
 import { getPagePath } from "@nanostores/router"
 import { ChevronDownIcon, ExternalLinkIcon, RefreshCwIcon } from "lucide-react"
-import { memo, useCallback, useEffect, useRef, useState } from "react"
+import { memo, useCallback, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
 	Dialog,
@@ -74,9 +74,9 @@ export const SystemDialog = ({
 	open?: boolean
 }) => {
 	const publicKey = useStore($publicKey)
-	const port = useRef<HTMLInputElement>(null)
 	const [nameValue, setNameValue] = useState(system?.name ?? "")
 	const [hostValue, setHostValue] = useState(system?.host ?? "")
+	const [portValue, setPortValue] = useState(system?.port || "45876")
 	const isUnixSocket = hostValue.startsWith("/")
 	const [tab, setTab] = useBrowserStorage("as-tab", "docker")
 	const [token, setToken] = useState(system?.token ?? "")
@@ -207,7 +207,7 @@ export const SystemDialog = ({
 		}
 	}
 
-	const getAgentPort = () => (isUnixSocket ? hostValue : port.current?.value || system?.port || "45876")
+	const getAgentPort = () => (isUnixSocket ? hostValue : portValue)
 
 	const systemTranslation = t`System`
 
@@ -217,6 +217,7 @@ export const SystemDialog = ({
 			onCloseAutoFocus={() => {
 				setNameValue(system?.name ?? "")
 				setHostValue(system?.host ?? "")
+				setPortValue(system?.port || "45876")
 				setSSHHostValue("")
 				setQuickMode(!system)
 			}}
@@ -377,10 +378,10 @@ export const SystemDialog = ({
 									<Trans>Port</Trans>
 								</Label>
 								<Input
-									ref={port}
 									name="port"
 									id="port"
-									defaultValue={system?.port || "45876"}
+									value={portValue}
+									onChange={(event) => setPortValue(event.target.value)}
 									required={!isUnixSocket}
 									className={cn(isUnixSocket && "hidden")}
 								/>

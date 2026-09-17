@@ -102,36 +102,29 @@ Output: `build/windows/`, including `beszel.exe`, `Monitor.exe`, scripts, `agent
 | `openBrowser` / `startupTimeoutSeconds` | Whether Monitor opens the browser, and how long it waits for the Hub to become ready. |
 | `hub.checkUpdates` | Retained launcher field, passed as `CHECK_UPDATES`. It is not an installer or an update channel for this fork. |
 
-**3. Register and start the task**, then open the dashboard:
+**3. Start the portable Hub**, then open the dashboard:
 
 ```powershell
-pwsh -NoLogo -NoProfile -File ./build/windows/install-task.ps1
 Start-Process -FilePath ./build/windows/Monitor.exe
 ```
 
-The task runs **when the current user logs on**, not before login at machine boot. `Monitor.exe` starts the configured tasks and opens the browser; it does not register a missing task. Open `http://127.0.0.1:8090` and sign in with your configured email and password.
+`Monitor.exe` starts the Hub directly on first use, opens the browser, and registers the task named by `tasks[0]`. The task runs **when the current user logs on**, not before login at machine boot. Open `http://127.0.0.1:8090` and sign in with your configured email and password.
 
-For a foreground trial without registering a task, run this instead and open the URL manually; keep the terminal open:
+The release package contains no PowerShell scripts and does not depend on an installed PowerShell version. To explicitly install or remove the logon task from any terminal, run:
 
-```powershell
-pwsh -NoLogo -NoProfile -File ./build/windows/run-hub.ps1
+```text
+Monitor.exe install-task
+Monitor.exe uninstall-task
 ```
 
-Configuration changes take effect after restarting the Hub. Avoid defining `AUTO_LOGIN` or `BESZEL_HUB_AUTO_LOGIN` in the launcher account's environment when password login is intended: an empty JSON field does not clear an inherited environment variable. Data is stored in `build/windows/beszel_data/`; logs are `hub.log` and `launcher.log` in the same package directory.
+Configuration changes take effect after restarting the Hub. The native runner uses the values in `config.json` rather than inherited Hub launcher variables. Data is stored in `build/windows/app/beszel_data/`; logs are `build/windows/app/hub.log` and `build/windows/launcher.log`.
 
 <a id="web-port"></a>
 
 #### Change the Windows web port
 
 1. Edit **`config.json` beside the `Monitor.exe` you actually run**. A fresh build uses `build/windows/config.json`; if you deployed the package elsewhere, edit that directory's copy. Change only the top-level `"port": 8090` to an unused port such as `"port": 8091`. Keep `"host": "127.0.0.1"` for local access and preserve the other settings. No rebuild is needed.
-2. Restart the Hub. For the scheduled-task installation, run in PowerShell:
-
-   ```powershell
-   Stop-ScheduledTask -TaskName 'Beszel Hub'
-   Start-ScheduledTask -TaskName 'Beszel Hub'
-   ```
-
-   Use your actual task name if customized. For a foreground `run-hub.ps1` session, press Ctrl+C and run the same script again. Merely reopening Monitor does not restart an already running task.
+2. Double-click `Monitor.exe` again. It stops the Hub process from this package when it is still serving the old port, then starts the same package with the new configuration. Other extracted copies are not stopped.
 3. Open `http://127.0.0.1:8091`. Monitor reads the same configuration and opens the new address on its next launch. Update bookmarks and any proxy or tunnel that targets the old web port. Agent port `45876` and operating-system SSH ports do not need to change.
 
 For Linux / WSL, change the port in both `serve --http 127.0.0.1:8091` and `APP_URL=http://127.0.0.1:8091` in the startup command or service configuration, then restart that Hub with the same data directory.
@@ -211,10 +204,10 @@ Host gpu-node-a
 
 ```bash
 ssh -F ~/.ssh/config -o BatchMode=yes gpu-node-a "uname -s; uname -m"
-ssh -F ~/.ssh/config -o BatchMode=yes gpu-node-a "id -u; sudo -n true"
+ssh -F ~/.ssh/config -o BatchMode=yes gpu-node-a 'test -n "$HOME" && test -w "$HOME"'
 ```
 
-The target must be Linux amd64 or arm64. Deployment requires root, or a user for whom `sudo -n true` succeeds without a password. A root login does not need sudo even if the second command reports it missing. Normal password-based SSH login is insufficient for the background deployment process.
+The target must be Linux amd64 or arm64, and the SSH account needs a writable home directory. Deployment never requires root or sudo. Normal password-based SSH login is still insufficient for the background deployment process because the Hub invokes SSH in batch mode.
 
 **2. Point the Hub to this config.** On Windows, set `sshConfigPath` in the package's `config.json`. On Linux, set this before restarting the Hub:
 
@@ -240,18 +233,18 @@ Artifact lookup order is `BESZEL_AGENT_DEPLOY_DIR`, `agents/` beside the Hub exe
 
 **4. In the dashboard, open Add System → SSH.** Check the displayed config path and reload after changing it. Hosts pulled in through `Include` are listed too; relative include paths resolve against the including file, as in OpenSSH. Select hosts, keep Agent port `45876` unless you need another, then import. This field is **not** the operating-system SSH port. A read-only account cannot manage these settings. The quick-add field on the Binary tab uses the same discovery and stores the **alias** with the config path, so jump-host aliases connect through `ssh -W` and deploy automatically.
 
-The Hub uploads the local artifact, verifies SHA-256, and installs it under `/opt/beszel-agent/`. On systemd nodes it enables and starts `beszel-agent.service`; otherwise it starts a detached process, without a reboot-start guarantee. The Agent listens on `127.0.0.1:45876` by default for this path, and the Hub connects through `ssh -W`. Allow SSH TCP forwarding on the node; the Agent port need not be exposed publicly. Deployment uses one probe connection plus one compressed upload connection; when the installed binary already matches the artifact's SHA-256 and answers its health check, the upload is skipped entirely (logged in `hub.log`), which keeps Hub restarts cheap.
+The Hub uploads the local artifact, verifies SHA-256, and installs it under `~/oh-my-beszel/` with `bin/`, `config/`, `data/`, and `logs/` subdirectories. It never writes to `/opt`. When a user systemd manager is available it enables and starts `oh-my-beszel-agent.service`; otherwise it starts a detached process, without a reboot-start guarantee. The Agent listens on `127.0.0.1:45876` by default for this path, and the Hub connects through `ssh -W`. Allow SSH TCP forwarding on the node; the Agent port need not be exposed publicly. Each Hub public key is appended once to `config/hub_keys`, so multiple Hubs can use the same Agent. Deployment is skipped only when the binary matches, the port is listening, the Agent is healthy, and the current Hub key is already authorized.
 
 **5. Confirm the node becomes online** and CPU/memory charts update. On the node, check the service and Agent health as needed:
 
 ```bash
-systemctl status beszel-agent --no-pager
-LISTEN=127.0.0.1:45876 /opt/beszel-agent/beszel-agent health
+systemctl --user status oh-my-beszel-agent.service --no-pager
+LISTEN=127.0.0.1:45876 "$HOME/oh-my-beszel/bin/beszel-agent" health
 ```
 
-The `systemctl` command applies only to systemd nodes. For NVIDIA nodes, also check `nvidia-smi` on the node and verify GPU count and VRAM capacity in the dashboard.
+The `systemctl --user` command applies only when the account has a running user systemd manager. Enabling linger for that account is recommended when the Agent must start after reboot without an interactive login. For NVIDIA nodes, also check `nvidia-smi` on the node and verify GPU count and VRAM capacity in the dashboard.
 
-If a terminal can `ssh <alias>` but the node never becomes online, check three things. The Hub and the deployment both run the system `ssh` in **batch mode**, so every hop — including a `ProxyJump` bastion — must authenticate without a password prompt; deployment additionally needs root or passwordless sudo on the final node. The Agent must actually be running on the node (deployment failures leave the system `down`). The failure reason is stored on the system: hover the status indicator or open the system page to read it, admin users also find recent events under **Settings → Hub Logs**, and the same errors are mirrored to `hub.log` (`System down` entries include the ssh helper's stderr; skipped or failed deployments appear as `Agent auto-deploy ...` warnings with the host name). Status-change notifications include the reason as well.
+If a terminal can `ssh <alias>` but the node never becomes online, check three things. The Hub and the deployment both run the system `ssh` in **batch mode**, so every hop — including a `ProxyJump` bastion — must authenticate without a password prompt; the final account must have a writable home directory. The Agent must actually be running on the node (deployment failures leave the system `down`). The failure reason is stored on the system: hover the status indicator or open the system page to read it, admin users also find recent events under **Settings → Hub Logs**, and the same errors are mirrored to `hub.log` (`System down` entries include the ssh helper's stderr; skipped or failed deployments appear as `Agent auto-deploy ...` warnings with the host name). Status-change notifications include the reason as well.
 
 <a id="manual-agent"></a>
 
@@ -290,15 +283,15 @@ Names that collide after conversion, match a record ID, or exceed 80 Unicode cha
 
 | Item | Location / action |
 | --- | --- |
-| Windows Hub data | `beszel_data/` inside the portable directory. |
+| Windows Hub data | `app/beszel_data/` inside the portable directory. |
 | Linux Hub data | The directory passed to `--dir`; without it, the default is `beszel_data` relative to the working directory. |
 | Manual Agent data | The `DATA_DIR` used above. Retain it to preserve Agent identity. |
-| SSH-installed Agent | `/opt/beszel-agent/`; systemd journal, or `agent.log` for detached operation. |
-| Windows restart | Restart the `Beszel Hub` task after editing config; stop/start the foreground process if no task is used. |
+| SSH-installed Agent | `~/oh-my-beszel/`; configuration and Hub keys are under `config/`, identity under `data/`, and logs under `logs/`. |
+| Windows restart | After editing `config.json`, run `Monitor.exe` again; it restarts this package when required. |
 | Backup / migration | Stop the Hub before a filesystem copy of its complete data directory; also preserve your configuration and SSH setup. |
 | Upgrade | Back up, stop the old process, replace it with this fork's new binary/package, then start with the same data directory and verify nodes. Do not overwrite your local config with the example. |
 
-Removing the Windows task with `uninstall-task.ps1` unregisters it; it does not delete data or guarantee the running Hub has stopped. Before moving or deleting a package, stop its specific running instance.
+Running `Monitor.exe uninstall-task` unregisters the Windows task; it does not delete data or guarantee the running Hub has stopped. Before moving or deleting a package, stop its specific running instance.
 
 Keep real passwords, tokens, SSH private keys, databases, and logs outside Git. The repository already ignores build directories and test evidence.
 
@@ -308,11 +301,11 @@ Keep real passwords, tokens, SSH private keys, databases, and logs outside Git. 
 
 | Symptom | Check |
 | --- | --- |
-| Monitor fails on the first start | Register the task with `install-task.ps1` first, or use `run-hub.ps1` directly. Check `launcher.log` and `hub.log`. |
+| Monitor fails on the first start | Check `launcher.log` and `app/hub.log`, verify `app/beszel.exe` exists, and choose an unused port. |
 | Login ignores the password / changing JSON password has no effect | Clear auto-login and inherited auto-login variables, restart the Hub; use account management for existing passwords. |
 | Remote browser cannot open the Hub | Loopback is local to each machine. Use the SSH tunnel above, or configure the listener and firewall for remote access. |
 | No SSH hosts appear | Check the path **on the Hub**, read permissions for its service account, concrete `Host` aliases, and reload after path changes. |
-| SSH works interactively but deployment fails | Test `BatchMode=yes` as the Hub account; verify key/SSH-agent access and root or passwordless sudo. |
+| SSH works interactively but deployment fails | Test `BatchMode=yes` as the Hub account; verify key/SSH-agent access and that the target account has a writable home directory. |
 | Agent artifact not found / wrong executable format | Check the lookup directories, exact filename, and actual binary architecture. |
 | Imported node stays pending/down | Check Hub deployment logs, Agent service health, port consistency, and SSH TCP forwarding. |
 | Manual node stays offline | Verify node IP, firewall, `LISTEN`, and that `KEY` is the public key of this Hub. |
