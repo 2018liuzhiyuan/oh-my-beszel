@@ -36,7 +36,7 @@ flowchart LR
 
 | 组件 | 位置与职责 |
 | --- | --- |
-| Hub | 一台 Windows 或 Linux 机器，提供网页、账号、数据库和告警。 |
+| Hub | 一台 Windows、macOS 或 Linux 机器，提供网页、账号、数据库和告警。 |
 | Agent | 每台被监控节点，采集指标并与 Hub 通信。 |
 | OpenSSH config 与密钥 | 位于 Hub 机器，由运行 Hub 的账号读取；不会读取浏览器所在机器的文件。 |
 
@@ -46,7 +46,7 @@ flowchart LR
 
 ## 配置与启动
 
-先选择一种 Hub 部署方式：[Windows](#windows) 或 [Linux / WSL](#linux)；再选择 [SSH 自动部署](#ssh) 或[手动配置 Agent](#manual-agent)。除非另有说明，构建命令均从仓库根目录执行。请先克隆自己的分支，并将示例地址、用户名、路径和密码替换为实际值。
+先选择一种 Hub 部署方式：[Windows](#windows)、[macOS](#macos) 或 [Linux / WSL](#linux)；再选择 [SSH 自动部署](#ssh) 或[手动配置 Agent](#manual-agent)。除非另有说明，构建命令均从仓库根目录执行。请先克隆自己的分支，并将示例地址、用户名、路径和密码替换为实际值。
 
 <a id="prerequisites"></a>
 
@@ -54,7 +54,7 @@ flowchart LR
 
 - [go.mod](../go.mod) 要求 Go **1.26.1+**。现有脚本设置 `GOEXPERIMENT=nojsonv2`，用于兼容 Go 1.27 下的 PocketBase。
 - 前端使用 Bun；Linux 引导脚本固定为 **1.4.0**。Vite 与 npm 构建路径使用 Node.js **22.12+**。
-- Windows 脚本使用 PowerShell **7**；SSH 集成需要系统 **OpenSSH 客户端**。
+- Windows 脚本使用 PowerShell **7**；SSH 集成需要系统 **OpenSSH 客户端**。macOS 打包使用系统自带的 `shasum`、`tar`、`plutil` 和 `launchctl`。
 - 能访问依赖和工具链下载地址。Linux 脚本可自动下载缺失的受支持工具链，并校验固定版本的 SHA-256。
 
 以上属于构建依赖。运行已构建的 Hub 或 Agent 不需要 Go、Bun、Node；Windows 启动器仍需要 PowerShell，SSH 集成仍需要 OpenSSH。
@@ -127,7 +127,49 @@ Monitor.exe uninstall-task
 2. 再次双击 `Monitor.exe`。若当前包仍在旧端口运行，它会只停止当前包的 Hub，再按新配置启动；不会停止其他解压目录中的实例。
 3. 访问 `http://127.0.0.1:8091`。Monitor 下次启动会读取同一份配置并打开新地址。同步更新书签及指向旧网页端口的代理或隧道；Agent 的 `45876` 和操作系统 SSH 端口无需修改。
 
-Linux / WSL 则在启动命令或服务配置中同步修改 `serve --http 127.0.0.1:8091` 和 `APP_URL=http://127.0.0.1:8091`，使用原数据目录重启该 Hub。
+macOS 或 Linux / WSL 需要同步修改 `BESZEL_HTTP` 与 `APP_URL`（或启动命令中的对应值），再使用原数据目录重启 Hub。
+
+<a id="macos"></a>
+
+### macOS：构建、运行并设置登录自启动
+
+**1. 在 macOS 上构建原生便携包。** 脚本默认构建当前 Mac 的架构，并随包放入 Linux amd64/arm64 Agent，供 SSH 自动部署使用：
+
+```bash
+./deploy/macos/build.sh dev
+```
+
+Intel 使用 `./deploy/macos/build.sh dev amd64`，Apple Silicon 使用 `arm64`，传入 `all` 可同时生成两种架构。压缩包为 `build/oh-my-beszel_dev_darwin_<架构>.tar.gz`，解压前的暂存目录为 `build/macos/<架构>/oh-my-beszel-darwin-<架构>/`。仅当 `internal/site/dist/index.html` 已经是准备发布的界面时，才使用 `SKIP_WEB=1` 跳过前端构建。
+
+**2. 配置并以前台方式启动 Hub：**
+
+```bash
+cd build/macos/arm64/oh-my-beszel-darwin-arm64  # Intel 请改用 amd64
+shasum -a 256 -c sha256sums.txt
+cp config.env.example config.env
+./start.sh
+```
+
+打开 `http://127.0.0.1:8090` 创建首个账号。默认数据目录是 `~/Library/Application Support/oh-my-beszel`；数据库创建后再修改 `USER_EMAIL` 或 `USER_PASSWORD` 不会重置账号。可在 `config.env` 中修改监听地址、外部 URL、数据目录、SSH 配置路径以及可选的首次启动账号。
+
+**3. 可选：让 Hub 在当前用户登录时自动启动：**
+
+```bash
+./install-service.sh
+```
+
+脚本会安装 `~/Library/LaunchAgents/com.oh-my-beszel.hub.plist` 并用 launchd 启动。日志写入包内 `logs/`。安装服务后请保持解压目录路径不变；移动后重新运行安装脚本即可刷新绝对路径。运行 `./uninstall-service.sh` 会停止服务并移除登录项，但保留 Hub 数据。
+
+包内还包含监控 Mac 本机的原生 `beszel-agent`。在面板添加系统并复制 Hub 公钥后运行：
+
+```bash
+KEY='<Hub 公钥>' \
+LISTEN=127.0.0.1:45876 \
+DATA_DIR="$HOME/Library/Application Support/oh-my-beszel-agent" \
+./beszel-agent
+```
+
+面板的 SSH 自动部署仍以 **Linux 节点**为目标；macOS Hub 可以使用 `agents/` 中随包提供的两种 Linux Agent 完成部署。如果下载解压后被 Gatekeeper 阻止，请先核对发布来源与校验和，再在该包目录运行 `xattr -dr com.apple.quarantine .` 清除隔离属性。
 
 <a id="linux"></a>
 
@@ -209,13 +251,13 @@ ssh -F ~/.ssh/config -o BatchMode=yes gpu-node-a 'test -n "$HOME" && test -w "$H
 
 目标必须是 Linux amd64 或 arm64，SSH 账号需要拥有可写的用户目录。部署不需要 root 或 sudo。Hub 会以批处理模式调用 SSH，因此仍不能使用需要交互输入密码的普通 SSH 登录。
 
-**2. 告诉 Hub 使用哪个配置文件。** Windows 在便携目录的 `config.json` 中设置 `sshConfigPath`；Linux 在重启 Hub 前设置：
+**2. 告诉 Hub 使用哪个配置文件。** Windows 在便携目录的 `config.json` 中设置 `sshConfigPath`；macOS 在 `config.env` 中设置 `SSH_CONFIG_PATH`；Linux 在重启 Hub 前导出该变量：
 
 ```bash
 export SSH_CONFIG_PATH="$HOME/.ssh/config"
 ```
 
-**3. 在 Hub 上准备匹配架构的 Agent 文件。** Windows 打包已生成 `agents/beszel-agent_linux_amd64` 和 `agents/beszel-agent_linux_arm64`。Linux amd64 构建可按下面方式明确准备目录：
+**3. 在 Hub 上准备匹配架构的 Agent 文件。** Windows 和 macOS 包已包含 `agents/beszel-agent_linux_amd64` 与 `agents/beszel-agent_linux_arm64`。Linux amd64 构建可按下面方式明确准备目录：
 
 ```bash
 mkdir -p ./build/linux/agents
@@ -235,6 +277,8 @@ cp ./build/linux/beszel-agent-glibc ./build/linux/agents/beszel-agent_linux_amd6
 
 Hub 会上传本地程序、校验 SHA-256，并集中安装到 `~/oh-my-beszel/` 下的 `bin/`、`config/`、`data/` 和 `logs/`，不会写入 `/opt`。账号的用户级 systemd 可用时，会启用并启动 `oh-my-beszel-agent.service`；否则使用独立后台进程，不保证重启机器后自动运行。此路径下 Agent 默认监听 `127.0.0.1:45876`，Hub 通过 `ssh -W` 连接。节点需要允许 SSH TCP 转发，无需将 Agent 端口暴露到公网。每套 Hub 的公钥只会向 `config/hub_keys` 追加一次，因此多个 Hub 可以共用同一个 Agent。仅当二进制一致、端口正在监听、Agent 健康且当前 Hub 公钥已授权时才会跳过部署。
 
+同一目标主机上的 Agent 端口由整台主机共享，即使多个操作系统用户共用该主机也是如此。如果其他用户的 Agent 或系统服务已经监听 `45876`，导入系统时应选择另一个空闲的 Agent 端口。自动部署只会停止当前 SSH 账号自己管理的 Agent；如果目标端口仍被占用，会明确报告端口冲突，不再把其他用户的监听进程误判为部署成功。
+
 **5. 确认节点变为在线，CPU/内存图表开始更新。** 必要时在节点上检查服务和 Agent 健康状态：
 
 ```bash
@@ -252,7 +296,7 @@ LISTEN=127.0.0.1:45876 "$HOME/oh-my-beszel/bin/beszel-agent" health
 
 需要自行管理 Agent 安装时使用此路径。下面演示私有网络上的 **Hub → Agent** 直连，系统记录不附带 SSH config。
 
-1. 将本仓库构建的、架构匹配的 Agent 复制到被监控节点。Linux amd64 使用 `build/linux/beszel-agent`；支持原生 NVML 的 NVIDIA 节点可使用 `beszel-agent-glibc`，复制后命名为 `beszel-agent`。
+1. 将本仓库构建的、架构匹配的 Agent 复制到被监控节点。Linux amd64 使用 `build/linux/beszel-agent`；支持原生 NVML 的 NVIDIA 节点可使用 `beszel-agent-glibc`，复制后命名为 `beszel-agent`。macOS 使用对应 `darwin_arm64` 或 `darwin_amd64` 包内的 `beszel-agent`。
 2. 在“**添加系统 → 二进制**”中填写名称、Hub 可达的节点 **IP 地址**和 Agent 端口 `45876`。复制表单显示的 **Hub 公钥**并保存系统。此公钥不是操作系统 SSH 私钥。
 3. 在被监控节点上替换下面的公钥占位内容，然后从 Agent 所在目录运行：
 
@@ -284,10 +328,12 @@ export KEY="REPLACE_WITH_HUB_PUBLIC_KEY"
 | 项目 | 位置 / 操作 |
 | --- | --- |
 | Windows Hub 数据 | 便携目录中的 `app/beszel_data/`。 |
+| macOS Hub 数据 | 默认为 `~/Library/Application Support/oh-my-beszel`，也可由 `config.env` 的 `BESZEL_DATA_DIR` 指定。 |
 | Linux Hub 数据 | `--dir` 指定的目录；省略时默认为相对于工作目录的 `beszel_data`。 |
 | 手动 Agent 数据 | 上文设置的 `DATA_DIR`，保留该目录以保留 Agent 身份。 |
 | SSH 安装的 Agent | `~/oh-my-beszel/`；配置和 Hub 公钥在 `config/`，身份数据在 `data/`，日志在 `logs/`。 |
 | Windows 重启 | 修改 `config.json` 后再次运行 `Monitor.exe`，需要时会自动重启当前包。 |
+| macOS 重启 | 修改 `config.env` 后运行 `launchctl kickstart -k gui/$(id -u)/com.oh-my-beszel.hub`；前台模式则停止并重新运行 `start.sh`。 |
 | 备份 / 迁移 | 文件系统复制前先停止 Hub，再复制完整数据目录；同时保留配置与 SSH 设置。 |
 | 升级 | 备份并停止旧进程，替换为本分支的新程序/便携包，再使用相同数据目录启动并检查节点。不要用示例覆盖本地配置。 |
 
@@ -302,11 +348,13 @@ export KEY="REPLACE_WITH_HUB_PUBLIC_KEY"
 | 现象 | 检查项 |
 | --- | --- |
 | Monitor 首次启动失败 | 检查 `launcher.log` 和 `app/hub.log`，确认 `app/beszel.exe` 存在并选择未占用端口。 |
+| macOS Hub 无法启动 | 检查 `logs/hub-error.log`，用 `sh -n config.env` 检查配置语法，确认压缩包架构与 Mac 一致，并查看 `launchctl print gui/$(id -u)/com.oh-my-beszel.hub`。 |
 | 登录不需要密码 / 修改 JSON 密码无效 | 清空免登录字段并清除继承的免登录环境变量，然后重启 Hub；已有账号密码通过账号管理修改。 |
 | 远端浏览器无法访问 Hub | 回环地址只属于各自机器。使用上文 SSH 隧道，或配置允许远程访问的监听地址与防火墙。 |
 | SSH 主机列表为空 | 检查 **Hub 上**的文件路径、服务账号读权限、具体的 `Host` 别名；修改路径后重新加载。 |
 | 手动 SSH 成功但部署失败 | 以 Hub 账号测试 `BatchMode=yes`，确认密钥/SSH agent 可用，以及 root 或免密码 sudo 权限。 |
 | 找不到 Agent 文件 / 可执行格式错误 | 检查查找目录、精确文件名和程序实际架构。 |
+| SSH 部署完成后立刻认证失败 | 检查该 Agent 端口是否已被其他用户或系统级 Agent 占用；为此系统选择另一个空闲端口后重新部署。 |
 | 导入节点一直 pending/down | 检查 Hub 部署日志、Agent 服务健康、端口一致性以及 SSH TCP 转发。 |
 | 手动节点离线 | 核对节点 IP、防火墙、`LISTEN`，以及 `KEY` 是否为此 Hub 的公钥。 |
 | GPU 数据缺失 | 检查 `nvidia-smi`、驱动权限、程序选择，以及 glibc 构建所需的 NVML 库。 |
@@ -332,10 +380,11 @@ internal/alerts/
 internal/site/
 internal/cmd/
 deploy/windows/
+deploy/macos/
 docs/assets/
 ```
 
-以上依次为节点采集、Hub API/部署、告警、前端、程序入口、Windows 打包和品牌资源。
+以上依次为节点采集、Hub API/部署、告警、前端、程序入口、Windows/macOS 打包和品牌资源。
 
 <a id="publishing"></a>
 

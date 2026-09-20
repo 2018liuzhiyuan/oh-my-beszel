@@ -36,7 +36,7 @@ flowchart LR
 
 | Component | Location and purpose |
 | --- | --- |
-| Hub | One Windows or Linux machine. Hosts the web UI, accounts, database, and alerts. |
+| Hub | One Windows, macOS, or Linux machine. Hosts the web UI, accounts, database, and alerts. |
 | Agent | Every monitored node. Collects metrics and communicates with the Hub. |
 | OpenSSH config and keys | On the Hub machine, accessible to the account running the Hub. Browser-side files are not used. |
 
@@ -46,7 +46,7 @@ Keep these ports separate: **8090** is the Hub web port, **45876** is the defaul
 
 ## Setup
 
-Choose one Hub path: [Windows](#windows) or [Linux / WSL](#linux). Then choose [SSH deployment](#ssh) or [manual Agent setup](#manual-agent). All build commands start in the repository root unless stated otherwise. Clone your own fork first; replace every example address, username, path, and password with your own values.
+Choose one Hub path: [Windows](#windows), [macOS](#macos), or [Linux / WSL](#linux). Then choose [SSH deployment](#ssh) or [manual Agent setup](#manual-agent). All build commands start in the repository root unless stated otherwise. Clone your own fork first; replace every example address, username, path, and password with your own values.
 
 <a id="prerequisites"></a>
 
@@ -54,7 +54,7 @@ Choose one Hub path: [Windows](#windows) or [Linux / WSL](#linux). Then choose [
 
 - Go **1.26.1+**, as declared in [go.mod](../go.mod). Existing scripts set `GOEXPERIMENT=nojsonv2` for compatibility with PocketBase on Go 1.27.
 - Bun for the frontend; the Linux bootstrap script pins **1.4.0**. Node.js **22.12+** is used by Vite and the npm build path.
-- PowerShell **7** for Windows scripts; system **OpenSSH client** for SSH integration.
+- PowerShell **7** for Windows scripts; system **OpenSSH client** for SSH integration. macOS packaging uses the system `shasum`, `tar`, `plutil`, and `launchctl` tools.
 - Network access to dependency and toolchain downloads. The Linux script can bootstrap missing supported toolchains with pinned versions and SHA-256 checks.
 
 These are build requirements. Running a prebuilt Hub or Agent does not require Go, Bun, or Node. The Windows launcher still needs PowerShell, and SSH integration still needs OpenSSH.
@@ -127,7 +127,49 @@ Configuration changes take effect after restarting the Hub. The native runner us
 2. Double-click `Monitor.exe` again. It stops the Hub process from this package when it is still serving the old port, then starts the same package with the new configuration. Other extracted copies are not stopped.
 3. Open `http://127.0.0.1:8091`. Monitor reads the same configuration and opens the new address on its next launch. Update bookmarks and any proxy or tunnel that targets the old web port. Agent port `45876` and operating-system SSH ports do not need to change.
 
-For Linux / WSL, change the port in both `serve --http 127.0.0.1:8091` and `APP_URL=http://127.0.0.1:8091` in the startup command or service configuration, then restart that Hub with the same data directory.
+For macOS or Linux / WSL, change both `BESZEL_HTTP` and `APP_URL` (or the equivalent startup command values), then restart that Hub with the same data directory.
+
+<a id="macos"></a>
+
+### macOS: build, run, and start the Hub at login
+
+**1. Build a native portable archive** on macOS. The script builds the current Mac architecture by default and includes Linux amd64/arm64 Agents for SSH deployment:
+
+```bash
+./deploy/macos/build.sh dev
+```
+
+Use `./deploy/macos/build.sh dev amd64` for Intel, `arm64` for Apple Silicon, or `all` to produce both archives. The output is `build/oh-my-beszel_dev_darwin_<arch>.tar.gz`, with an unpacked staging copy under `build/macos/<arch>/oh-my-beszel-darwin-<arch>/`. Set `SKIP_WEB=1` only when `internal/site/dist/index.html` already contains the UI you intend to ship.
+
+**2. Configure and start the Hub in the foreground:**
+
+```bash
+cd build/macos/arm64/oh-my-beszel-darwin-arm64  # use amd64 on Intel
+shasum -a 256 -c sha256sums.txt
+cp config.env.example config.env
+./start.sh
+```
+
+Open `http://127.0.0.1:8090` and create the first account. The default data directory is `~/Library/Application Support/oh-my-beszel`; changing `USER_EMAIL` or `USER_PASSWORD` after that database exists does not reset an account. Edit `config.env` to change the listen address, public URL, data directory, SSH config, or optional first-run credentials.
+
+**3. Optional: start the Hub automatically when the current user logs in:**
+
+```bash
+./install-service.sh
+```
+
+This installs `~/Library/LaunchAgents/com.oh-my-beszel.hub.plist` and starts it with launchd. Logs go to the package's `logs/` directory. Keep the extracted package at a stable path; after moving it, run the installer again. To stop the service and remove the login item while keeping Hub data, run `./uninstall-service.sh`.
+
+The package also contains a native `beszel-agent` for monitoring a Mac. Add the system in the dashboard, copy its Hub public key, and run:
+
+```bash
+KEY='<hub public key>' \
+LISTEN=127.0.0.1:45876 \
+DATA_DIR="$HOME/Library/Application Support/oh-my-beszel-agent" \
+./beszel-agent
+```
+
+The dashboard's SSH auto-deployment remains for **Linux targets**; the macOS Hub can deploy to them because both Linux Agent architectures are in `agents/`. macOS may quarantine binaries extracted from a downloaded archive. After verifying the release and checksums, clear that package's quarantine with `xattr -dr com.apple.quarantine .` if Gatekeeper blocks it.
 
 <a id="linux"></a>
 
@@ -209,13 +251,13 @@ ssh -F ~/.ssh/config -o BatchMode=yes gpu-node-a 'test -n "$HOME" && test -w "$H
 
 The target must be Linux amd64 or arm64, and the SSH account needs a writable home directory. Deployment never requires root or sudo. Normal password-based SSH login is still insufficient for the background deployment process because the Hub invokes SSH in batch mode.
 
-**2. Point the Hub to this config.** On Windows, set `sshConfigPath` in the package's `config.json`. On Linux, set this before restarting the Hub:
+**2. Point the Hub to this config.** On Windows, set `sshConfigPath` in the package's `config.json`. On macOS, set `SSH_CONFIG_PATH` in `config.env`. On Linux, export it before restarting the Hub:
 
 ```bash
 export SSH_CONFIG_PATH="$HOME/.ssh/config"
 ```
 
-**3. Prepare the matching Agent artifact on the Hub.** Windows packaging already creates `agents/beszel-agent_linux_amd64` and `agents/beszel-agent_linux_arm64`. For a Linux amd64 build, prepare the directory explicitly:
+**3. Prepare the matching Agent artifact on the Hub.** Windows and macOS packages already contain `agents/beszel-agent_linux_amd64` and `agents/beszel-agent_linux_arm64`. For a Linux amd64 build, prepare the directory explicitly:
 
 ```bash
 mkdir -p ./build/linux/agents
@@ -235,6 +277,8 @@ Artifact lookup order is `BESZEL_AGENT_DEPLOY_DIR`, `agents/` beside the Hub exe
 
 The Hub uploads the local artifact, verifies SHA-256, and installs it under `~/oh-my-beszel/` with `bin/`, `config/`, `data/`, and `logs/` subdirectories. It never writes to `/opt`. When a user systemd manager is available it enables and starts `oh-my-beszel-agent.service`; otherwise it starts a detached process, without a reboot-start guarantee. The Agent listens on `127.0.0.1:45876` by default for this path, and the Hub connects through `ssh -W`. Allow SSH TCP forwarding on the node; the Agent port need not be exposed publicly. Each Hub public key is appended once to `config/hub_keys`, so multiple Hubs can use the same Agent. Deployment is skipped only when the binary matches, the port is listening, the Agent is healthy, and the current Hub key is already authorized.
 
+An Agent port belongs to the whole target host, even when several operating-system users share that host. If another user's Agent or a system service already listens on `45876`, choose a different free Agent port when importing this system. Auto-deployment stops only the current SSH account's managed Agent; if the requested port remains occupied, it reports the conflict instead of mistaking the foreign listener for a successful deployment.
+
 **5. Confirm the node becomes online** and CPU/memory charts update. On the node, check the service and Agent health as needed:
 
 ```bash
@@ -252,7 +296,7 @@ If a terminal can `ssh <alias>` but the node never becomes online, check three t
 
 Use this path when you want to manage Agent installation yourself. The example is a **Hub → Agent** connection over a private network, with no SSH config attached to the system.
 
-1. Copy a matching Agent built from this repository to the monitored node. For Linux amd64 use `build/linux/beszel-agent`, or `beszel-agent-glibc` for native NVML on supported NVIDIA nodes, and name the copied file `beszel-agent`.
+1. Copy a matching Agent built from this repository to the monitored node. For Linux amd64 use `build/linux/beszel-agent`, or `beszel-agent-glibc` for native NVML on supported NVIDIA nodes, and name the copied file `beszel-agent`. On macOS use the `beszel-agent` from the matching `darwin_arm64` or `darwin_amd64` package.
 2. In **Add System → Binary**, enter a name, the node's reachable **IP address**, and Agent port `45876`. Copy the **Hub public key** shown in the form and save the system. This public key is different from your operating-system SSH private key.
 3. On the monitored node, replace the public-key placeholder below and run from the directory containing the Agent:
 
@@ -284,10 +328,12 @@ Names that collide after conversion, match a record ID, or exceed 80 Unicode cha
 | Item | Location / action |
 | --- | --- |
 | Windows Hub data | `app/beszel_data/` inside the portable directory. |
+| macOS Hub data | `~/Library/Application Support/oh-my-beszel` by default, or `BESZEL_DATA_DIR` from `config.env`. |
 | Linux Hub data | The directory passed to `--dir`; without it, the default is `beszel_data` relative to the working directory. |
 | Manual Agent data | The `DATA_DIR` used above. Retain it to preserve Agent identity. |
 | SSH-installed Agent | `~/oh-my-beszel/`; configuration and Hub keys are under `config/`, identity under `data/`, and logs under `logs/`. |
 | Windows restart | After editing `config.json`, run `Monitor.exe` again; it restarts this package when required. |
+| macOS restart | After editing `config.env`, run `launchctl kickstart -k gui/$(id -u)/com.oh-my-beszel.hub`, or stop and rerun `start.sh` in foreground mode. |
 | Backup / migration | Stop the Hub before a filesystem copy of its complete data directory; also preserve your configuration and SSH setup. |
 | Upgrade | Back up, stop the old process, replace it with this fork's new binary/package, then start with the same data directory and verify nodes. Do not overwrite your local config with the example. |
 
@@ -302,11 +348,13 @@ Keep real passwords, tokens, SSH private keys, databases, and logs outside Git. 
 | Symptom | Check |
 | --- | --- |
 | Monitor fails on the first start | Check `launcher.log` and `app/hub.log`, verify `app/beszel.exe` exists, and choose an unused port. |
+| macOS Hub does not start | Check `logs/hub-error.log`, validate `config.env` with `sh -n`, confirm the archive matches the Mac architecture, and inspect `launchctl print gui/$(id -u)/com.oh-my-beszel.hub`. |
 | Login ignores the password / changing JSON password has no effect | Clear auto-login and inherited auto-login variables, restart the Hub; use account management for existing passwords. |
 | Remote browser cannot open the Hub | Loopback is local to each machine. Use the SSH tunnel above, or configure the listener and firewall for remote access. |
 | No SSH hosts appear | Check the path **on the Hub**, read permissions for its service account, concrete `Host` aliases, and reload after path changes. |
 | SSH works interactively but deployment fails | Test `BatchMode=yes` as the Hub account; verify key/SSH-agent access and that the target account has a writable home directory. |
 | Agent artifact not found / wrong executable format | Check the lookup directories, exact filename, and actual binary architecture. |
+| Authentication fails immediately after SSH deployment | Check whether another user or system Agent already owns that Agent port; assign this system a different free port and redeploy. |
 | Imported node stays pending/down | Check Hub deployment logs, Agent service health, port consistency, and SSH TCP forwarding. |
 | Manual node stays offline | Verify node IP, firewall, `LISTEN`, and that `KEY` is the public key of this Hub. |
 | GPU data is missing | Verify `nvidia-smi`, driver permissions, binary choice, and NVML availability for the glibc build. |
@@ -332,10 +380,11 @@ internal/alerts/
 internal/site/
 internal/cmd/
 deploy/windows/
+deploy/macos/
 docs/assets/
 ```
 
-These contain node collection, Hub APIs/deployment, alerts, frontend, executable entry points, Windows packaging, and branding assets respectively.
+These contain node collection, Hub APIs/deployment, alerts, frontend, executable entry points, Windows/macOS packaging, and branding assets respectively.
 
 <a id="publishing"></a>
 

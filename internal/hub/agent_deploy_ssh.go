@@ -302,8 +302,24 @@ if [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1 && [ -d "$
   fi
 fi
 
+# Stop only the Agent managed by this account before checking the requested
+# port. On shared hosts another user or a system service may already own the
+# default port; treating that listener as ours reports a false successful
+# deployment and later surfaces as a misleading public-key authentication
+# error from the foreign Agent.
 if [ "$SYSTEMD_USER" -eq 1 ]; then
   stop_detached
+  systemctl --user stop oh-my-beszel-agent.service >/dev/null 2>&1 || true
+else
+  stop_detached
+fi
+if port_listening; then
+  rollback
+  echo "agent port $PORT is already in use after stopping this account's managed Agent; choose a different Agent port for this system" >&2
+  exit 24
+fi
+
+if [ "$SYSTEMD_USER" -eq 1 ]; then
   install -d -m 0755 "$USER_UNIT_DIR"
   ln -sfn "$SERVICE_FILE" "$USER_UNIT"
   systemctl --user daemon-reload
@@ -314,7 +330,6 @@ if [ "$SYSTEMD_USER" -eq 1 ]; then
     exit 22
   fi
 else
-  stop_detached
   if command -v setsid >/dev/null 2>&1; then
     setsid "$RUNNER" >>"$LOG_DIR/agent.log" 2>&1 </dev/null &
   else

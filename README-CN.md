@@ -1,15 +1,16 @@
-<p align="center">
-  <img src="docs/assets/oh-my-beszel-logo.png" alt="oh-my-beszel" width="360" />
-</p>
+![oh-my-beszel](docs/assets/oh-my-beszel-logo.png)
 
-<h1 align="center">oh-my-beszel</h1>
-<p align="center">看清 GPU 集群状态，通过 SSH 轻松管理。</p>
-<p align="center"><a href="readme.md">English</a> · <strong>简体中文</strong></p>
-<p align="center"><a href="#highlights">核心优势</a> · <a href="#screenshots">页面截图</a> · <a href="#quick-start">快速开始</a> · <a href="docs/guide.zh-CN.md">使用文档</a></p>
+# oh-my-beszel
+
+看清 GPU 集群状态，通过 SSH 轻松管理。
+
+[English](readme.md) · **简体中文**
+
+[核心优势](#highlights) · [页面截图](#screenshots) · [快速开始](#quick-start) · 使用文档
 
 面向 GPU 实验室与私有集群的轻量自托管监控。**oh-my-beszel** 将多 GPU 监控、SSH 主机导入和 Agent 部署集中在一个面板中，是基于 [Beszel](https://github.com/henrygd/beszel) 独立维护的非官方分支。
 
-<a id="highlights"></a>
+
 
 ## 核心优势
 
@@ -20,7 +21,7 @@
 
 保留 Beszel 的系统历史、Docker / Podman 监控、多用户、OAuth / OIDC 和备份功能。
 
-<a id="screenshots"></a>
+
 
 ## 页面截图
 
@@ -34,8 +35,7 @@
 
 ![服务器页面中的 CPU、内存、网络与温度历史图表](docs/assets/screenshots/system-history.png)
 
-<details>
-<summary>展开多 GPU 图表、SSH 管理与深色主题</summary>
+展开多 GPU 图表、SSH 管理与深色主题
 
 **多 GPU 历史**
 
@@ -49,22 +49,21 @@
 
 ![深色主题集群总览](docs/assets/screenshots/overview-dark.png)
 
-</details>
 
-<details>
-<summary>移动端总览</summary>
 
-<img src="docs/assets/screenshots/overview-mobile.png" alt="移动端集群总览" width="375" />
+移动端总览
 
-</details>
+![移动端集群总览](docs/assets/screenshots/overview-mobile.png)
 
-<a id="quick-start"></a>
+
+
+
 
 ## 快速开始
 
 运行一个 **Hub** 提供面板，在每台被监控节点运行 **Agent**。请使用本仓库构建的程序；上游二进制与镜像不包含本分支增强功能。
 
-**已经有 `build/` 目录？** 该目录不纳入 git，但发布包或此前的构建可能已包含可直接运行的程序。若存在 `build/windows/app/beszel.exe` 和 `build/windows/Monitor.exe`，可跳过下面的构建命令，直接从 `config.json` 配置一步开始。若存在 `build/linux/beszel`，先用 `sha256sum --check build/linux/sha256sums.txt` 校验，再从[ Linux 指南](docs/guide.zh-CN.md#linux)的第 2 步开始。二进制只包含其构建时间之前的改动（见 `build/linux/build-info.txt`）；需要最新代码时按下面的命令重新构建。
+**已经有 `build/` 目录？** 该目录不纳入 git，但发布包或此前的构建可能已包含可直接运行的程序。若存在 `build/windows/app/beszel.exe` 和 `build/windows/Monitor.exe`，可跳过下面的构建命令，直接从 `config.json` 配置一步开始。macOS 包暂存于 `build/macos/<架构>/`，Linux 程序位于 `build/linux/`；运行前请校验包内校验和。二进制只包含其构建时间之前的改动（见 `build-info.txt`）；需要最新代码时按下面的命令重新构建。
 
 **Windows** · 需要 Go 1.26.1+、Bun 和 PowerShell 7。在仓库根目录执行：
 
@@ -80,13 +79,61 @@ pwsh -NoLogo -NoProfile -File ./deploy/windows/build.ps1
 Start-Process -FilePath ./build/windows/Monitor.exe
 ```
 
-打开 **http://127.0.0.1:8090** 登录。发布包内不含 PowerShell 脚本，也不依赖用户安装的 PowerShell 版本。准备好 Hub 的 SSH 访问后，在 **添加系统 → SSH** 中导入节点。
+打开 **[http://127.0.0.1:8090](http://127.0.0.1:8090)** 登录。发布包内不含 PowerShell 脚本，也不依赖用户安装的 PowerShell 版本。准备好 Hub 的 SSH 访问后，在 **添加系统 → SSH** 中导入节点。
 
 **修改网页端口：** 编辑实际运行的 `Monitor.exe` 同目录下 `config.json` 的 `port`（例如 `8091`），重启 Hub 后访问 `http://127.0.0.1:8091`。详见[端口与重启步骤](docs/guide.zh-CN.md#web-port)。
 
+**macOS** · 使用预编译包不需要安装 Go、Bun 或 Node.js。Apple Silicon 将 `PACKAGE_ARCH` 填为 `arm64`，Intel Mac 填为 `amd64`；同时把压缩包占位路径替换为用户自己下载或构建的文件路径：
+
+```bash
+PACKAGE_ARCH="arm64"
+ARCHIVE="/path/to/oh-my-beszel_<版本>_darwin_${PACKAGE_ARCH}.tar.gz"
+
+mkdir -p "$HOME/Applications"
+tar -xzf "$ARCHIVE" -C "$HOME/Applications"
+cd "$HOME/Applications/oh-my-beszel-darwin-$PACKAGE_ARCH"
+shasum -a 256 -c sha256sums.txt
+cp config.env.example config.env
+```
+
+编辑 `config.env`，由使用者自行填写监听地址、外部访问 URL、数据目录、SSH config 路径以及可选的首次启动账号。本机访问可以保留默认值；保持 `USER_EMAIL` 与 `USER_PASSWORD` 为注释状态，则在首次打开网页时创建账号。随后安装并立即启动当前用户的 launchd 服务：
+
+```bash
+./install-service.sh
+open http://127.0.0.1:8090
+```
+
+此后该用户每次登录 Mac，Hub 都会自动启动。服务安装期间应保持解压目录路径不变。运行 `./uninstall-service.sh` 会停止并移除登录服务，但保留 Hub 数据。需要从源码构建时，先安装 Go 1.26.1+ 和 Bun（或 Node.js/npm），运行 `./deploy/macos/build.sh <版本> <arm64|amd64|all>`，再按上面的步骤部署生成的压缩包。配置、Gatekeeper、日志以及随包 macOS Agent 见 [macOS 指南](docs/guide.zh-CN.md#macos)。
+
 **Linux / WSL** · 请参阅[构建与启动指南](docs/guide.zh-CN.md#linux)。
 
-[SSH 部署](docs/guide.zh-CN.md#ssh) · [手动安装 Agent](docs/guide.zh-CN.md#manual-agent) · [Windows 启动器与自动启动](docs/guide.zh-CN.md#windows)
+[SSH 部署](docs/guide.zh-CN.md#ssh) · [手动安装 Agent](docs/guide.zh-CN.md#manual-agent) · [macOS 自启动](docs/guide.zh-CN.md#macos) · [Windows 启动器与自动启动](docs/guide.zh-CN.md#windows)
+
+### 共享服务器上的 Agent 端口冲突
+
+如果 SSH 部署显示完成，但系统随即报告 `ssh: unable to authenticate, attempted methods [none publickey]`，请先检查配置的 Agent 端口是否已被其他用户的 Agent 或系统服务占用。Agent 端口由整台目标主机共享，因此两个用户不能同时监听默认的 `45876` 地址。
+
+请对每台受影响的目标服务器分别执行以下步骤：
+
+1. 使用 Hub 中配置的同一个 SSH 别名登录目标服务器，然后检查一个候选端口。下面以 `45878` 为例；请将它替换为你想使用的端口：
+
+   ```bash
+   PORT=45878
+   if ss -ltnH "sport = :$PORT" | grep -q .; then
+     echo "port $PORT is occupied"
+   else
+     echo "port $PORT is free"
+   fi
+   ```
+
+   请选择显示为 `free` 的端口。每台服务器都要单独检查，因为同一个端口可能在一台服务器上空闲、在另一台服务器上已被占用。不要停止或替换其他用户的进程。
+
+2. 打开 Hub 面板，在系统列表中找到报错的系统，点击该行右侧的 **三点菜单 → 编辑（Edit）**。
+3. 在编辑窗口中，将 **端口（Port）** 从默认的 `45876` 改为刚才确认空闲的端口。保持 **主机/IP（Host / IP）** 不变，然后点击 **保存系统（Save System）**。
+4. 保存后，该系统会自动变为 `pending`。如果它原本是通过 SSH config 导入的，Hub 会自动停止当前 SSH 账号自己管理的 Agent、写入新的 `LISTEN` 端口、重新启动 Agent，并通过 SSH 重新连接；界面中没有单独的“重新部署”按钮。
+5. 等待系统状态变为 `up`，并确认监控图表开始更新。如果新端口也被占用，请换一个空闲端口后重复以上步骤；当前自动部署会明确报告端口冲突，不再把其他用户的监听进程误判为部署成功。
+
+自动重新部署要求该系统仍然关联 SSH config。如果系统是手动安装且没有 SSH config，请先自行把目标 Agent 的 `LISTEN` 改成同一个新端口并重启 Agent，再在 Hub 中保存对应的 **端口（Port）**。完整诊断步骤见[SSH 部署故障排查](docs/guide.zh-CN.md#troubleshooting)。
 
 ### Agent 用户目录
 

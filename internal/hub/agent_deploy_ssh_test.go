@@ -2,6 +2,7 @@ package hub
 
 import (
 	"encoding/base64"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -199,6 +200,21 @@ func TestAgentInstallScript_supportsUserSystemdAndDetachedFallback(t *testing.T)
 	require.Contains(t, script, "sha256sum")
 	require.Contains(t, script, "systemctl --user enable oh-my-beszel-agent.service")
 	require.Contains(t, script, "systemctl --user restart oh-my-beszel-agent.service")
+}
+
+func TestAgentInstallScript_rejectsPortsOwnedByForeignProcesses(t *testing.T) {
+	// When
+	script := agentInstallScript()
+
+	// Then: stop this account's managed instances before deciding whether a
+	// listener belongs to the freshly installed Agent.
+	stopService := "systemctl --user stop oh-my-beszel-agent.service"
+	portCheck := `if port_listening; then`
+	require.Contains(t, script, stopService)
+	require.Contains(t, script, portCheck)
+	require.Less(t, strings.Index(script, stopService), strings.Index(script, portCheck))
+	require.Contains(t, script, "agent port $PORT is already in use")
+	require.Contains(t, script, "exit 24")
 }
 
 func TestAgentInstallScript_appendsHubKeysWithoutDuplicates(t *testing.T) {

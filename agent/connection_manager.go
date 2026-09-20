@@ -266,7 +266,11 @@ func (c *ConnectionManager) startWebSocketConnection() error {
 // startSSHServer starts the SSH server if the agent is currently disconnected.
 func (c *ConnectionManager) startSSHServer() {
 	if c.State() == Disconnected {
-		go c.agent.StartServer(c.serverOptions)
+		go func() {
+			if err := c.agent.StartServer(c.serverOptions); err != nil {
+				slog.Error("SSH server stopped", "err", err)
+			}
+		}()
 	}
 }
 

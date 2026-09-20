@@ -58,7 +58,7 @@ Isolated demo instance with synthetic hosts and metrics. The shared home screens
 
 Run one **Hub** for the dashboard and an **Agent** on each monitored node. Use builds from this repository to get the fork's features; upstream binaries and images do not include them.
 
-**Already have a `build/` directory?** It is not tracked in git, but a release package or an earlier build may already contain ready-to-run binaries. If `build/windows/app/beszel.exe` and `build/windows/Monitor.exe` exist, skip the build commands below and start from the `config.json` step. If `build/linux/beszel` exists, verify it with `sha256sum --check build/linux/sha256sums.txt` and start from step 2 of the [Linux guide](docs/guide.md#linux). Binaries match the code as of their build date (`build/linux/build-info.txt`); rebuild as shown below to pick up newer changes.
+**Already have a `build/` directory?** It is not tracked in git, but a release package or an earlier build may already contain ready-to-run binaries. If `build/windows/app/beszel.exe` and `build/windows/Monitor.exe` exist, skip the build commands below and start from the `config.json` step. macOS packages are staged under `build/macos/<arch>/`; Linux binaries use `build/linux/`. Verify the included checksums before running them. Binaries match the code as of their build date (`build-info.txt`); rebuild as shown below to pick up newer changes.
 
 **Windows** · Requires Go 1.26.1+, Bun, and PowerShell 7. From the repository root:
 
@@ -78,9 +78,57 @@ Open **http://127.0.0.1:8090** and sign in. The release itself has no PowerShell
 
 **Change the web port:** edit `port` in `config.json` beside the running `Monitor.exe` (for example, `8091`), then restart the Hub and open `http://127.0.0.1:8091`. See [port and restart instructions](docs/guide.md#web-port).
 
+**macOS** · A prebuilt package has no Go, Bun, or Node.js runtime dependency. Set `PACKAGE_ARCH` to `arm64` on Apple Silicon or `amd64` on Intel, and replace the archive placeholder with the path to the file you downloaded or built:
+
+```bash
+PACKAGE_ARCH="arm64"
+ARCHIVE="/path/to/oh-my-beszel_<tag>_darwin_${PACKAGE_ARCH}.tar.gz"
+
+mkdir -p "$HOME/Applications"
+tar -xzf "$ARCHIVE" -C "$HOME/Applications"
+cd "$HOME/Applications/oh-my-beszel-darwin-$PACKAGE_ARCH"
+shasum -a 256 -c sha256sums.txt
+cp -n config.env.example config.env
+```
+
+Edit `config.env` and supply your own listen address, public URL, data directory, SSH config path, and optional first-run credentials. The defaults are suitable for local-only access; leaving `USER_EMAIL` and `USER_PASSWORD` commented lets you create the first account in the browser. Then install and start the per-user launchd service:
+
+```bash
+./install-service.sh
+open http://127.0.0.1:8090
+```
+
+The Hub starts whenever that user logs in. Keep the extracted package at the same path while the service is installed. `./uninstall-service.sh` stops and removes the login service but preserves Hub data. If building from source, install Go 1.26.1+ and Bun (or Node.js/npm), run `./deploy/macos/build.sh <tag> <arm64|amd64|all>`, then deploy the resulting archive with the steps above. See the [macOS guide](docs/guide.md#macos) for configuration, Gatekeeper, logs, and the bundled local Agent.
+
 **Linux / WSL** · Follow the [build and startup guide](docs/guide.md#linux).
 
-[SSH deployment](docs/guide.md#ssh) · [Manual Agent setup](docs/guide.md#manual-agent) · [Windows launcher and auto-start](docs/guide.md#windows)
+[SSH deployment](docs/guide.md#ssh) · [Manual Agent setup](docs/guide.md#manual-agent) · [macOS startup](docs/guide.md#macos) · [Windows launcher and auto-start](docs/guide.md#windows)
+
+### Shared-host Agent port conflicts
+
+If SSH deployment completes but the system immediately reports `ssh: unable to authenticate, attempted methods [none publickey]`, first check whether another user's Agent or a system service already owns the configured Agent port. Agent ports belong to the whole target host, so two users cannot both listen on the default `45876` address.
+
+Use these steps for each affected target host:
+
+1. Log in to the target with the same SSH alias used by the Hub, then test a candidate port. Replace `45878` with the port you want to use:
+
+   ```bash
+   PORT=45878
+   if ss -ltnH "sport = :$PORT" | grep -q .; then
+     echo "port $PORT is occupied"
+   else
+     echo "port $PORT is free"
+   fi
+   ```
+
+   Choose a port reported as free. Check every target separately because a port that is free on one server may be occupied on another. Do not stop or replace another user's process.
+
+2. Open the Hub dashboard and locate the affected system. Select its **three-dot menu → Edit**.
+3. In the edit dialog, replace **Port** (`45876` by default) with the free port. Keep **Host / IP** unchanged and select **Save System**.
+4. Saving changes the system to `pending`. For a system imported from an SSH config, the Hub automatically stops this SSH account's managed Agent, writes the new `LISTEN` port, starts it again, and reconnects through SSH. There is no separate redeploy button.
+5. Wait for the system status to change to `up`, then confirm its charts update. If the new port is also occupied, choose another free port and repeat these steps; current auto-deployment reports the port conflict instead of treating the foreign listener as a successful deployment.
+
+Automatic redeployment requires the system to retain its SSH config association. For a manually installed system without one, change the Agent's `LISTEN` value to the same new port and restart that Agent yourself before saving the matching **Port** in the Hub. See [SSH deployment troubleshooting](docs/guide.md#troubleshooting) for the full diagnosis.
 
 ### User-owned Agent directory
 
