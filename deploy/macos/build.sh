@@ -62,12 +62,14 @@ build_one() {
 	GOOS=linux GOARCH=arm64 go build -trimpath -buildvcs=false -ldflags '-s -w' -o "$STAGE/agents/beszel-agent_linux_arm64" ./internal/cmd/agent
 
 	cp "$SCRIPT_DIR/package/README.txt" "$STAGE/README.txt"
+	cp "$SCRIPT_DIR/package/QUICKSTART.zh-CN.md" "$STAGE/QUICKSTART.zh-CN.md"
+	cp "$SCRIPT_DIR/package/Open.command" "$STAGE/Open.command"
 	cp "$SCRIPT_DIR/package/config.env.example" "$STAGE/config.env.example"
 	cp "$SCRIPT_DIR/package/start.sh" "$STAGE/start.sh"
 	cp "$SCRIPT_DIR/package/install-service.sh" "$STAGE/install-service.sh"
 	cp "$SCRIPT_DIR/package/uninstall-service.sh" "$STAGE/uninstall-service.sh"
 	cp "$SCRIPT_DIR/package/com.oh-my-beszel.hub.plist" "$STAGE/com.oh-my-beszel.hub.plist"
-	chmod 0755 "$STAGE/beszel" "$STAGE/beszel-agent" "$STAGE/agents/"* "$STAGE/"*.sh
+	chmod 0755 "$STAGE/beszel" "$STAGE/beszel-agent" "$STAGE/agents/"* "$STAGE/"*.sh "$STAGE/Open.command"
 	chmod 0644 "$STAGE/README.txt" "$STAGE/config.env.example" "$STAGE/com.oh-my-beszel.hub.plist"
 
 	{
@@ -84,6 +86,8 @@ build_one() {
 		cd "$STAGE"
 		shasum -a 256 beszel beszel-agent \
 			agents/beszel-agent_linux_amd64 agents/beszel-agent_linux_arm64 \
+			Open.command start.sh install-service.sh uninstall-service.sh \
+			config.env.example com.oh-my-beszel.hub.plist README.txt QUICKSTART.zh-CN.md build-info.txt \
 			> sha256sums.txt
 	)
 

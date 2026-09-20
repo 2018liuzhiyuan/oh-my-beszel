@@ -133,6 +133,8 @@ macOS 或 Linux / WSL 需要同步修改 `BESZEL_HTTP` 与 `APP_URL`（或启动
 
 ### macOS：构建、运行并设置登录自启动
 
+新版包包含 `Open.command`：双击即可自动安装到 `~/Applications`、保留原配置、设置登录自启动，并在健康检查通过后打开网页，详见[简单使用手册](../deploy/macos/package/QUICKSTART.zh-CN.md)。以下仍提供手动前台运行方式。
+
 **1. 在 macOS 上构建原生便携包。** 脚本默认构建当前 Mac 的架构，并随包放入 Linux amd64/arm64 Agent，供 SSH 自动部署使用：
 
 ```bash
@@ -146,7 +148,7 @@ Intel 使用 `./deploy/macos/build.sh dev amd64`，Apple Silicon 使用 `arm64`�
 ```bash
 cd build/macos/arm64/oh-my-beszel-darwin-arm64  # Intel 请改用 amd64
 shasum -a 256 -c sha256sums.txt
-cp config.env.example config.env
+test -f config.env || cp config.env.example config.env
 ./start.sh
 ```
 
@@ -158,7 +160,7 @@ cp config.env.example config.env
 ./install-service.sh
 ```
 
-脚本会安装 `~/Library/LaunchAgents/com.oh-my-beszel.hub.plist` 并用 launchd 启动。日志写入包内 `logs/`。安装服务后请保持解压目录路径不变；移动后重新运行安装脚本即可刷新绝对路径。运行 `./uninstall-service.sh` 会停止服务并移除登录项，但保留 Hub 数据。
+先按 Ctrl+C 停止前台 Hub，再运行安装脚本。脚本会将包自动安装到 `~/Applications`（包括从 Downloads 执行的情况），保留已有配置，安装 `~/Library/LaunchAgents/com.oh-my-beszel.hub.plist`，并确认后台服务健康。日志写入 Applications 下安装目录的 `logs/`。请保留该安装目录。运行 `./uninstall-service.sh` 会停止服务并移除登录项，但保留 Hub 数据。
 
 包内还包含监控 Mac 本机的原生 `beszel-agent`。在面板添加系统并复制 Hub 公钥后运行：
 

@@ -133,6 +133,8 @@ For macOS or Linux / WSL, change both `BESZEL_HTTP` and `APP_URL` (or the equiva
 
 ### macOS: build, run, and start the Hub at login
 
+The current package includes `Open.command`: double-click it to install under `~/Applications`, preserve existing configuration, enable login startup, and open the dashboard after a health check. See the [quick-start manual](../deploy/macos/package/README.txt). The manual foreground workflow below remains available.
+
 **1. Build a native portable archive** on macOS. The script builds the current Mac architecture by default and includes Linux amd64/arm64 Agents for SSH deployment:
 
 ```bash
@@ -146,7 +148,7 @@ Use `./deploy/macos/build.sh dev amd64` for Intel, `arm64` for Apple Silicon, or
 ```bash
 cd build/macos/arm64/oh-my-beszel-darwin-arm64  # use amd64 on Intel
 shasum -a 256 -c sha256sums.txt
-cp config.env.example config.env
+test -f config.env || cp config.env.example config.env
 ./start.sh
 ```
 
@@ -158,7 +160,7 @@ Open `http://127.0.0.1:8090` and create the first account. The default data dire
 ./install-service.sh
 ```
 
-This installs `~/Library/LaunchAgents/com.oh-my-beszel.hub.plist` and starts it with launchd. Logs go to the package's `logs/` directory. Keep the extracted package at a stable path; after moving it, run the installer again. To stop the service and remove the login item while keeping Hub data, run `./uninstall-service.sh`.
+Stop the foreground Hub with Ctrl+C first. This installs `~/Library/LaunchAgents/com.oh-my-beszel.hub.plist` and starts it with launchd. Logs go to the installed package's `logs/` directory under `~/Applications`. The installer copies the package there automatically, including when invoked from Downloads. To stop the service and remove the login item while keeping Hub data, run `./uninstall-service.sh`.
 
 The package also contains a native `beszel-agent` for monitoring a Mac. Add the system in the dashboard, copy its Hub public key, and run:
 

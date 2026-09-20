@@ -78,27 +78,9 @@ Open **http://127.0.0.1:8090** and sign in. The release itself has no PowerShell
 
 **Change the web port:** edit `port` in `config.json` beside the running `Monitor.exe` (for example, `8091`), then restart the Hub and open `http://127.0.0.1:8091`. See [port and restart instructions](docs/guide.md#web-port).
 
-**macOS** · A prebuilt package has no Go, Bun, or Node.js runtime dependency. Set `PACKAGE_ARCH` to `arm64` on Apple Silicon or `amd64` on Intel, and replace the archive placeholder with the path to the file you downloaded or built:
+**macOS** · Download the matching Release archive (`darwin_arm64` for Apple Silicon, `darwin_amd64` for Intel), extract it, and double-click **Open.command**. It installs under `~/Applications`, preserves existing configuration, enables login startup, and opens the dashboard after verifying startup. Create an account on the first visit. No Go, Bun, or Node.js is needed.
 
-```bash
-PACKAGE_ARCH="arm64"
-ARCHIVE="/path/to/oh-my-beszel_<tag>_darwin_${PACKAGE_ARCH}.tar.gz"
-
-mkdir -p "$HOME/Applications"
-tar -xzf "$ARCHIVE" -C "$HOME/Applications"
-cd "$HOME/Applications/oh-my-beszel-darwin-$PACKAGE_ARCH"
-shasum -a 256 -c sha256sums.txt
-cp -n config.env.example config.env
-```
-
-Edit `config.env` and supply your own listen address, public URL, data directory, SSH config path, and optional first-run credentials. The defaults are suitable for local-only access; leaving `USER_EMAIL` and `USER_PASSWORD` commented lets you create the first account in the browser. Then install and start the per-user launchd service:
-
-```bash
-./install-service.sh
-open http://127.0.0.1:8090
-```
-
-The Hub starts whenever that user logs in. Keep the extracted package at the same path while the service is installed. `./uninstall-service.sh` stops and removes the login service but preserves Hub data. If building from source, install Go 1.26.1+ and Bun (or Node.js/npm), run `./deploy/macos/build.sh <tag> <arm64|amd64|all>`, then deploy the resulting archive with the steps above. See the [macOS guide](docs/guide.md#macos) for configuration, Gatekeeper, logs, and the bundled local Agent.
+These steps require a new package containing `Open.command`. The unsigned download may require a one-time macOS approval; see the [quick-start manual](deploy/macos/package/README.txt). For daily use, open http://127.0.0.1:8090. For source builds and advanced configuration, see the [macOS guide](docs/guide.md#macos).
 
 **Linux / WSL** · Follow the [build and startup guide](docs/guide.md#linux).
 

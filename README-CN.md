@@ -83,27 +83,9 @@ Start-Process -FilePath ./build/windows/Monitor.exe
 
 **修改网页端口：** 编辑实际运行的 `Monitor.exe` 同目录下 `config.json` 的 `port`（例如 `8091`），重启 Hub 后访问 `http://127.0.0.1:8091`。详见[端口与重启步骤](docs/guide.zh-CN.md#web-port)。
 
-**macOS** · 使用预编译包不需要安装 Go、Bun 或 Node.js。Apple Silicon 将 `PACKAGE_ARCH` 填为 `arm64`，Intel Mac 填为 `amd64`；同时把压缩包占位路径替换为用户自己下载或构建的文件路径：
+**macOS** · 从 Releases 下载对应压缩包（M 系列芯片选 `darwin_arm64`，Intel 选 `darwin_amd64`），解压后双击 **Open.command**。启动器会自动安装到 `~/Applications`、保留已有配置、设置登录自启动，并在确认启动成功后打开网页。首次访问创建账号即可，不需要 Go、Bun 或 Node.js。
 
-```bash
-PACKAGE_ARCH="arm64"
-ARCHIVE="/path/to/oh-my-beszel_<版本>_darwin_${PACKAGE_ARCH}.tar.gz"
-
-mkdir -p "$HOME/Applications"
-tar -xzf "$ARCHIVE" -C "$HOME/Applications"
-cd "$HOME/Applications/oh-my-beszel-darwin-$PACKAGE_ARCH"
-shasum -a 256 -c sha256sums.txt
-cp config.env.example config.env
-```
-
-编辑 `config.env`，由使用者自行填写监听地址、外部访问 URL、数据目录、SSH config 路径以及可选的首次启动账号。本机访问可以保留默认值；保持 `USER_EMAIL` 与 `USER_PASSWORD` 为注释状态，则在首次打开网页时创建账号。随后安装并立即启动当前用户的 launchd 服务：
-
-```bash
-./install-service.sh
-open http://127.0.0.1:8090
-```
-
-此后该用户每次登录 Mac，Hub 都会自动启动。服务安装期间应保持解压目录路径不变。运行 `./uninstall-service.sh` 会停止并移除登录服务，但保留 Hub 数据。需要从源码构建时，先安装 Go 1.26.1+ 和 Bun（或 Node.js/npm），运行 `./deploy/macos/build.sh <版本> <arm64|amd64|all>`，再按上面的步骤部署生成的压缩包。配置、Gatekeeper、日志以及随包 macOS Agent 见 [macOS 指南](docs/guide.zh-CN.md#macos)。
+上述步骤适用于包含 `Open.command` 的新版包。未签名下载包可能需要首次放行，见[简单使用手册](deploy/macos/package/QUICKSTART.zh-CN.md)。日常直接访问 http://127.0.0.1:8090 即可。源码构建和高级配置见 [macOS 指南](docs/guide.zh-CN.md#macos)。
 
 **Linux / WSL** · 请参阅[构建与启动指南](docs/guide.zh-CN.md#linux)。
 
