@@ -1,0 +1,51 @@
+name: Go and Agent regression
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: regression-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    # Root inside a disposable container permits the UID 65534 fixture without
+    # exposing a runner user's SSH configuration or service manager sockets.
+    container: golang:1.26.1-bookworm
+    env:
+      GOEXPERIMENT: nojsonv2
+      HOME: /tmp/beszel-ci-home
+      XDG_CONFIG_HOME: /tmp/beszel-ci-home/.config
+      XDG_RUNTIME_DIR: /tmp/beszel-ci-no-runtime
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Prepare isolated environment
+        run: |
+          mkdir -p "$HOME" internal/site/dist
+          printf 'CI backend embed placeholder\n' > internal/site/dist/index.html
+          apt-get update
+          apt-get install -y --no-install-recommends python3 util-linux procps
+      - name: Test failure cleanup
+        run: python3 -m unittest discover -s test -p 'test_agent_identity_cleanup.py' -v
+      - name: Go backend and Agent tests
+        run: go test -tags testing -count=1 -timeout=10m ./...
+      - name: Agent WebSocket race checks
+        run: go test -race -tags testing -count=1 -timeout=5m ./agent -run 'Test(WebSocketClient|NewWebSocketClient)'
+      - name: Build Linux Agent
+        run: go build -o /tmp/beszel-ci-agent ./internal/cmd/agent
+      - name: Linux deployment isolation
+        run: python3 test/run_agent_identity_e2e.py --linux --agent /tmp/beszel-ci-agent --output test/artifacts/ci/report.json
+      - name: Upload isolation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-agent-isolation
+          path: test/artifacts/ci/*.json
+          if-no-files-found: ignore
+          retention-days: 7

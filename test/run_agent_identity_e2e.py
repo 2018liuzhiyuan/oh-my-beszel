@@ -28,8 +28,47 @@ def scripts():
     return install, probe
 
 
+def cleanup_fixture(fixture):
+    """Stop only executables owned by this fixture, even after a partial install."""
+    errors = []
+    # Scan executables as well as PID files: an installer can fail before writing a PID.
+    for entry in Path("/proc").iterdir():
+        if not entry.name.isdigit():
+            continue
+        try:
+            executable = (entry / "exe").readlink()
+            if not str(executable).startswith(str(fixture) + "/"):
+                continue
+            process_id = int(entry.name)
+            os.kill(process_id, signal.SIGTERM)
+            for _ in range(50):
+                try:
+                    if (entry / "stat").read_text().split()[2] == "Z":
+                        break
+                except FileNotFoundError:
+                    break
+                time.sleep(0.1)
+            else:
+                os.kill(process_id, signal.SIGKILL)
+        except (FileNotFoundError, ProcessLookupError):
+            pass
+        except OSError as error:
+            errors.append(str(error))
+    try:
+        shutil.rmtree(fixture)
+    except OSError as error:
+        errors.append(str(error))
+    if errors:
+        raise RuntimeError("fixture cleanup failed: " + "; ".join(errors))
+
+
 def linux_run(agent, output):
     import fcntl
+    if os.getuid() != 0:
+        raise ValueError("Linux isolation tests require root for the different-UID fixture")
+    agent = agent.resolve(strict=True)
+    output = output.resolve()
+    output.parent.mkdir(parents=True, exist_ok=True)
     install_script, probe_template = scripts()
     fixture = Path(tempfile.mkdtemp(prefix="beszel-agent-identity-"))
     fixture.chmod(0o755)
@@ -60,13 +99,16 @@ def linux_run(agent, output):
         env = dict(os.environ)
         for name in ("LISTEN", "KEY", "KEY_FILE", "TOKEN", "HUB_URL", "DATA_DIR"):
             env.pop(name, None)
-        env.update(HOME=str(directory), XDG_RUNTIME_DIR=str(directory / "missing-runtime"))
+        env.update(HOME=str(directory), XDG_CONFIG_HOME=str(directory / ".config"),
+                   XDG_RUNTIME_DIR=str(directory / "missing-runtime"))
         if namespace:
             env.update(PATH=str(mock_tools) + ":" + env["PATH"], BESZEL_E2E_HOST=namespace)
         return env
 
     def install(directory, port, first, last, uid=None, content=None, namespace=None):
-        stage = Path(tempfile.mktemp(prefix="beszel-agent-identity-stage-", dir="/tmp"))
+        descriptor, stage_path = tempfile.mkstemp(prefix="beszel-agent-identity-stage-", dir="/tmp")
+        os.close(descriptor)
+        stage = Path(stage_path)
         stage.write_bytes(data if content is None else content)
         stage.chmod(0o700)
         if uid is not None:
@@ -76,8 +118,12 @@ def linux_run(agent, output):
             os.setgid(uid)
             os.setuid(uid)
         command = ["sh", "-s", "--", str(port), key_b64, stage.name, checksum, str(first), str(last)]
-        return subprocess.run(command, input=install_script, text=True, capture_output=True,
-                              env=environment(directory, namespace), preexec_fn=switch_user if uid is not None else None, timeout=110)
+        try:
+            return subprocess.run(command, input=install_script, text=True, capture_output=True,
+                                  env=environment(directory, namespace), preexec_fn=switch_user if uid is not None else None, timeout=110)
+        finally:
+            for suffix in ("", ".env", ".run", ".service"):
+                Path(str(stage) + suffix).unlink(missing_ok=True)
 
     def result(completed):
         if completed.returncode != 0:
@@ -208,16 +254,7 @@ def linux_run(agent, output):
         print(json.dumps({"passed": True, "checks": checks}, ensure_ascii=False, indent=2))
     finally:
         occupied.close()
-        for file in fixture.rglob("agent.pid"):
-            process_id = int(file.read_text())
-            try:
-                executable = Path(f"/proc/{process_id}/exe").readlink()
-                if str(executable).startswith(str(fixture) + "/"):
-                    os.kill(process_id, signal.SIGTERM)
-                    wait_dead(process_id)
-            except (FileNotFoundError, ProcessLookupError):
-                pass
-        shutil.rmtree(fixture)
+        cleanup_fixture(fixture)
 
 
 def live_hub(artifact):
@@ -292,6 +329,8 @@ def main():
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     if args.linux:
+        if args.agent is None or args.output is None:
+            parser.error("--linux requires --agent and --output")
         linux_run(args.agent, args.output)
         return
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
