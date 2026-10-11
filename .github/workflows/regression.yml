@@ -43,12 +43,12 @@ jobs:
       - name: Build Linux Agent
         run: runuser -u ci-test -- env HOME=/tmp/beszel-ci-user GOCACHE=/tmp/beszel-ci-cache GOMODCACHE=/tmp/beszel-ci-mod go build -buildvcs=false -o /tmp/beszel-ci-agent ./internal/cmd/agent
       - name: Linux deployment isolation
-        run: python3 .github/ci/run_agent_identity_ci.py --linux --agent /tmp/beszel-ci-agent --output "${{ runner.temp }}/agent-isolation/report.json"
+        run: python3 .github/ci/run_agent_identity_ci.py --linux --agent /tmp/beszel-ci-agent --output /tmp/beszel-ci-evidence/report.json
       - name: Upload isolation evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: linux-agent-isolation
-          path: ${{ runner.temp }}/agent-isolation/*.json
+          path: /tmp/beszel-ci-evidence/*.json
           if-no-files-found: ignore
           retention-days: 7
