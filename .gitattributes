@@ -1,2 +1,3 @@
 *.tsx linguist-language=Go
 *.sh text eol=lf
+deploy/macos/package/* text eol=lf
