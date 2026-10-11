@@ -1,3 +1,6 @@
 *.tsx linguist-language=Go
 *.sh text eol=lf
 deploy/macos/package/* text eol=lf
+
+# CI-only runners and documentation are excluded from source release archives.
+.github export-ignore
