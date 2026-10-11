@@ -26,7 +26,7 @@ fixture executable paths rather than trusting stale PID files, including
 partial installs without PID metadata. Upload stages are removed in finally.
 GitHub cancellation/timeout also destroys the disposable container.
 
-The backend uses a placeholder embedded frontend to compile. This does not
+The backend uses a unbuilt frontend HTML template to compile. This does not
 verify frontend rendering/builds or the script's Windows live-Hub HTTP entry.
 Real Windows PowerShell/WSL, macOS launchd and package installation, user systemd
 integration, real SSH deployment and real NFS mounts still require platform
@@ -37,7 +37,7 @@ run only E2E as root, with Go from go.mod):
 
 ```sh
 mkdir -p internal/site/dist
-printf '<div id="app"></div>\n'  > internal/site/dist/index.html
+cp internal/site/index.html internal/site/dist/index.html
 GOEXPERIMENT=nojsonv2 go test -tags testing -count=1 ./...
 GOEXPERIMENT=nojsonv2 go test -race -tags testing ./agent -run 'Test(WebSocketClient|NewWebSocketClient)'
 GOEXPERIMENT=nojsonv2 go build -o /tmp/beszel-ci-agent ./internal/cmd/agent

@@ -41,7 +41,7 @@ jobs:
       - name: Agent WebSocket race checks
         run: runuser -u ci-test -- env HOME=/tmp/beszel-ci-user XDG_CONFIG_HOME=/tmp/beszel-ci-user/.config GOCACHE=/tmp/beszel-ci-cache GOMODCACHE=/tmp/beszel-ci-mod go test -race -tags testing -count=1 -timeout=5m ./agent -run 'Test(WebSocketClient|NewWebSocketClient)'
       - name: Build Linux Agent
-        run: go build -o /tmp/beszel-ci-agent ./internal/cmd/agent
+        run: runuser -u ci-test -- env HOME=/tmp/beszel-ci-user GOCACHE=/tmp/beszel-ci-cache GOMODCACHE=/tmp/beszel-ci-mod go build -buildvcs=false -o /tmp/beszel-ci-agent ./internal/cmd/agent
       - name: Linux deployment isolation
         run: python3 .github/ci/run_agent_identity_ci.py --linux --agent /tmp/beszel-ci-agent --output "${{ runner.temp }}/agent-isolation/report.json"
       - name: Upload isolation evidence

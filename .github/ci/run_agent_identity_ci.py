@@ -36,7 +36,16 @@ def cleanup_fixture(fixture):
         if not entry.name.isdigit():
             continue
         try:
-            executable = (entry / "exe").readlink()
+            # Docker root lacks CAP_SYS_PTRACE for other UIDs. Read the
+            # executable with its owner's filesystem credentials, then restore
+            # root before signalling; never trust PID metadata.
+            original_uid = os.geteuid()
+            try:
+                if original_uid == 0:
+                    os.seteuid(entry.stat().st_uid)
+                executable = (entry / "exe").readlink()
+            finally:
+                os.seteuid(original_uid)
             if not str(executable).startswith(str(fixture) + "/"):
                 continue
             process_id = int(entry.name)
