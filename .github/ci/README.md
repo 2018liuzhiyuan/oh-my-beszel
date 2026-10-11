@@ -5,6 +5,9 @@ requests. A disposable Linux container has no real user SSH configuration,
 launchd or user systemd session. HOME and XDG configuration are temporary.
 The root container permits switching to UID 65534; it does not use host sudo.
 
+Go tests run as an unprivileged container account so filesystem permission
+checks remain effective. Only the different-UID E2E runs as root.
+
 The workflow runs all Go tests with the `testing` tag, and Agent WebSocket tests
 again with the race detector. These include TLS trust/hostname rejection,
 authentication challenges, reconnect authentication and concurrent lifecycle
@@ -29,14 +32,15 @@ Real Windows PowerShell/WSL, macOS launchd and package installation, user system
 integration, real SSH deployment and real NFS mounts still require platform
 validation. Passing Linux CI must not be reported as passing these scenarios.
 
-Local equivalent (root in a disposable Linux environment, Go from go.mod):
+Local commands (run Go tests as an ordinary user in a disposable Linux environment;
+run only E2E as root, with Go from go.mod):
 
 ```sh
 mkdir -p internal/site/dist
-printf 'CI placeholder\n' > internal/site/dist/index.html
+printf '<div id="app"></div>\n'  > internal/site/dist/index.html
 GOEXPERIMENT=nojsonv2 go test -tags testing -count=1 ./...
 GOEXPERIMENT=nojsonv2 go test -race -tags testing ./agent -run 'Test(WebSocketClient|NewWebSocketClient)'
 GOEXPERIMENT=nojsonv2 go build -o /tmp/beszel-ci-agent ./internal/cmd/agent
-python3 -m unittest discover -s test -p 'test_agent_identity_cleanup.py' -v
-python3 test/run_agent_identity_ci.py --linux --agent /tmp/beszel-ci-agent --output test/artifacts/ci/report.json
+python3 -m unittest discover -s .github/ci -p 'test_agent_identity_cleanup.py' -v
+python3 .github/ci/run_agent_identity_ci.py --linux --agent /tmp/beszel-ci-agent --output /tmp/agent-isolation/report.json
 ```

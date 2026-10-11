@@ -28,24 +28,27 @@ jobs:
       - name: Prepare isolated environment
         run: |
           mkdir -p "$HOME" internal/site/dist
-          printf 'CI backend embed placeholder\n' > internal/site/dist/index.html
+          printf '<!doctype html><html><body><div id="app"></div></body></html>\n' > internal/site/dist/index.html
           apt-get update
           apt-get install -y --no-install-recommends python3 util-linux procps
+          useradd --uid 10001 --create-home --home-dir /tmp/beszel-ci-user ci-test
+          mkdir -p /tmp/beszel-ci-cache /tmp/beszel-ci-mod
+          chown -R ci-test:ci-test "$GITHUB_WORKSPACE" /tmp/beszel-ci-user /tmp/beszel-ci-cache /tmp/beszel-ci-mod
       - name: Test failure cleanup
-        run: python3 -m unittest discover -s test -p 'test_agent_identity_cleanup.py' -v
+        run: python3 -m unittest discover -s .github/ci -p 'test_agent_identity_cleanup.py' -v
       - name: Go backend and Agent tests
-        run: go test -tags testing -count=1 -timeout=10m ./...
+        run: runuser -u ci-test -- env HOME=/tmp/beszel-ci-user XDG_CONFIG_HOME=/tmp/beszel-ci-user/.config GOCACHE=/tmp/beszel-ci-cache GOMODCACHE=/tmp/beszel-ci-mod go test -tags testing -count=1 -timeout=10m ./...
       - name: Agent WebSocket race checks
-        run: go test -race -tags testing -count=1 -timeout=5m ./agent -run 'Test(WebSocketClient|NewWebSocketClient)'
+        run: runuser -u ci-test -- env HOME=/tmp/beszel-ci-user XDG_CONFIG_HOME=/tmp/beszel-ci-user/.config GOCACHE=/tmp/beszel-ci-cache GOMODCACHE=/tmp/beszel-ci-mod go test -race -tags testing -count=1 -timeout=5m ./agent -run 'Test(WebSocketClient|NewWebSocketClient)'
       - name: Build Linux Agent
         run: go build -o /tmp/beszel-ci-agent ./internal/cmd/agent
       - name: Linux deployment isolation
-        run: python3 test/run_agent_identity_ci.py --linux --agent /tmp/beszel-ci-agent --output test/artifacts/ci/report.json
+        run: python3 .github/ci/run_agent_identity_ci.py --linux --agent /tmp/beszel-ci-agent --output "${{ runner.temp }}/agent-isolation/report.json"
       - name: Upload isolation evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: linux-agent-isolation
-          path: test/artifacts/ci/*.json
+          path: ${{ runner.temp }}/agent-isolation/*.json
           if-no-files-found: ignore
           retention-days: 7
