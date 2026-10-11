@@ -39,13 +39,19 @@ def cleanup_fixture(fixture):
             # Docker root lacks CAP_SYS_PTRACE for other UIDs. Read the
             # executable with its owner's filesystem credentials, then restore
             # root before signalling; never trust PID metadata.
+            if (entry / "stat").read_text().split()[2] == "Z":
+                continue
             original_uid = os.geteuid()
+            original_gid = os.getegid()
             try:
                 if original_uid == 0:
-                    os.seteuid(entry.stat().st_uid)
+                    owner = entry.stat()
+                    os.setegid(owner.st_gid)
+                    os.seteuid(owner.st_uid)
                 executable = (entry / "exe").readlink()
             finally:
                 os.seteuid(original_uid)
+                os.setegid(original_gid)
             if not str(executable).startswith(str(fixture) + "/"):
                 continue
             process_id = int(entry.name)
@@ -259,11 +265,11 @@ def linux_run(agent, output):
         failure = install(exhausted, requested, requested, requested)
         assert failure.returncode == 24 and "BESZEL_AGENT_PORT_RANGE_EXHAUSTED" in failure.stderr
         checks.append("exhausted port range fails explicitly")
-        output.write_text(json.dumps({"passed": True, "checks": checks}, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(json.dumps({"passed": True, "checks": checks}, ensure_ascii=False, indent=2))
     finally:
         occupied.close()
         cleanup_fixture(fixture)
+    output.write_text(json.dumps({"passed": True, "checks": checks}, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(json.dumps({"passed": True, "checks": checks}, ensure_ascii=False, indent=2))
 
 
 def main():

@@ -1,4 +1,5 @@
 """Exercise cleanup after an injected assertion, including a missing PID file."""
+import os
 from contextlib import nullcontext
 from pathlib import Path
 import shutil
@@ -29,7 +30,7 @@ class CleanupTests(unittest.TestCase):
                 entry = proc / str(process.pid)
                 entry.mkdir()
                 (entry / "exe").symlink_to(executable)
-                (entry / "stat").write_text(f"{process.pid} (sleep) Z")
+                (entry / "stat").write_text(f"{process.pid} (sleep) S")
             def mapped_path(value):
                 return proc if value == "/proc" else Path(value)
             context = nullcontext() if Path("/proc").is_dir() else patch("run_agent_identity_ci.Path", side_effect=mapped_path)
@@ -47,6 +48,35 @@ class CleanupTests(unittest.TestCase):
             unrelated.terminate()
             unrelated.wait(timeout=10)
             shutil.rmtree(fixture, ignore_errors=True)
+
+    @unittest.skipUnless(os.getuid() == 0 and Path("/proc").is_dir(), "requires Linux root proc fixture")
+    def test_cross_uid_process_cleanup(self):
+        fixture = Path(tempfile.mkdtemp(prefix="beszel-cleanup-uid-"))
+        fixture.chmod(0o755)
+        binary = fixture / "sleep"
+        shutil.copyfile("/bin/sleep", binary)
+        binary.chmod(0o755)
+        def switch_user():
+            os.setgroups([])
+            os.setgid(65534)
+            os.setuid(65534)
+        process = subprocess.Popen([str(binary), "60"], preexec_fn=switch_user)
+        try:
+            try:
+                raise AssertionError("injected cross-UID failure")
+            finally:
+                cleanup_fixture(fixture)
+        except AssertionError:
+            pass
+        finally:
+            try:
+                process.wait(timeout=10)
+            finally:
+                if process.poll() is None:
+                    process.kill()
+                    process.wait(timeout=10)
+                shutil.rmtree(fixture, ignore_errors=True)
+        self.assertFalse(fixture.exists())
 
     def test_linux_arguments_are_required(self):
         with patch("sys.argv", ["e2e", "--linux"]):
