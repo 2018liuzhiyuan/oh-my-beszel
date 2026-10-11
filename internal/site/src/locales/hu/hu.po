@@ -1149,6 +1149,10 @@ msgstr ""
 msgid "Invalid email address."
 msgstr "Érvénytelen e-mail cím."
 
+#: src/components/ssh-host-manager.tsx
+msgid "Invalid regular expression."
+msgstr ""
+
 #: src/components/routes/system/info-bar.tsx
 msgid "IP addresses"
 msgstr ""
@@ -1338,6 +1342,10 @@ msgstr ""
 
 #: src/components/routes/settings/logs.tsx
 msgid "No log entries at this level."
+msgstr ""
+
+#: src/components/ssh-host-list.tsx
+msgid "No matching SSH hosts."
 msgstr ""
 
 #: src/components/add-system.tsx
@@ -1537,6 +1545,10 @@ msgstr "Pontos kihasználás a rögzített időpontban"
 msgid "Preferred Language"
 msgstr "Preferált nyelv"
 
+#: src/components/ssh-host-manager.tsx
+msgid "Prefix or /regular expression/"
+msgstr ""
+
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Process started"
 msgstr "Folyamat elindítva"
@@ -1708,6 +1720,10 @@ msgstr "Keresés"
 #: src/components/command-palette.tsx
 msgid "Search for systems or settings..."
 msgstr "Keresés rendszerek vagy beállítások után..."
+
+#: src/components/ssh-host-manager.tsx
+msgid "Search SSH hosts"
+msgstr ""
 
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Seconds between pings (default: 60)"
@@ -2173,6 +2189,10 @@ msgstr "Használat"
 #: src/components/routes/system/charts/disk-charts.tsx
 msgid "Usage of root partition"
 msgstr "Root partíció kihasználtsága"
+
+#: src/components/ssh-host-manager.tsx
+msgid "Use a prefix, or wrap a regular expression in slashes."
+msgstr ""
 
 #: src/components/routes/system/charts/memory-charts.tsx
 msgid "Used"

@@ -123,6 +123,18 @@ Monitor.exe uninstall-task
 
 #### 修改 Windows 网页端口
 
+端口冲突时，Hub 使用 `config.json.portRanges.hub.start/end` 搜索备用端口，并将实际网页端口写回 `port`。SSH 自动部署的 Agent 范围由 `portRanges.agent.start/end` 配置；Windows 本机隧道脚本读取 `portRanges.localTunnel.start/end`。例如：
+
+```json
+"portRanges": {
+  "hub": { "start": 8090, "end": 8190 },
+  "localTunnel": { "start": 47100, "end": 47999 },
+  "agent": { "start": 45876, "end": 45976 }
+}
+```
+
+每组范围需满足 `1 <= start <= end <= 65535`。原端口仍优先使用；冲突后才扫描范围。Agent 范围耗尽时，系统页面显示原因和应修改的配置项；本机 Hub 或隧道范围耗尽时弹窗提示。Hub/Agent 范围修改后重启 Hub；本机隧道会在下一次重试读取配置。端口冲突与交互测试见 [Windows 端口测试](../deploy/windows/hub/README.md)。
+
 1. 编辑**实际运行的 `Monitor.exe` 同目录下的 `config.json`**。新构建的文件在 `build/windows/config.json`；如果已部署到其他目录，应修改部署目录里的那份。将顶层的 `"port": 8090` 改为未占用的端口，例如 `"port": 8091`。仅本机访问时保留 `"host": "127.0.0.1"`，其他配置保持原样，无需重新编译。
 2. 再次双击 `Monitor.exe`。若当前包仍在旧端口运行，它会只停止当前包的 Hub，再按新配置启动；不会停止其他解压目录中的实例。
 3. 访问 `http://127.0.0.1:8091`。Monitor 下次启动会读取同一份配置并打开新地址。同步更新书签及指向旧网页端口的代理或隧道；Agent 的 `45876` 和操作系统 SSH 端口无需修改。
@@ -279,13 +291,17 @@ cp ./build/linux/beszel-agent-glibc ./build/linux/agents/beszel-agent_linux_amd6
 
 Hub 会上传本地程序、校验 SHA-256，并集中安装到 `~/oh-my-beszel/` 下的 `bin/`、`config/`、`data/` 和 `logs/`，不会写入 `/opt`。账号的用户级 systemd 可用时，会启用并启动 `oh-my-beszel-agent.service`；否则使用独立后台进程，不保证重启机器后自动运行。此路径下 Agent 默认监听 `127.0.0.1:45876`，Hub 通过 `ssh -W` 连接。节点需要允许 SSH TCP 转发，无需将 Agent 端口暴露到公网。每套 Hub 的公钥只会向 `config/hub_keys` 追加一次，因此多个 Hub 可以共用同一个 Agent。仅当二进制一致、端口正在监听、Agent 健康且当前 Hub 公钥已授权时才会跳过部署。
 
-同一目标主机上的 Agent 端口由整台主机共享，即使多个操作系统用户共用该主机也是如此。如果其他用户的 Agent 或系统服务已经监听 `45876`，导入系统时应选择另一个空闲的 Agent 端口。自动部署只会停止当前 SSH 账号自己管理的 Agent；如果目标端口仍被占用，会明确报告端口冲突，不再把其他用户的监听进程误判为部署成功。
+同一远程 SSH 账号复用一个 Agent：Hub 从已安装实例读取实际端口，不因 SSH 别名或 Beszel 登录用户不同而重复部署。安装使用 `~/oh-my-beszel/.deploy.lock` 的远端互斥锁，节点需提供 `flock`；锁内会再次检查现有实例。不同远程 UID 分别使用各自 HOME 下的目录、用户服务和进程，健康文件也保存在各自的 `data/` 中。端口选定后如被其他账号抢占，会验证监听 socket 是否属于当前 Agent，并重新选择端口。
+
+Hub 以现有 Agent 机器指纹识别目标，以“机器指纹 + 远程 UID + 规范化安装目录”的 SHA-256 标识安装实例，记录在系统的 `agent_machine_fingerprint`、`agent_remote_uid`、`agent_install_dir`、`agent_instance_id` 字段。实例相同的系统记录仍分别管理 `users` 权限和个人告警；身份字段由 Hub 写入，客户端不能伪造，指纹或实例 ID 一致不会自动授予访问权限。 NFS HOME 会将每台主机的程序、配置和数据分隔到 `~/oh-my-beszel/hosts/<主机名哈希>/`，共享服务入口根据本机主机名选择目录。Linux 无法读取 DMI UUID 时，新生成的指纹会把主机名加入 HostID 材料，避免克隆的机器 ID 混淆目标；已保存的指纹仍优先使用。健康更新会写入时间戳内容，使 NFS 文件系统也能可靠更新时间。
+
+同一目标主机上的 Agent 端口由整台主机共享，即使多个操作系统用户共用该主机也是如此。自动部署只会停止当前 SSH 账号自己管理的 Agent；如果目标端口仍被其他用户或系统服务占用，Hub 会扫描配置的 Agent 端口范围，选择第一个空闲端口，写回系统记录并重新连接，不会停止或替换外部进程。Windows 配置项为 `portRanges.agent.start/end`；其他部署可设置 `BESZEL_HUB_AGENT_PORT_RANGE=45876-45976`，未设置时向后扫描最多 100 个端口。该行为只适用于仍然关联 SSH config 的系统；手动安装的 Agent 仍需手工保持两端端口一致。
 
 **5. 确认节点变为在线，CPU/内存图表开始更新。** 必要时在节点上检查服务和 Agent 健康状态：
 
 ```bash
 systemctl --user status oh-my-beszel-agent.service --no-pager
-LISTEN=127.0.0.1:45876 "$HOME/oh-my-beszel/bin/beszel-agent" health
+DATA_DIR="$HOME/oh-my-beszel/data" "$HOME/oh-my-beszel/bin/beszel-agent" health
 ```
 
 `systemctl --user` 命令仅适用于该账号已有运行中的用户级 systemd。若希望无人登录时也能在重启后自动启动 Agent，建议为该账号启用 linger。NVIDIA 节点还应检查本机的 `nvidia-smi`，并核对面板中的 GPU 数量和显存容量。
@@ -314,6 +330,8 @@ export KEY="REPLACE_WITH_HUB_PUBLIC_KEY"
 在节点防火墙中只允许 Hub 访问 `45876`，或将 `LISTEN` 绑定到私有网卡地址。本次前台试运行需要保持终端开启；持久运行请配置自己的服务管理器。也可以使用 `KEY_FILE` 代替 `KEY`，从文件读取 Hub 公钥。
 
 `TOKEN` 和 `HUB_URL` 用于 Agent 主动发起连接；上面的 Hub 主动直连示例不需要它们。若选择该方式，请从面板中对应的系统获取 token，并确保 `HUB_URL` **从节点可达**，不要复制节点无法访问的 localhost URL。
+
+当 `HUB_URL` 使用 HTTPS 时，Agent 会先验证 Hub 的证书及主机名，再发送 token。若 Hub 使用私有证书颁发机构，请将该 CA 安装到 Agent 所在机器的受信任证书存储中；不受信任的自签名证书会被拒绝。
 
 界面沿用的“复制 Linux 命令”和 Docker 按钮仍指向上游安装脚本/镜像。要运行本分支的 Agent 改动，请使用上述本地程序或 SSH 部署，不要认为这些按钮会安装本分支。
 

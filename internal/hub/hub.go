@@ -121,10 +121,12 @@ func (h *Hub) StartHub() error {
 		if err := h.startServer(e); err != nil {
 			return err
 		}
+		syncLocalPortAssignments(e.App)
 		// start system updates
 		if err := h.sm.Initialize(); err != nil {
 			return err
 		}
+		startLocalPortSync(e.App)
 		if err := h.ad.startExisting(); err != nil {
 			return err
 		}

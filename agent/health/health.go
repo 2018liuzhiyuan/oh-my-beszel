@@ -1,5 +1,5 @@
 // Package health provides functions to check and update the health of the agent.
-// It uses a file in the temp directory to store the timestamp of the last connection attempt.
+// It stores the last connection timestamp in DATA_DIR, falling back to a temporary directory.
 // If the timestamp is older than 90 seconds, the agent is considered unhealthy.
 // NB: The agent must be started with the Start() method to be considered healthy.
 package health
@@ -10,13 +10,19 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"time"
+
+	"github.com/henrygd/beszel/agent/utils"
 )
 
 // healthFile is the path to the health file
 var healthFile = getHealthFilePath()
 
 func getHealthFilePath() string {
+	if dataDir, _ := utils.GetEnv("DATA_DIR"); dataDir != "" {
+		return filepath.Join(dataDir, "beszel_health")
+	}
 	filename := "beszel_health"
 	if runtime.GOOS == "linux" && dirWritable("/dev/shm") {
 		return filepath.Join("/dev/shm", filename)
@@ -41,11 +47,7 @@ func dirWritable(dir string) bool {
 }
 
 func updateHealthFile(path string) error {
-	file, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	return file.Close()
+	return os.WriteFile(path, []byte(strconv.FormatInt(time.Now().UnixNano(), 10)), 0o600)
 }
 
 // Check checks if the agent is connected by checking the modification time of the health file

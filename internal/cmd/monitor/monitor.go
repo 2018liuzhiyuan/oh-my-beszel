@@ -24,6 +24,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 	"unsafe"
@@ -54,14 +55,26 @@ type HubConfig struct {
 	LogLevel     string `json:"logLevel"`
 }
 
+type PortRange struct {
+	Start int `json:"start"`
+	End   int `json:"end"`
+}
+
+type PortRanges struct {
+	Hub         *PortRange `json:"hub"`
+	LocalTunnel *PortRange `json:"localTunnel"`
+	Agent       *PortRange `json:"agent"`
+}
+
 type Config struct {
-	Host                  string    `json:"host"`
-	Port                  int       `json:"port"`
-	SSHConfigPath         string    `json:"sshConfigPath"`
-	OpenBrowser           *bool     `json:"openBrowser"`
-	StartupTimeoutSeconds int       `json:"startupTimeoutSeconds"`
-	Tasks                 []string  `json:"tasks"`
-	Hub                   HubConfig `json:"hub"`
+	Host                  string     `json:"host"`
+	Port                  int        `json:"port"`
+	PortRanges            PortRanges `json:"portRanges"`
+	SSHConfigPath         string     `json:"sshConfigPath"`
+	OpenBrowser           *bool      `json:"openBrowser"`
+	StartupTimeoutSeconds int        `json:"startupTimeoutSeconds"`
+	Tasks                 []string   `json:"tasks"`
+	Hub                   HubConfig  `json:"hub"`
 }
 
 func loadConfig() (*Config, error) {
@@ -92,6 +105,14 @@ func loadConfig() (*Config, error) {
 	}
 	if cfg.Port <= 0 {
 		cfg.Port = 8090
+	}
+	for name, portRange := range map[string]*PortRange{"hub": cfg.PortRanges.Hub, "localTunnel": cfg.PortRanges.LocalTunnel, "agent": cfg.PortRanges.Agent} {
+		if portRange == nil {
+			continue
+		}
+		if portRange.Start < 1 || portRange.End > 65535 || portRange.Start > portRange.End {
+			return nil, fmt.Errorf("config.json 的 portRanges.%s.start/end 无效 / Invalid portRanges.%s.start/end in config.json\n需满足 / Require: 1 <= start <= end <= 65535\n修改后重启 Hub / Correct it and restart Hub", name, name)
+		}
 	}
 	if cfg.OpenBrowser == nil {
 		cfg.OpenBrowser = new(bool)
@@ -210,7 +231,7 @@ func launch() error {
 				return err
 			}
 			registerAutostart(cfg)
-		} else if !waitUntilReady(url, taskStartGrace) {
+		} else if _, ready := waitForDashboard(cfg, taskStartGrace); !ready {
 			// the tasks run but this port never came up - the task with our
 			// name belongs to a different install (shared default name);
 			// run our own hub directly
@@ -219,7 +240,12 @@ func launch() error {
 				return err
 			}
 		}
-		if !waitUntilReady(url, time.Duration(cfg.StartupTimeoutSeconds)*time.Second) {
+		if activeURL, ready := waitForDashboard(cfg, time.Duration(cfg.StartupTimeoutSeconds)*time.Second); ready {
+			url = activeURL
+		} else {
+			if _, err := selectHubPort(cfg); err != nil {
+				return err
+			}
 			return fmt.Errorf(
 				"dashboard at %s did not become ready within %ds; check the scheduled tasks and local hub.log",
 				url, cfg.StartupTimeoutSeconds,
@@ -230,6 +256,46 @@ func launch() error {
 		openBrowser(url)
 	}
 	return nil
+}
+
+func waitForDashboard(cfg *Config, timeout time.Duration) (string, bool) {
+	deadline := time.Now().Add(timeout)
+	for {
+		url := fmt.Sprintf("http://%s:%d", cfg.Host, cfg.Port)
+		if isReady(url) {
+			return url, true
+		}
+		if time.Now().After(deadline) {
+			return "", false
+		}
+		time.Sleep(500 * time.Millisecond)
+		if updated, err := loadConfig(); err == nil {
+			cfg = updated
+		}
+	}
+}
+
+func selectHubPort(cfg *Config) (int, error) {
+	start, end := cfg.Port, min(cfg.Port+100, 65535)
+	if cfg.PortRanges.Hub != nil {
+		start, end = cfg.PortRanges.Hub.Start, cfg.PortRanges.Hub.End
+	}
+	listener, err := net.Listen("tcp", net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port)))
+	if err == nil {
+		listener.Close()
+		return cfg.Port, nil
+	}
+	for port := start; port <= end; port++ {
+		if port == cfg.Port {
+			continue
+		}
+		listener, err := net.Listen("tcp", net.JoinHostPort(cfg.Host, strconv.Itoa(port)))
+		if err == nil {
+			listener.Close()
+			return port, nil
+		}
+	}
+	return 0, fmt.Errorf("Hub 端口 %d 及备用范围 %d-%d 均不可用。\nHub port %d and fallback range %d-%d are unavailable.\n\n请在 config.json 修改 / Edit in config.json:\nportRanges.hub.start/end\n扩大范围或设置一段空闲端口。\nExpand the range or choose a free port range.\n也可修改网页端口 port；保存后重新启动 Hub。\nYou can also change port; save and restart Hub.", cfg.Port, start, end, cfg.Port, start, end)
 }
 
 func resolveHubExecutable() (string, error) {
@@ -500,25 +566,15 @@ var probeClient = &http.Client{
 // isReady does a single probe of the dashboard, so a double-click while the
 // hub is already up just opens the browser instead of re-running tasks.
 func isReady(url string) bool {
-	resp, err := probeClient.Get(url)
+	resp, err := probeClient.Get(strings.TrimRight(url, "/") + "/api/health")
 	if err != nil {
 		return false
 	}
 	defer resp.Body.Close()
-	return resp.StatusCode == http.StatusOK
-}
-
-func waitUntilReady(url string, timeout time.Duration) bool {
-	deadline := time.Now().Add(timeout)
-	for {
-		if isReady(url) {
-			return true
-		}
-		if time.Now().After(deadline) {
-			return false
-		}
-		time.Sleep(500 * time.Millisecond)
+	var health struct {
+		Code int `json:"code"`
 	}
+	return resp.StatusCode == http.StatusOK && json.NewDecoder(resp.Body).Decode(&health) == nil && health.Code == 200
 }
 
 // openBrowser opens the dashboard. ShellExecuteW is the canonical path; the
@@ -553,6 +609,7 @@ func runHub() int {
 	cfg, err := loadConfig()
 	if err != nil {
 		appendLog(fmt.Errorf("load hub config: %w", err))
+		reportTaskResult("Beszel 配置告警 / Configuration warning", err.Error(), true)
 		return 2
 	}
 	hubPath, err := resolveHubExecutable()
@@ -573,7 +630,24 @@ func runHub() int {
 	}
 	defer logFile.Close()
 
-	address := net.JoinHostPort(cfg.Host, fmt.Sprintf("%d", cfg.Port))
+	selectedPort, err := selectHubPort(cfg)
+	if err != nil {
+		appendLog(err)
+		reportTaskResult("Beszel Hub 端口告警 / Port warning", err.Error(), true)
+		return 8
+	}
+	address := net.JoinHostPort(cfg.Host, strconv.Itoa(selectedPort))
+	if selectedPort != cfg.Port {
+		exePath, err := os.Executable()
+		if err == nil {
+			err = saveHubPort(filepath.Join(filepath.Dir(exePath), "config.json"), selectedPort)
+		}
+		if err != nil {
+			appendLog(fmt.Errorf("save selected Hub port: %w", err))
+			reportTaskResult("Beszel 配置告警 / Configuration warning", "无法写回 config.json.port / Cannot save config.json.port:\n"+err.Error(), true)
+			return 9
+		}
+	}
 	cmd := exec.Command(hubPath, "serve", "--http", address)
 	cmd.Dir = hubDir
 	cmd.Env = hubEnvironment(cfg, address)
@@ -599,6 +673,42 @@ func runHub() int {
 		return 1
 	}
 	return 0
+}
+
+func saveHubPort(path string, port int) error {
+	config := map[string]json.RawMessage{}
+	raw, err := os.ReadFile(path)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if len(raw) > 0 {
+		if err := json.Unmarshal(raw, &config); err != nil {
+			return err
+		}
+	}
+	config["port"] = json.RawMessage(strconv.Itoa(port))
+	raw, err = json.MarshalIndent(config, "", "    ")
+	if err != nil {
+		return err
+	}
+	temporary, err := os.CreateTemp(filepath.Dir(path), ".config-port-*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(temporary.Name())
+	_, writeErr := temporary.Write(raw)
+	closeErr := temporary.Close()
+	if err := errors.Join(writeErr, closeErr); err != nil {
+		return err
+	}
+	for attempt := 0; attempt < 10; attempt++ {
+		err = os.Rename(temporary.Name(), path)
+		if err == nil || (!errors.Is(err, windows.ERROR_ACCESS_DENIED) && !errors.Is(err, windows.ERROR_SHARING_VIOLATION)) {
+			return err
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+	return err
 }
 
 func rotateHubLog(logPath string) error {
@@ -639,12 +749,15 @@ func hubEnvironment(cfg *Config, address string) []string {
 	if cfg.SSHConfigPath != "" {
 		values["SSH_CONFIG_PATH"] = cfg.SSHConfigPath
 	}
+	if cfg.PortRanges.Agent != nil {
+		values["BESZEL_HUB_AGENT_PORT_RANGE"] = fmt.Sprintf("%d-%d", cfg.PortRanges.Agent.Start, cfg.PortRanges.Agent.End)
+	}
 	if cfg.Hub.LogLevel != "" {
 		values["BESZEL_LOG_LEVEL"] = cfg.Hub.LogLevel
 	}
 
 	managed := map[string]bool{}
-	for _, key := range []string{"APP_URL", "USER_EMAIL", "USER_PASSWORD", "AUTO_LOGIN", "CHECK_UPDATES", "SSH_CONFIG_PATH", "BESZEL_LOG_LEVEL"} {
+	for _, key := range []string{"APP_URL", "USER_EMAIL", "USER_PASSWORD", "AUTO_LOGIN", "CHECK_UPDATES", "SSH_CONFIG_PATH", "BESZEL_LOG_LEVEL", "BESZEL_HUB_AGENT_PORT_RANGE"} {
 		managed[key] = true
 	}
 	env := make([]string, 0, len(os.Environ())+len(values))

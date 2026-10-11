@@ -30,7 +30,7 @@ func setCollectionAuthSettings(app core.App) error {
 	usersCollection.PasswordAuth.IdentityFields = []string{"email"}
 	// allow oauth user creation if USER_CREATION is set
 	if userCreation, _ := utils.GetEnv("USER_CREATION"); userCreation == "true" {
-		cr := "@request.context = 'oauth2'"
+		cr := "@request.context = 'oauth2' && (role = '' || role = 'user')"
 		usersCollection.CreateRule = &cr
 	} else {
 		usersCollection.CreateRule = nil

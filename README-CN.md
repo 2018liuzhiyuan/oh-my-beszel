@@ -93,14 +93,12 @@ Start-Process -FilePath ./build/windows/Monitor.exe
 
 ### 共享服务器上的 Agent 端口冲突
 
-如果 SSH 部署显示完成，但系统随即报告 `ssh: unable to authenticate, attempted methods [none publickey]`，请先检查配置的 Agent 端口是否已被其他用户的 Agent 或系统服务占用。Agent 端口由整台目标主机共享，因此两个用户不能同时监听默认的 `45876` 地址。
+Agent 端口由整台目标主机共享，因此两个用户不能同时监听默认的 `45876` 地址。对于保留了 SSH config 关联的系统，Hub 自动部署会先停止当前 SSH 账号自己管理的 Agent；如果请求端口仍被其他用户或系统服务占用，Hub 会扫描配置的备用范围（未配置时向后最多 100 个端口），使用第一个空闲端口，并把结果写回系统记录后重新连接。Windows 可直接配置 `config.json` 中的 `portRanges.agent.start/end`。Hub 不会停止或替换其他用户的进程。
 
-请对每台受影响的目标服务器分别执行以下步骤：
-
-1. 使用 Hub 中配置的同一个 SSH 别名登录目标服务器，然后检查一个候选端口。下面以 `45878` 为例；请将它替换为你想使用的端口：
+如需核对自动选择的端口，可以使用同一个 SSH 别名登录目标服务器，再检查面板中显示的端口。下面以 `45877` 为例：
 
    ```bash
-   PORT=45878
+   PORT=45877
    if ss -ltnH "sport = :$PORT" | grep -q .; then
      echo "port $PORT is occupied"
    else
@@ -108,14 +106,7 @@ Start-Process -FilePath ./build/windows/Monitor.exe
    fi
    ```
 
-   请选择显示为 `free` 的端口。每台服务器都要单独检查，因为同一个端口可能在一台服务器上空闲、在另一台服务器上已被占用。不要停止或替换其他用户的进程。
-
-2. 打开 Hub 面板，在系统列表中找到报错的系统，点击该行右侧的 **三点菜单 → 编辑（Edit）**。
-3. 在编辑窗口中，将 **端口（Port）** 从默认的 `45876` 改为刚才确认空闲的端口。保持 **主机/IP（Host / IP）** 不变，然后点击 **保存系统（Save System）**。
-4. 保存后，该系统会自动变为 `pending`。如果它原本是通过 SSH config 导入的，Hub 会自动停止当前 SSH 账号自己管理的 Agent、写入新的 `LISTEN` 端口、重新启动 Agent，并通过 SSH 重新连接；界面中没有单独的“重新部署”按钮。
-5. 等待系统状态变为 `up`，并确认监控图表开始更新。如果新端口也被占用，请换一个空闲端口后重复以上步骤；当前自动部署会明确报告端口冲突，不再把其他用户的监听进程误判为部署成功。
-
-自动重新部署要求该系统仍然关联 SSH config。如果系统是手动安装且没有 SSH config，请先自行把目标 Agent 的 `LISTEN` 改成同一个新端口并重启 Agent，再在 Hub 中保存对应的 **端口（Port）**。完整诊断步骤见[SSH 部署故障排查](docs/guide.zh-CN.md#troubleshooting)。
+自动选端口只适用于仍然关联 SSH config 的系统。手动安装且没有 SSH config 的系统不会被自动修改；这类系统仍需自行调整 Agent 的 `LISTEN`、重启 Agent，并在 Hub 中保存相同端口。完整诊断步骤见[SSH 部署故障排查](docs/guide.zh-CN.md#troubleshooting)。
 
 ### Agent 用户目录
 

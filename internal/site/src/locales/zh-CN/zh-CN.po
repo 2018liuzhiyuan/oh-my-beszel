@@ -1149,6 +1149,10 @@ msgstr "间隔（分钟）"
 msgid "Invalid email address."
 msgstr "无效的电子邮件地址。"
 
+#: src/components/ssh-host-manager.tsx
+msgid "Invalid regular expression."
+msgstr "正则表达式无效。"
+
 #: src/components/routes/system/info-bar.tsx
 msgid "IP addresses"
 msgstr "IP 地址"
@@ -1339,6 +1343,10 @@ msgstr "未找到可导入的具体主机。"
 #: src/components/routes/settings/logs.tsx
 msgid "No log entries at this level."
 msgstr "该级别下暂无日志。"
+
+#: src/components/ssh-host-list.tsx
+msgid "No matching SSH hosts."
+msgstr "没有匹配的 SSH 主机。"
 
 #: src/components/add-system.tsx
 #: src/components/command-palette.tsx
@@ -1537,6 +1545,10 @@ msgstr "采集时间下的精确内存使用率"
 msgid "Preferred Language"
 msgstr "首选语言"
 
+#: src/components/ssh-host-manager.tsx
+msgid "Prefix or /regular expression/"
+msgstr "前缀或 /正则表达式/"
+
 #: src/components/systemd-table/systemd-table.tsx
 msgid "Process started"
 msgstr "进程启动"
@@ -1708,6 +1720,10 @@ msgstr "搜索"
 #: src/components/command-palette.tsx
 msgid "Search for systems or settings..."
 msgstr "搜索系统或设置..."
+
+#: src/components/ssh-host-manager.tsx
+msgid "Search SSH hosts"
+msgstr "搜索 SSH 主机"
 
 #: src/components/routes/settings/heartbeat.tsx
 msgid "Seconds between pings (default: 60)"
@@ -2173,6 +2189,10 @@ msgstr "使用"
 #: src/components/routes/system/charts/disk-charts.tsx
 msgid "Usage of root partition"
 msgstr "根分区的使用"
+
+#: src/components/ssh-host-manager.tsx
+msgid "Use a prefix, or wrap a regular expression in slashes."
+msgstr "输入前缀，或用斜杠包裹正则表达式。"
 
 #: src/components/routes/system/charts/memory-charts.tsx
 msgid "Used"

@@ -91,7 +91,7 @@ func isDirectHost(host, configPath string) bool {
 // sshHandshakeTimeout bounds the agent SSH handshake. The `ssh -W` helper's
 // pipe connection cannot enforce deadlines, so without this bound a wedged
 // tunnel would stall the system's poll loop indefinitely.
-const sshHandshakeTimeout = 15 * time.Second
+const sshHandshakeTimeout = 30 * time.Second
 
 func sshHandshake(conn net.Conn, addr string, config *ssh.ClientConfig) (ssh.Conn, <-chan ssh.NewChannel, <-chan *ssh.Request, error) {
 	type handshakeResult struct {

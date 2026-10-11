@@ -54,7 +54,8 @@ func TestReadLocalSSHHostsEnvOverride(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "custom-ssh-config")
 	require.NoError(t, os.WriteFile(path, []byte("Host gpu-box\n    HostName 10.0.0.9\n"), 0o600))
 
-	t.Setenv("SSH_CONFIG_PATH", path)
+	t.Setenv("BESZEL_TEST_SSH_CONFIG", path)
+	t.Setenv("SSH_CONFIG_PATH", "${BESZEL_TEST_SSH_CONFIG}")
 	hosts, err := readLocalSSHHosts()
 	require.NoError(t, err)
 	require.Equal(t, []sshHost{{Name: "gpu-box", HostName: "10.0.0.9"}}, hosts)
@@ -62,9 +63,11 @@ func TestReadLocalSSHHostsEnvOverride(t *testing.T) {
 
 func TestExpandSSHConfigPath(t *testing.T) {
 	home := filepath.Join("home", "operator")
+	t.Setenv("BESZEL_TEST_SSH_CONFIG", "private-config")
 	require.Equal(t, filepath.Join(home, ".ssh", "config"), expandSSHConfigPath("~/.ssh/config", home))
 	require.Equal(t, filepath.Join(home, "custom", "config"), expandSSHConfigPath("~/custom/config", home))
 	require.Equal(t, filepath.Clean("relative/config"), expandSSHConfigPath("relative/config", home))
+	require.Equal(t, "${BESZEL_TEST_SSH_CONFIG}", expandSSHConfigPath("${BESZEL_TEST_SSH_CONFIG}", home))
 }
 
 func writeSSHConfig(t *testing.T, path, content string) {
@@ -135,6 +138,18 @@ func TestReadSSHHostsIncludeHomePath(t *testing.T) {
 	hosts, err := readSSHHosts(filepath.Join(dir, "config"))
 	require.NoError(t, err)
 	require.Equal(t, []sshHost{{Name: "home-host", HostName: "10.0.0.5"}}, hosts)
+}
+
+func TestReadSSHHostsIncludeEnvironmentPath(t *testing.T) {
+	dir := t.TempDir()
+	writeSSHConfig(t, filepath.Join(dir, "config"), "Include ${BESZEL_TEST_SSH_INCLUDE}\n")
+	includePath := filepath.Join(dir, "extra.conf")
+	writeSSHConfig(t, includePath, "Host environment-host\n    HostName 10.0.0.7\n")
+	t.Setenv("BESZEL_TEST_SSH_INCLUDE", includePath)
+
+	hosts, err := readSSHHosts(filepath.Join(dir, "config"))
+	require.NoError(t, err)
+	require.Equal(t, []sshHost{{Name: "environment-host", HostName: "10.0.0.7"}}, hosts)
 }
 
 func TestParseSSHHostsBOM(t *testing.T) {

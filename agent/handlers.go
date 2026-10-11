@@ -8,6 +8,7 @@ import (
 	"github.com/fxamacker/cbor/v2"
 	"github.com/henrygd/beszel/internal/common"
 	"github.com/henrygd/beszel/internal/entities/smart"
+	"github.com/lxzan/gws"
 
 	"log/slog"
 )
@@ -15,6 +16,7 @@ import (
 // HandlerContext provides context for request handlers
 type HandlerContext struct {
 	Client      *WebSocketClient
+	Conn        *gws.Conn
 	Agent       *Agent
 	Request     *common.HubRequest[cbor.RawMessage]
 	RequestID   *uint32
@@ -105,7 +107,7 @@ func (h *GetDataHandler) Handle(hctx *HandlerContext) error {
 type CheckFingerprintHandler struct{}
 
 func (h *CheckFingerprintHandler) Handle(hctx *HandlerContext) error {
-	return hctx.Client.handleAuthChallenge(hctx.Request, hctx.RequestID)
+	return hctx.Client.handleAuthChallenge(hctx.Conn, hctx.Request, hctx.RequestID)
 }
 
 ////////////////////////////////////////////////////////////////////////////

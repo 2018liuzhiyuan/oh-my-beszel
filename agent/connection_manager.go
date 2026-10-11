@@ -224,7 +224,7 @@ func (c *ConnectionManager) connect() {
 		c.isConnecting.Store(false)
 	}()
 
-	if c.wsClient != nil && time.Since(c.wsClient.lastConnectAttempt) < 5*time.Second {
+	if c.wsClient != nil && c.wsClient.timeSinceLastConnectAttempt() < 5*time.Second {
 		time.Sleep(5 * time.Second)
 	}
 
@@ -251,7 +251,7 @@ func (c *ConnectionManager) startWebSocketConnection() error {
 	if c.wsClient == nil {
 		return errors.New("WebSocket client not initialized")
 	}
-	if time.Since(c.wsClient.lastConnectAttempt) < 5*time.Second {
+	if c.wsClient.timeSinceLastConnectAttempt() < 5*time.Second {
 		return errors.New("already connecting")
 	}
 

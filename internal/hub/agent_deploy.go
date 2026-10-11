@@ -44,6 +44,8 @@ const (
 	agentDeployRescheduleCooldown = 2 * time.Minute
 )
 
+var errAgentPortRange = errors.New("Agent 端口范围不可用 / Agent port range unavailable")
+
 func newAgentDeploymentManager(app core.App, publicKey func() string) *agentDeploymentManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	manager := &agentDeploymentManager{
@@ -73,6 +75,8 @@ func newAgentDeploymentManagerForTest(deploy func(context.Context, agentDeployme
 }
 
 func (manager *agentDeploymentManager) bind() {
+	manager.app.OnRecordCreateRequest("systems").BindFunc(protectAgentDeploymentIdentity)
+	manager.app.OnRecordUpdateRequest("systems").BindFunc(protectAgentDeploymentIdentity)
 	manager.app.OnRecordAfterCreateSuccess("systems").BindFunc(func(event *core.RecordEvent) error {
 		return manager.onSystemChanged(event, true)
 	})
@@ -227,6 +231,9 @@ func (manager *agentDeploymentManager) run(target agentDeploymentTarget, wake <-
 		}
 		if manager.app != nil {
 			manager.app.Logger().Warn("Agent auto-deploy failed", "system", target.id, "host", target.host, "err", err)
+			if errors.Is(err, errAgentPortRange) {
+				manager.markPortRangeDown(target.id, err)
+			}
 		}
 		// mirror to stderr so packaged hubs capture the reason in hub.log
 		slog.Warn("Agent auto-deploy failed", "system", target.id, "host", target.host, "err", err)
@@ -261,8 +268,21 @@ func (manager *agentDeploymentManager) markPending(systemID string) {
 		return
 	}
 	record.Set("status", "pending")
+	record.Set("status_info", "")
 	if err := manager.app.SaveNoValidate(record); err != nil && !errors.Is(err, context.Canceled) {
 		manager.app.Logger().Warn("Agent auto-deploy status update failed", "system", systemID, "err", err)
+	}
+}
+
+func (manager *agentDeploymentManager) markPortRangeDown(systemID string, reason error) {
+	record, err := manager.app.FindRecordById("systems", systemID)
+	if err != nil || record.GetString("status") == "paused" {
+		return
+	}
+	record.Set("status", "down")
+	record.Set("status_info", reason.Error())
+	if err := manager.app.SaveNoValidate(record); err != nil && !errors.Is(err, context.Canceled) {
+		manager.app.Logger().Warn("Agent port range status update failed", "system", systemID, "err", err)
 	}
 }
 

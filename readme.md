@@ -88,14 +88,12 @@ These steps require a new package containing `Open.command`. The unsigned downlo
 
 ### Shared-host Agent port conflicts
 
-If SSH deployment completes but the system immediately reports `ssh: unable to authenticate, attempted methods [none publickey]`, first check whether another user's Agent or a system service already owns the configured Agent port. Agent ports belong to the whole target host, so two users cannot both listen on the default `45876` address.
+Agent ports belong to the whole target host, so two users cannot both listen on the default `45876` address. For systems that retain an SSH config association, auto-deployment first stops only the current SSH account's managed Agent. If another user or service still owns the requested port, the Hub scans the configured fallback range (up to 100 subsequent ports when unset), uses the first free one, writes it back to the system record, and reconnects. Windows can configure `portRanges.agent.start/end` directly in `config.json`. It never stops or replaces another user's process.
 
-Use these steps for each affected target host:
-
-1. Log in to the target with the same SSH alias used by the Hub, then test a candidate port. Replace `45878` with the port you want to use:
+To verify the automatically selected port, log in with the same SSH alias and check the port shown in the dashboard. This example checks `45877`:
 
    ```bash
-   PORT=45878
+   PORT=45877
    if ss -ltnH "sport = :$PORT" | grep -q .; then
      echo "port $PORT is occupied"
    else
@@ -103,14 +101,7 @@ Use these steps for each affected target host:
    fi
    ```
 
-   Choose a port reported as free. Check every target separately because a port that is free on one server may be occupied on another. Do not stop or replace another user's process.
-
-2. Open the Hub dashboard and locate the affected system. Select its **three-dot menu → Edit**.
-3. In the edit dialog, replace **Port** (`45876` by default) with the free port. Keep **Host / IP** unchanged and select **Save System**.
-4. Saving changes the system to `pending`. For a system imported from an SSH config, the Hub automatically stops this SSH account's managed Agent, writes the new `LISTEN` port, starts it again, and reconnects through SSH. There is no separate redeploy button.
-5. Wait for the system status to change to `up`, then confirm its charts update. If the new port is also occupied, choose another free port and repeat these steps; current auto-deployment reports the port conflict instead of treating the foreign listener as a successful deployment.
-
-Automatic redeployment requires the system to retain its SSH config association. For a manually installed system without one, change the Agent's `LISTEN` value to the same new port and restart that Agent yourself before saving the matching **Port** in the Hub. See [SSH deployment troubleshooting](docs/guide.md#troubleshooting) for the full diagnosis.
+Automatic port selection applies only to systems that retain an SSH config association. A manually installed system without one is never changed automatically; update its Agent `LISTEN`, restart the Agent, and save the same port in the Hub yourself. See [SSH deployment troubleshooting](docs/guide.md#troubleshooting) for the full diagnosis.
 
 ### User-owned Agent directory
 

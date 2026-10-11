@@ -15,6 +15,37 @@ export type SSHHostActionTargets = {
 	readonly managedSystems: readonly SSHManagedSystem[]
 }
 
+export type SSHHostFilterResult = {
+	readonly hosts: readonly SSHHost[]
+	readonly invalidRegex: boolean
+}
+
+export function filterSSHHosts(hosts: readonly SSHHost[], query: string): SSHHostFilterResult {
+	const value = query.trim()
+	if (!value) return { hosts, invalidRegex: false }
+
+	if (value.startsWith("/")) {
+		if (value.length < 2 || !value.endsWith("/")) return { hosts: [], invalidRegex: true }
+		try {
+			const expression = new RegExp(value.slice(1, -1), "i")
+			return {
+				hosts: hosts.filter((host) => expression.test(host.name) || expression.test(host.hostName)),
+				invalidRegex: false,
+			}
+		} catch {
+			return { hosts: [], invalidRegex: true }
+		}
+	}
+
+	const prefix = value.toLowerCase()
+	return {
+		hosts: hosts.filter(
+			(host) => host.name.toLowerCase().startsWith(prefix) || host.hostName.toLowerCase().startsWith(prefix)
+		),
+		invalidRegex: false,
+	}
+}
+
 export function getSSHHostActionTargets(
 	hosts: readonly SSHHost[],
 	systems: readonly SSHManagedSystem[],

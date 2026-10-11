@@ -3,12 +3,20 @@
 package agent
 
 import (
+	"bytes"
 	"crypto/ed25519"
+	"crypto/tls"
+	"crypto/x509"
 	"io/fs"
+	"net"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -17,6 +25,7 @@ import (
 	"github.com/henrygd/beszel/internal/common"
 
 	"github.com/fxamacker/cbor/v2"
+	"github.com/lxzan/gws"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ssh"
@@ -100,7 +109,6 @@ func TestNewWebSocketClient(t *testing.T) {
 				assert.Equal(t, tc.token, client.token)
 				assert.Equal(t, tc.hubURL, client.hubURL.String())
 				assert.NotEmpty(t, client.fingerprint)
-				assert.NotNil(t, client.hubRequest)
 			}
 		})
 	}
@@ -158,6 +166,7 @@ func TestWebSocketClient_GetOptions(t *testing.T) {
 			assert.Equal(t, "test-token", options.RequestHeader.Get("X-Token"))
 			assert.Equal(t, beszel.Version, options.RequestHeader.Get("X-Beszel"))
 			assert.Contains(t, options.RequestHeader.Get("User-Agent"), "Mozilla/5.0")
+			assert.False(t, options.TlsConfig.InsecureSkipVerify)
 
 			// Test options caching
 			options2 := client.getOptions()
@@ -256,6 +265,8 @@ func TestWebSocketClient_HandleHubRequest(t *testing.T) {
 
 	client, err := newWebSocketClient(agent)
 	require.NoError(t, err)
+	conn := &gws.Conn{}
+	client.Conn = conn
 
 	testCases := []struct {
 		name        string
@@ -289,7 +300,7 @@ func TestWebSocketClient_HandleHubRequest(t *testing.T) {
 				Data:   cbor.RawMessage{},
 			}
 
-			err := client.handleHubRequest(hubRequest, nil)
+			err := client.handleHubRequest(conn, hubRequest, nil)
 
 			if tc.expectError {
 				assert.Error(t, err)
@@ -305,6 +316,436 @@ func TestWebSocketClient_HandleHubRequest(t *testing.T) {
 			}
 		})
 	}
+}
+
+type testHubEventHandler struct {
+	gws.BuiltinEventHandler
+	messages chan []byte
+}
+
+func (h *testHubEventHandler) OnMessage(conn *gws.Conn, message *gws.Message) {
+	defer message.Close()
+	h.messages <- bytes.Clone(message.Data.Bytes())
+}
+
+func newWebSocketTestHub(t *testing.T) (*httptest.Server, <-chan *gws.Conn, <-chan http.Header, <-chan []byte) {
+	t.Helper()
+	connections := make(chan *gws.Conn, 16)
+	headers := make(chan http.Header, 16)
+	handler := &testHubEventHandler{messages: make(chan []byte, 16)}
+	upgrader := gws.NewUpgrader(handler, nil)
+	var mu sync.Mutex
+	var sockets []*gws.Conn
+	var readLoops sync.WaitGroup
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		headers <- r.Header.Clone()
+		conn, err := upgrader.Upgrade(w, r)
+		if err != nil {
+			return
+		}
+		mu.Lock()
+		sockets = append(sockets, conn)
+		readLoops.Add(1)
+		mu.Unlock()
+		connections <- conn
+		go func() {
+			defer readLoops.Done()
+			conn.ReadLoop()
+		}()
+	}))
+	t.Cleanup(func() {
+		server.Close()
+		mu.Lock()
+		for _, conn := range sockets {
+			_ = conn.WriteClose(1000, nil)
+		}
+		mu.Unlock()
+		readLoops.Wait()
+	})
+	return server, connections, headers, handler.messages
+}
+
+func newWebSocketTestClient(t *testing.T, server *httptest.Server) *WebSocketClient {
+	t.Helper()
+	t.Setenv("BESZEL_AGENT_HUB_URL", server.URL)
+	t.Setenv("BESZEL_AGENT_TOKEN", "test-registration-token")
+	client, err := newWebSocketClient(createTestAgent(t))
+	require.NoError(t, err)
+	client.agent.connectionManager.eventChan = make(chan ConnectionEvent, 16)
+	options := client.getOptions()
+	options.HandshakeTimeout = 2 * time.Second
+	options.NewDialer = func() (gws.Dialer, error) { return &net.Dialer{Timeout: time.Second}, nil }
+	t.Cleanup(client.Close)
+	return client
+}
+
+func newTrustedWebSocketTestClient(t *testing.T, server *httptest.Server) *WebSocketClient {
+	t.Helper()
+	client := newWebSocketTestClient(t, server)
+	roots := x509.NewCertPool()
+	roots.AddCert(server.Certificate())
+	client.getOptions().TlsConfig.RootCAs = roots
+	return client
+}
+
+func newWebSocketTestAuthRequest(t *testing.T, client *WebSocketClient, id uint32) *common.HubRequest[cbor.RawMessage] {
+	t.Helper()
+	_, privateKey, err := ed25519.GenerateKey(nil)
+	require.NoError(t, err)
+	publicKey, err := ssh.NewPublicKey(privateKey.Public().(ed25519.PublicKey))
+	require.NoError(t, err)
+	client.agent.keys = []ssh.PublicKey{publicKey}
+	data, err := cbor.Marshal(common.FingerprintRequest{Signature: ed25519.Sign(privateKey, []byte(client.token))})
+	require.NoError(t, err)
+	return &common.HubRequest[cbor.RawMessage]{Action: common.CheckFingerprint, Data: data, Id: &id}
+}
+
+func sendWebSocketTestRequest(t *testing.T, conn *gws.Conn, request *common.HubRequest[cbor.RawMessage]) {
+	t.Helper()
+	data, err := cbor.Marshal(request)
+	require.NoError(t, err)
+	require.NoError(t, conn.WriteMessage(gws.OpcodeBinary, data))
+}
+
+type webSocketTestDialer struct {
+	addr string
+}
+
+func (d webSocketTestDialer) Dial(network, _ string) (net.Conn, error) {
+	return net.DialTimeout(network, d.addr, time.Second)
+}
+
+func receiveWebSocketTestValue[T any](t *testing.T, values <-chan T) T {
+	t.Helper()
+	select {
+	case value := <-values:
+		return value
+	case <-time.After(3 * time.Second):
+		t.Fatal("timed out waiting for WebSocket event")
+		var zero T
+		return zero
+	}
+}
+
+func TestWebSocketClientRejectsUntrustedTLSBeforeSendingToken(t *testing.T) {
+	server, _, headers, _ := newWebSocketTestHub(t)
+	client := newWebSocketTestClient(t, server)
+
+	err := client.Connect()
+	var certificateError *tls.CertificateVerificationError
+	require.ErrorAs(t, err, &certificateError)
+	select {
+	case <-headers:
+		t.Fatal("untrusted hub received HTTP headers containing the registration token")
+	default:
+	}
+	assert.Nil(t, client.Conn)
+	assert.False(t, client.hubVerified)
+}
+
+func TestWebSocketClientRejectsWrongTLSHostnameBeforeSendingToken(t *testing.T) {
+	server, _, headers, _ := newWebSocketTestHub(t)
+	client := newTrustedWebSocketTestClient(t, server)
+	options := client.getOptions()
+	_, err := server.Certificate().Verify(x509.VerifyOptions{Roots: options.TlsConfig.RootCAs, DNSName: "127.0.0.1"})
+	require.NoError(t, err)
+	hubURL, err := url.Parse(options.Addr)
+	require.NoError(t, err)
+	hubURL.Host = net.JoinHostPort("wrong-hub.invalid", hubURL.Port())
+	options.Addr = hubURL.String()
+	options.NewDialer = func() (gws.Dialer, error) {
+		return webSocketTestDialer{addr: server.Listener.Addr().String()}, nil
+	}
+
+	err = client.Connect()
+	var hostnameError x509.HostnameError
+	require.ErrorAs(t, err, &hostnameError)
+	assert.Equal(t, "wrong-hub.invalid", hostnameError.Host)
+	select {
+	case <-headers:
+		t.Fatal("hub with mismatched TLS hostname received the registration token")
+	default:
+	}
+	client.mu.Lock()
+	assert.Nil(t, client.Conn)
+	assert.False(t, client.hubVerified)
+	client.mu.Unlock()
+}
+
+func TestWebSocketClientRejectsInvalidAuthChallenges(t *testing.T) {
+	_, privateKey, err := ed25519.GenerateKey(nil)
+	require.NoError(t, err)
+	publicKey, err := ssh.NewPublicKey(privateKey.Public().(ed25519.PublicKey))
+	require.NoError(t, err)
+	_, wrongKey, err := ed25519.GenerateKey(nil)
+	require.NoError(t, err)
+	testCases := []struct {
+		name      string
+		challenge any
+	}{
+		{name: "missing signature", challenge: common.FingerprintRequest{}},
+		{name: "truncated signature", challenge: common.FingerprintRequest{Signature: []byte{1, 2, 3}}},
+		{name: "wrong key", challenge: common.FingerprintRequest{Signature: ed25519.Sign(wrongKey, []byte("test-registration-token"))}},
+		{name: "wrong token", challenge: common.FingerprintRequest{Signature: ed25519.Sign(privateKey, []byte("other-token"))}},
+		{name: "malformed challenge", challenge: "not a fingerprint request"},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			server, connections, _, messages := newWebSocketTestHub(t)
+			client := newTrustedWebSocketTestClient(t, server)
+			client.agent.keys = []ssh.PublicKey{publicKey}
+			var protectedCalls atomic.Int32
+			client.agent.handlerRegistry.Register(common.GetData, &MockHandler{handleFunc: func(ctx *HandlerContext) error {
+				protectedCalls.Add(1)
+				return ctx.SendResponse("protected", ctx.RequestID)
+			}})
+			invalidData, err := cbor.Marshal(tc.challenge)
+			require.NoError(t, err)
+			validData, err := cbor.Marshal(common.FingerprintRequest{Signature: ed25519.Sign(privateKey, []byte(client.token))})
+			require.NoError(t, err)
+			invalidID, protectedID, validID := uint32(1), uint32(2), uint32(3)
+			require.NoError(t, client.Connect())
+			conn := receiveWebSocketTestValue(t, connections)
+			sendWebSocketTestRequest(t, conn, &common.HubRequest[cbor.RawMessage]{Action: common.CheckFingerprint, Data: invalidData, Id: &invalidID})
+			sendWebSocketTestRequest(t, conn, &common.HubRequest[cbor.RawMessage]{Action: common.GetData, Id: &protectedID})
+			sendWebSocketTestRequest(t, conn, &common.HubRequest[cbor.RawMessage]{Action: common.CheckFingerprint, Data: validData, Id: &validID})
+
+			var response common.AgentResponse
+			require.NoError(t, cbor.Unmarshal(receiveWebSocketTestValue(t, messages), &response))
+			assert.Equal(t, &validID, response.Id)
+			require.NotNil(t, response.Fingerprint)
+			assert.Equal(t, client.fingerprint, response.Fingerprint.Fingerprint)
+			assert.Zero(t, protectedCalls.Load(), "invalid challenge must not authorize the following protected request")
+			assert.Equal(t, WebSocketConnect, receiveWebSocketTestValue(t, client.agent.connectionManager.eventChan))
+			select {
+			case event := <-client.agent.connectionManager.eventChan:
+				t.Fatalf("invalid challenge emitted an extra connection event: %v", event)
+			default:
+			}
+		})
+	}
+}
+
+func TestWebSocketClientFailedReconnectClearsAuthentication(t *testing.T) {
+	server, connections, headers, messages := newWebSocketTestHub(t)
+	client := newTrustedWebSocketTestClient(t, server)
+	auth := newWebSocketTestAuthRequest(t, client, 1)
+	require.NoError(t, client.Connect())
+	conn := receiveWebSocketTestValue(t, connections)
+	receiveWebSocketTestValue(t, headers)
+	sendWebSocketTestRequest(t, conn, auth)
+	var response common.AgentResponse
+	require.NoError(t, cbor.Unmarshal(receiveWebSocketTestValue(t, messages), &response))
+	assert.Equal(t, auth.Id, response.Id)
+	require.NotNil(t, response.Fingerprint)
+	assert.Equal(t, WebSocketConnect, receiveWebSocketTestValue(t, client.agent.connectionManager.eventChan))
+	client.mu.Lock()
+	oldConn := client.Conn
+	verified := client.hubVerified
+	client.mu.Unlock()
+	require.True(t, verified)
+	options := client.getOptions()
+	options.TlsConfig = options.TlsConfig.Clone()
+	options.TlsConfig.RootCAs = x509.NewCertPool()
+
+	err := client.Connect()
+	var certificateError *tls.CertificateVerificationError
+	require.ErrorAs(t, err, &certificateError)
+	client.mu.Lock()
+	assert.Nil(t, client.Conn)
+	assert.Nil(t, client.closingConn)
+	assert.False(t, client.hubVerified)
+	client.mu.Unlock()
+	require.ErrorIs(t, client.handleAuthChallenge(oldConn, auth, auth.Id), gws.ErrConnClosed)
+	client.OnClose(oldConn, nil)
+	select {
+	case <-headers:
+		t.Fatal("failed TLS reconnect exposed the registration token")
+	default:
+	}
+	select {
+	case event := <-client.agent.connectionManager.eventChan:
+		t.Fatalf("failed reconnect emitted a stale connection event: %v", event)
+	default:
+	}
+}
+
+func TestWebSocketClientDuplicateChallengesAndPeerCloseNotifyOnce(t *testing.T) {
+	server, connections, _, messages := newWebSocketTestHub(t)
+	client := newTrustedWebSocketTestClient(t, server)
+	auth := newWebSocketTestAuthRequest(t, client, 1)
+	require.NoError(t, client.Connect())
+	conn := receiveWebSocketTestValue(t, connections)
+	for id := uint32(1); id <= 3; id++ {
+		auth.Id = &id
+		sendWebSocketTestRequest(t, conn, auth)
+		var response common.AgentResponse
+		require.NoError(t, cbor.Unmarshal(receiveWebSocketTestValue(t, messages), &response))
+		assert.Equal(t, &id, response.Id)
+		require.NotNil(t, response.Fingerprint)
+		assert.Equal(t, client.fingerprint, response.Fingerprint.Fingerprint)
+	}
+	assert.Equal(t, WebSocketConnect, receiveWebSocketTestValue(t, client.agent.connectionManager.eventChan))
+	select {
+	case event := <-client.agent.connectionManager.eventChan:
+		t.Fatalf("repeated authentication emitted a duplicate event: %v", event)
+	default:
+	}
+	client.mu.Lock()
+	closedConn := client.Conn
+	client.mu.Unlock()
+
+	require.NoError(t, conn.WriteClose(1000, nil))
+	assert.Equal(t, WebSocketDisconnect, receiveWebSocketTestValue(t, client.agent.connectionManager.eventChan))
+	client.mu.Lock()
+	assert.Nil(t, client.Conn)
+	assert.Nil(t, client.closingConn)
+	assert.False(t, client.hubVerified)
+	client.mu.Unlock()
+	require.ErrorIs(t, client.handleAuthChallenge(closedConn, auth, auth.Id), gws.ErrConnClosed)
+	client.OnClose(closedConn, nil)
+	client.Close()
+	client.Close()
+	select {
+	case event := <-client.agent.connectionManager.eventChan:
+		t.Fatalf("repeated closure emitted a duplicate event: %v", event)
+	default:
+	}
+}
+
+func TestWebSocketClientReauthenticatesEachConnection(t *testing.T) {
+	server, connections, headers, messages := newWebSocketTestHub(t)
+	client := newWebSocketTestClient(t, server)
+	roots := x509.NewCertPool()
+	roots.AddCert(server.Certificate())
+	client.getOptions().TlsConfig.RootCAs = roots
+	_, privateKey, err := ed25519.GenerateKey(nil)
+	require.NoError(t, err)
+	publicKey, err := ssh.NewPublicKey(privateKey.Public().(ed25519.PublicKey))
+	require.NoError(t, err)
+	client.agent.keys = []ssh.PublicKey{publicKey}
+	var protectedCalls atomic.Int32
+	client.agent.handlerRegistry.Register(common.GetData, &MockHandler{handleFunc: func(ctx *HandlerContext) error {
+		protectedCalls.Add(1)
+		return ctx.SendResponse("protected", ctx.RequestID)
+	}})
+	authData, err := cbor.Marshal(common.FingerprintRequest{Signature: ed25519.Sign(privateKey, []byte(client.token))})
+	require.NoError(t, err)
+	auth := &common.HubRequest[cbor.RawMessage]{Action: common.CheckFingerprint, Data: authData}
+	request := &common.HubRequest[cbor.RawMessage]{Action: common.GetData}
+	send := func(conn *gws.Conn, request *common.HubRequest[cbor.RawMessage]) {
+		t.Helper()
+		data, err := cbor.Marshal(request)
+		require.NoError(t, err)
+		require.NoError(t, conn.WriteMessage(gws.OpcodeBinary, data))
+	}
+	authenticate := func(conn *gws.Conn) {
+		t.Helper()
+		send(conn, auth)
+		data := receiveWebSocketTestValue(t, messages)
+		var response common.FingerprintResponse
+		if auth.Id == nil {
+			require.NoError(t, cbor.Unmarshal(data, &response))
+		} else {
+			var envelope common.AgentResponse
+			require.NoError(t, cbor.Unmarshal(data, &envelope))
+			assert.Equal(t, auth.Id, envelope.Id)
+			require.NotNil(t, envelope.Fingerprint)
+			response = *envelope.Fingerprint
+		}
+		assert.Equal(t, client.fingerprint, response.Fingerprint)
+		assert.Equal(t, WebSocketConnect, receiveWebSocketTestValue(t, client.agent.connectionManager.eventChan))
+	}
+
+	require.NoError(t, client.Connect())
+	firstHubConn := receiveWebSocketTestValue(t, connections)
+	assert.Equal(t, client.token, receiveWebSocketTestValue(t, headers).Get("X-Token"))
+	authenticate(firstHubConn)
+	send(firstHubConn, request)
+	var protectedResponse string
+	require.NoError(t, cbor.Unmarshal(receiveWebSocketTestValue(t, messages), &protectedResponse))
+	assert.Equal(t, "protected", protectedResponse)
+	assert.EqualValues(t, 1, protectedCalls.Load())
+	client.mu.Lock()
+	oldConn := client.Conn
+	client.mu.Unlock()
+
+	require.NoError(t, client.Connect())
+	secondHubConn := receiveWebSocketTestValue(t, connections)
+	receiveWebSocketTestValue(t, headers)
+	client.OnClose(oldConn, nil)
+	require.ErrorIs(t, client.handleAuthChallenge(oldConn, auth, nil), gws.ErrConnClosed)
+	require.ErrorIs(t, client.handleHubRequest(oldConn, request, nil), gws.ErrConnClosed)
+	require.Error(t, client.sendResponse(oldConn, "stale response", nil))
+	send(secondHubConn, request)
+	authID := uint32(6)
+	auth.Id = &authID
+	authenticate(secondHubConn)
+	assert.EqualValues(t, 1, protectedCalls.Load(), "request before the new challenge must be rejected")
+
+	id := uint32(7)
+	request.Id = &id
+	send(secondHubConn, request)
+	var response common.AgentResponse
+	require.NoError(t, cbor.Unmarshal(receiveWebSocketTestValue(t, messages), &response))
+	assert.Equal(t, &id, response.Id)
+	assert.Equal(t, &protectedResponse, response.String)
+	assert.EqualValues(t, 2, protectedCalls.Load())
+
+	client.mu.Lock()
+	closedConn := client.Conn
+	client.mu.Unlock()
+	client.Close()
+	require.ErrorIs(t, client.handleAuthChallenge(closedConn, auth, nil), gws.ErrConnClosed)
+	assert.Equal(t, WebSocketDisconnect, receiveWebSocketTestValue(t, client.agent.connectionManager.eventChan))
+	client.mu.Lock()
+	assert.Nil(t, client.Conn)
+	assert.False(t, client.hubVerified)
+	client.mu.Unlock()
+}
+
+func TestWebSocketClientSerializesConcurrentReconnects(t *testing.T) {
+	server, connections, _, _ := newWebSocketTestHub(t)
+	client := newWebSocketTestClient(t, server)
+	roots := x509.NewCertPool()
+	roots.AddCert(server.Certificate())
+	client.getOptions().TlsConfig.RootCAs = roots
+	results := make(chan error, 2)
+	for range 2 {
+		go func() { results <- client.Connect() }()
+	}
+	for range 2 {
+		require.NoError(t, receiveWebSocketTestValue(t, results))
+		receiveWebSocketTestValue(t, connections)
+	}
+	select {
+	case event := <-client.agent.connectionManager.eventChan:
+		t.Fatalf("replaced connection emitted a stale event: %v", event)
+	default:
+	}
+	client.Close()
+	assert.Equal(t, WebSocketDisconnect, receiveWebSocketTestValue(t, client.agent.connectionManager.eventChan))
+}
+
+func TestWebSocketClientCloseWithFullEventChannel(t *testing.T) {
+	server, connections, _, _ := newWebSocketTestHub(t)
+	client := newWebSocketTestClient(t, server)
+	roots := x509.NewCertPool()
+	roots.AddCert(server.Certificate())
+	client.getOptions().TlsConfig.RootCAs = roots
+	events := make(chan ConnectionEvent, 1)
+	client.agent.connectionManager.eventChan = events
+	events <- SSHConnect
+	require.NoError(t, client.Connect())
+	receiveWebSocketTestValue(t, connections)
+	closed := make(chan struct{})
+	go func() {
+		client.Close()
+		close(closed)
+	}()
+	receiveWebSocketTestValue(t, closed)
+	assert.Equal(t, SSHConnect, receiveWebSocketTestValue(t, events))
+	assert.Equal(t, WebSocketDisconnect, receiveWebSocketTestValue(t, events))
 }
 
 // TestWebSocketClient_GetUserAgent tests user agent generation

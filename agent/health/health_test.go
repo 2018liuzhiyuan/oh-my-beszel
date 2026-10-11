@@ -92,3 +92,35 @@ func TestDirWritable_leavesHealthFileUntouched(t *testing.T) {
 func TestDirWritable_rejectsMissingDirectory(t *testing.T) {
 	assert.False(t, dirWritable(filepath.Join(t.TempDir(), "does-not-exist")))
 }
+
+func TestHealthUsesConfiguredInstanceDirectory(t *testing.T) {
+	one := t.TempDir()
+	two := t.TempDir()
+	t.Setenv("DATA_DIR", one)
+	t.Setenv("BESZEL_AGENT_DATA_DIR", one)
+	first := getHealthFilePath()
+	require.Equal(t, filepath.Join(one, "beszel_health"), first)
+	require.NoError(t, updateHealthFile(first))
+	t.Setenv("BESZEL_AGENT_DATA_DIR", two)
+	second := getHealthFilePath()
+	require.Equal(t, filepath.Join(two, "beszel_health"), second)
+	_, err := os.Stat(second)
+	require.ErrorIs(t, err, os.ErrNotExist)
+	require.NoError(t, updateHealthFile(second))
+	require.NoError(t, os.Remove(first))
+	_, err = os.Stat(second)
+	require.NoError(t, err)
+}
+
+func TestHealthHeartbeatWritesChangedData(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "heartbeat")
+	require.NoError(t, updateHealthFile(path))
+	first, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.NotEmpty(t, first)
+	time.Sleep(time.Millisecond)
+	require.NoError(t, updateHealthFile(path))
+	second, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.NotEqual(t, string(first), string(second))
+}

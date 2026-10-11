@@ -306,7 +306,7 @@ func TestUserCreation(t *testing.T) {
 
 	usersCollection, err := hub.FindCollectionByNameOrId("users")
 	assert.NoError(t, err)
-	assert.Equal(t, "@request.context = 'oauth2'", *usersCollection.CreateRule)
+	assert.Equal(t, "@request.context = 'oauth2' && (role = '' || role = 'user')", *usersCollection.CreateRule)
 }
 
 func TestMFAOtp(t *testing.T) {

@@ -236,7 +236,7 @@ export default function InfoBar({
 							})}
 						</div>
 						{system.status === SystemStatus.Down && system.status_info && (
-							<p className="text-xs text-muted-foreground font-mono break-all -mt-2 xl:mt-0">{system.status_info}</p>
+							<p className="text-xs text-muted-foreground font-mono break-words -mt-2 xl:mt-0">{system.status_info}</p>
 						)}
 					</div>
 					<div className="xl:ms-auto flex items-center gap-2 max-sm:-mb-1">

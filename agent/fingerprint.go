@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/shirou/gopsutil/v4/cpu"
@@ -52,6 +53,14 @@ func generateFingerprint(hostname, cpuModel string) string {
 			}
 		}
 		fingerprint = hostname + cpuModel
+	} else if runtime.GOOS == "linux" {
+		productUUID, readErr := os.ReadFile("/sys/class/dmi/id/product_uuid")
+		if readErr != nil || strings.TrimSpace(string(productUUID)) == "" {
+			if hostname == "" {
+				hostname, _ = os.Hostname()
+			}
+			fingerprint += "\x00" + hostname
+		}
 	}
 
 	sum := sha256.Sum256([]byte(fingerprint))

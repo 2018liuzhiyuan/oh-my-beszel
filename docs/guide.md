@@ -123,6 +123,18 @@ Configuration changes take effect after restarting the Hub. The native runner us
 
 #### Change the Windows web port
 
+Configure fallback ranges in `config.json`: `portRanges.hub.start/end` for the web listener, `portRanges.agent.start/end` for SSH-deployed Agents, and `portRanges.localTunnel.start/end` for Windows local tunnel scripts. For example:
+
+```json
+"portRanges": {
+  "hub": { "start": 8090, "end": 8190 },
+  "localTunnel": { "start": 47100, "end": 47999 },
+  "agent": { "start": 45876, "end": 45976 }
+}
+```
+
+Each range must satisfy `1 <= start <= end <= 65535`. The existing port is preferred; a conflict triggers a scan. The selected web port is written back to `port`. Agent exhaustion appears on the system page with configuration guidance; local Hub/tunnel exhaustion opens a warning dialog. Restart the Hub after changing Hub/Agent ranges; tunnel scripts reread configuration on retry. See [Windows port tests](../deploy/windows/hub/README.md) for regression and interaction checks.
+
 1. Edit **`config.json` beside the `Monitor.exe` you actually run**. A fresh build uses `build/windows/config.json`; if you deployed the package elsewhere, edit that directory's copy. Change only the top-level `"port": 8090` to an unused port such as `"port": 8091`. Keep `"host": "127.0.0.1"` for local access and preserve the other settings. No rebuild is needed.
 2. Double-click `Monitor.exe` again. It stops the Hub process from this package when it is still serving the old port, then starts the same package with the new configuration. Other extracted copies are not stopped.
 3. Open `http://127.0.0.1:8091`. Monitor reads the same configuration and opens the new address on its next launch. Update bookmarks and any proxy or tunnel that targets the old web port. Agent port `45876` and operating-system SSH ports do not need to change.
@@ -279,13 +291,17 @@ Artifact lookup order is `BESZEL_AGENT_DEPLOY_DIR`, `agents/` beside the Hub exe
 
 The Hub uploads the local artifact, verifies SHA-256, and installs it under `~/oh-my-beszel/` with `bin/`, `config/`, `data/`, and `logs/` subdirectories. It never writes to `/opt`. When a user systemd manager is available it enables and starts `oh-my-beszel-agent.service`; otherwise it starts a detached process, without a reboot-start guarantee. The Agent listens on `127.0.0.1:45876` by default for this path, and the Hub connects through `ssh -W`. Allow SSH TCP forwarding on the node; the Agent port need not be exposed publicly. Each Hub public key is appended once to `config/hub_keys`, so multiple Hubs can use the same Agent. Deployment is skipped only when the binary matches, the port is listening, the Agent is healthy, and the current Hub key is already authorized.
 
-An Agent port belongs to the whole target host, even when several operating-system users share that host. If another user's Agent or a system service already listens on `45876`, choose a different free Agent port when importing this system. Auto-deployment stops only the current SSH account's managed Agent; if the requested port remains occupied, it reports the conflict instead of mistaking the foreign listener for a successful deployment.
+One remote SSH account reuses one Agent. The Hub reads the installed instance's actual port, so another SSH alias or Beszel login does not trigger a duplicate deployment. Installation takes the remote `~/oh-my-beszel/.deploy.lock` lock and rechecks the instance after acquiring it; nodes must provide `flock`. Different remote UIDs retain separate home directories, user services, processes, and health files under `data/`. If another account claims a port after selection, deployment verifies that the listening socket belongs to its own Agent and retries with another port.
+
+The existing Agent fingerprint identifies the machine. SHA-256 of the machine fingerprint, remote UID, and canonical installation directory identifies the installation instance. The Hub stores these values in the system fields `agent_machine_fingerprint`, `agent_remote_uid`, `agent_install_dir`, and `agent_instance_id`. System records for the same instance retain their own `users` membership and personal alerts. Clients cannot supply these managed identity fields, and matching fingerprints or instance IDs never grant access automatically. NFS homes isolate each host under `~/oh-my-beszel/hosts/<hostname-hash>/`; the shared service entry selects the local host's directory at runtime. When Linux cannot read the DMI UUID, newly generated fingerprints include the hostname in the HostID material to distinguish cloned machine IDs. Saved fingerprints still take precedence. Health updates write timestamp data so NFS filesystems update their metadata reliably.
+
+An Agent port belongs to the whole target host, even when several operating-system users share that host. Auto-deployment stops only the current SSH account's managed Agent. If another user or service still owns the requested port, the Hub scans the configured Agent range, selects the first free one, writes it back to the system record, and reconnects without stopping or replacing the foreign process. Windows uses `portRanges.agent.start/end`; other deployments can set `BESZEL_HUB_AGENT_PORT_RANGE=45876-45976`. Without configuration, up to 100 subsequent ports are scanned. This applies only to systems that retain an SSH config association; manually installed Agents still require matching ports to be configured on both sides.
 
 **5. Confirm the node becomes online** and CPU/memory charts update. On the node, check the service and Agent health as needed:
 
 ```bash
 systemctl --user status oh-my-beszel-agent.service --no-pager
-LISTEN=127.0.0.1:45876 "$HOME/oh-my-beszel/bin/beszel-agent" health
+DATA_DIR="$HOME/oh-my-beszel/data" "$HOME/oh-my-beszel/bin/beszel-agent" health
 ```
 
 The `systemctl --user` command applies only when the account has a running user systemd manager. Enabling linger for that account is recommended when the Agent must start after reboot without an interactive login. For NVIDIA nodes, also check `nvidia-smi` on the node and verify GPU count and VRAM capacity in the dashboard.
@@ -314,6 +330,8 @@ export KEY="REPLACE_WITH_HUB_PUBLIC_KEY"
 Restrict access to port `45876` to the Hub in the node's firewall, or bind `LISTEN` to a private interface. Keep the terminal open for this trial; configure your service manager for persistent operation. `KEY_FILE` can be used instead of `KEY` to read the Hub public key from a file.
 
 `TOKEN` and `HUB_URL` are used for an Agent-initiated connection; they are not needed for the direct Hub-initiated example above. If using that alternative, take the token from the matching system in the dashboard and ensure `HUB_URL` is reachable **from the node**, rather than copying an inaccessible localhost URL.
+
+For an HTTPS `HUB_URL`, the Agent verifies the Hub certificate and hostname before sending its token. If the Hub uses a private certificate authority, install that CA in the Agent machine's trusted certificate store. An untrusted self-signed certificate is rejected.
 
 The UI's inherited “Copy Linux command” and Docker buttons still reference upstream installation scripts/images. To run this fork's Agent changes, use the local binaries above or SSH deployment instead of assuming those buttons install this fork.
 

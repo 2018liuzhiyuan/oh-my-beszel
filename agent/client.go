@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/henrygd/beszel/agent/utils"
@@ -31,15 +32,17 @@ const (
 // It handles authentication, message routing, and connection lifecycle management.
 type WebSocketClient struct {
 	gws.BuiltinEventHandler
-	options            *gws.ClientOption                   // WebSocket client configuration options
-	agent              *Agent                              // Reference to the parent agent
-	Conn               *gws.Conn                           // Active WebSocket connection
-	hubURL             *url.URL                            // Parsed hub URL for connection
-	token              string                              // Authentication token for hub registration
-	fingerprint        string                              // System fingerprint for identification
-	hubRequest         *common.HubRequest[cbor.RawMessage] // Reusable request structure for message parsing
-	lastConnectAttempt time.Time                           // Timestamp of last connection attempt
-	hubVerified        bool                                // Whether the hub has been cryptographically verified
+	options            *gws.ClientOption // WebSocket client configuration options
+	agent              *Agent            // Reference to the parent agent
+	Conn               *gws.Conn         // Active WebSocket connection
+	closingConn        *gws.Conn
+	hubURL             *url.URL   // Parsed hub URL for connection
+	token              string     // Authentication token for hub registration
+	fingerprint        string     // System fingerprint for identification
+	lastConnectAttempt time.Time  // Timestamp of last connection attempt
+	hubVerified        bool       // Whether the hub has been cryptographically verified
+	connectMu          sync.Mutex // Serializes connection replacement and explicit closure
+	mu                 sync.Mutex // Protects Conn, closingConn, hubVerified, and lastConnectAttempt
 }
 
 // newWebSocketClient creates a new WebSocket client for the given agent.
@@ -63,7 +66,6 @@ func newWebSocketClient(agent *Agent) (client *WebSocketClient, err error) {
 	}
 
 	client.agent = agent
-	client.hubRequest = &common.HubRequest[cbor.RawMessage]{}
 	client.fingerprint = agent.getFingerprint()
 
 	return client, nil
@@ -112,7 +114,7 @@ func (client *WebSocketClient) getOptions() *gws.ClientOption {
 
 	client.options = &gws.ClientOption{
 		Addr:      client.hubURL.String(),
-		TlsConfig: &tls.Config{InsecureSkipVerify: true},
+		TlsConfig: &tls.Config{},
 		RequestHeader: http.Header{
 			"User-Agent": []string{getUserAgent()},
 			"X-Token":    []string{client.token},
@@ -128,19 +130,39 @@ func (client *WebSocketClient) getOptions() *gws.ClientOption {
 // Connect establishes a WebSocket connection to the hub.
 // It closes any existing connection before attempting to reconnect.
 func (client *WebSocketClient) Connect() (err error) {
+	client.connectMu.Lock()
+	defer client.connectMu.Unlock()
+
+	client.mu.Lock()
 	client.lastConnectAttempt = time.Now()
+	previousConn := client.Conn
+	client.Conn = nil
+	client.closingConn = nil
+	client.hubVerified = false
+	client.mu.Unlock()
 
 	// make sure previous connection is closed
-	client.Close()
+	if previousConn != nil {
+		_ = previousConn.WriteClose(1000, nil)
+	}
 
-	client.Conn, _, err = gws.NewClient(client, client.getOptions())
+	conn, _, err := gws.NewClient(client, client.getOptions())
 	if err != nil {
 		return err
 	}
 
-	go client.Conn.ReadLoop()
+	client.mu.Lock()
+	client.Conn = conn
+	client.mu.Unlock()
+	go conn.ReadLoop()
 
 	return nil
+}
+
+func (client *WebSocketClient) timeSinceLastConnectAttempt() time.Duration {
+	client.mu.Lock()
+	defer client.mu.Unlock()
+	return time.Since(client.lastConnectAttempt)
 }
 
 // OnOpen handles WebSocket connection establishment.
@@ -152,6 +174,16 @@ func (client *WebSocketClient) OnOpen(conn *gws.Conn) {
 // OnClose handles WebSocket connection closure.
 // It logs the closure reason and notifies the connection manager.
 func (client *WebSocketClient) OnClose(conn *gws.Conn, err error) {
+	client.mu.Lock()
+	if conn == nil || (client.Conn != conn && client.closingConn != conn) {
+		client.mu.Unlock()
+		return
+	}
+	client.Conn = nil
+	client.closingConn = nil
+	client.hubVerified = false
+	client.mu.Unlock()
+
 	if err != nil {
 		slog.Warn("Connection closed", "err", strings.TrimPrefix(err.Error(), "gws: "))
 	}
@@ -176,7 +208,7 @@ func (client *WebSocketClient) OnMessage(conn *gws.Conn, message *gws.Message) {
 		return
 	}
 
-	if err := client.handleHubRequest(&HubRequest, HubRequest.Id); err != nil {
+	if err := client.handleHubRequest(conn, &HubRequest, HubRequest.Id); err != nil {
 		slog.Error("Error handling message", "err", err)
 	}
 }
@@ -189,7 +221,7 @@ func (client *WebSocketClient) OnPing(conn *gws.Conn, message []byte) {
 }
 
 // handleAuthChallenge verifies the authenticity of the hub and returns the system's fingerprint.
-func (client *WebSocketClient) handleAuthChallenge(msg *common.HubRequest[cbor.RawMessage], requestID *uint32) (err error) {
+func (client *WebSocketClient) handleAuthChallenge(conn *gws.Conn, msg *common.HubRequest[cbor.RawMessage], requestID *uint32) (err error) {
 	var authRequest common.FingerprintRequest
 	if err := cbor.Unmarshal(msg.Data, &authRequest); err != nil {
 		return err
@@ -199,8 +231,17 @@ func (client *WebSocketClient) handleAuthChallenge(msg *common.HubRequest[cbor.R
 		return err
 	}
 
+	client.mu.Lock()
+	if conn == nil || client.Conn != conn {
+		client.mu.Unlock()
+		return gws.ErrConnClosed
+	}
+	wasVerified := client.hubVerified
 	client.hubVerified = true
-	client.agent.connectionManager.eventChan <- WebSocketConnect
+	client.mu.Unlock()
+	if !wasVerified {
+		client.agent.connectionManager.eventChan <- WebSocketConnect
+	}
 
 	response := &common.FingerprintResponse{
 		Fingerprint: client.fingerprint,
@@ -213,7 +254,7 @@ func (client *WebSocketClient) handleAuthChallenge(msg *common.HubRequest[cbor.R
 		_, response.Port, _ = net.SplitHostPort(serverAddr)
 	}
 
-	return client.sendResponse(response, requestID)
+	return client.sendResponse(conn, response, requestID)
 }
 
 // verifySignature verifies the signature of the token using the public keys.
@@ -233,35 +274,55 @@ func (client *WebSocketClient) verifySignature(signature []byte) (err error) {
 // Close closes the WebSocket connection gracefully.
 // This method is safe to call multiple times.
 func (client *WebSocketClient) Close() {
-	if client.Conn != nil {
-		_ = client.Conn.WriteClose(1000, nil)
+	client.connectMu.Lock()
+	defer client.connectMu.Unlock()
+	client.mu.Lock()
+	conn := client.Conn
+	if conn != nil {
+		client.closingConn = conn
+	}
+	client.Conn = nil
+	client.hubVerified = false
+	client.mu.Unlock()
+	if conn != nil {
+		_ = conn.WriteClose(1000, nil)
 	}
 }
 
 // handleHubRequest routes the request to the appropriate handler using the handler registry.
-func (client *WebSocketClient) handleHubRequest(msg *common.HubRequest[cbor.RawMessage], requestID *uint32) error {
+func (client *WebSocketClient) handleHubRequest(conn *gws.Conn, msg *common.HubRequest[cbor.RawMessage], requestID *uint32) error {
+	client.mu.Lock()
+	if conn == nil || client.Conn != conn {
+		client.mu.Unlock()
+		return gws.ErrConnClosed
+	}
+	hubVerified := client.hubVerified
+	client.mu.Unlock()
+
+	// Authentication and replies belong to the originating connection, including during reconnects.
 	ctx := &HandlerContext{
-		Client:       client,
-		Agent:        client.agent,
-		Request:      msg,
-		RequestID:    requestID,
-		HubVerified:  client.hubVerified,
-		SendResponse: client.sendResponse,
+		Client:      client,
+		Conn:        conn,
+		Agent:       client.agent,
+		Request:     msg,
+		RequestID:   requestID,
+		HubVerified: hubVerified,
+		SendResponse: func(data any, requestID *uint32) error {
+			return client.sendResponse(conn, data, requestID)
+		},
 	}
 	return client.agent.handlerRegistry.Handle(ctx)
 }
 
 // sendMessage encodes the given data to CBOR and sends it as a binary message over the WebSocket connection to the hub.
-func (client *WebSocketClient) sendMessage(data any) error {
+func (client *WebSocketClient) sendMessage(conn *gws.Conn, data any) error {
 	bytes, err := cbor.Marshal(data)
 	if err != nil {
 		return err
 	}
-	err = client.Conn.WriteMessage(gws.OpcodeBinary, bytes)
+	err = conn.WriteMessage(gws.OpcodeBinary, bytes)
 	if err != nil {
-		// If writing fails (e.g., broken pipe due to network issues),
-		// close the connection to trigger reconnection logic (#1263)
-		client.Close()
+		client.OnClose(conn, err)
 	}
 	return err
 }
@@ -269,13 +330,13 @@ func (client *WebSocketClient) sendMessage(data any) error {
 // sendResponse sends a response with optional request ID.
 // For ID-based requests, we must populate legacy typed fields for backward
 // compatibility with older hubs (<= 0.17) that don't read the generic Data field.
-func (client *WebSocketClient) sendResponse(data any, requestID *uint32) error {
+func (client *WebSocketClient) sendResponse(conn *gws.Conn, data any, requestID *uint32) error {
 	if requestID != nil {
 		response := newAgentResponse(data, requestID)
-		return client.sendMessage(response)
+		return client.sendMessage(conn, response)
 	}
 	// Legacy format - send data directly
-	return client.sendMessage(data)
+	return client.sendMessage(conn, data)
 }
 
 // getUserAgent returns one of two User-Agent strings based on current time.

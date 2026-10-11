@@ -3,9 +3,14 @@ package systems
 import (
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
+
+func TestSSHHandshakeTimeoutAllowsMultiHopConnections(t *testing.T) {
+	require.Equal(t, 30*time.Second, sshHandshakeTimeout)
+}
 
 func TestIsDirectHost(t *testing.T) {
 	direct := []string{"", "localhost", "LOCALHOST", "127.0.0.1", "192.0.2.115", "::1", "0:0:0:0:0:0:0:1", "/tmp/sock"}

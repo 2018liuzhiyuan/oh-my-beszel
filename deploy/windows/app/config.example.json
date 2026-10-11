@@ -1,6 +1,11 @@
 {
     "host": "127.0.0.1",
     "port": 8090,
+    "portRanges": {
+        "hub": { "start": 8090, "end": 8190 },
+        "localTunnel": { "start": 47100, "end": 47999 },
+        "agent": { "start": 45876, "end": 45976 }
+    },
     "sshConfigPath": "",
     "openBrowser": true,
     "startupTimeoutSeconds": 45,

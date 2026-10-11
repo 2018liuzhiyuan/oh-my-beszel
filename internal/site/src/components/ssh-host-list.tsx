@@ -9,10 +9,11 @@ type SSHHostListProps = {
 	readonly systems: readonly SSHManagedSystem[]
 	readonly selected: ReadonlySet<string>
 	readonly loading: boolean
+	readonly filtered: boolean
 	readonly onSelectionChange: (selected: Set<string>) => void
 }
 
-export function SSHHostList({ hosts, systems, selected, loading, onSelectionChange }: SSHHostListProps) {
+export function SSHHostList({ hosts, systems, selected, loading, filtered, onSelectionChange }: SSHHostListProps) {
 	const systemsByName = new Map(systems.map((system) => [system.name.toLowerCase(), system]))
 	const selectableNames: string[] = []
 	for (const host of hosts) {
@@ -62,7 +63,7 @@ export function SSHHostList({ hosts, systems, selected, loading, onSelectionChan
 				)}
 				{!loading && hosts.length === 0 && (
 					<p className="p-3 text-sm text-muted-foreground">
-						<Trans>No concrete hosts found.</Trans>
+						{filtered ? <Trans>No matching SSH hosts.</Trans> : <Trans>No concrete hosts found.</Trans>}
 					</p>
 				)}
 				{hosts.map((host) => {

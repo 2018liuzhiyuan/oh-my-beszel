@@ -9,7 +9,7 @@ import { Button } from "./ui/button"
 import { DialogFooter } from "./ui/dialog"
 import { Input } from "./ui/input"
 import { Label } from "./ui/label"
-import { getSSHHostActionTargets, type SSHHost } from "./ssh-host-actions"
+import { filterSSHHosts, getSSHHostActionTargets, type SSHHost } from "./ssh-host-actions"
 import { SSHHostList } from "./ssh-host-list"
 
 type SSHHostsResponse = {
@@ -40,6 +40,7 @@ export function SSHHostManager() {
 	const [path, setPath] = useState("")
 	const [loadedPath, setLoadedPath] = useState("")
 	const [port, setPort] = useState("45876")
+	const [hostQuery, setHostQuery] = useState("")
 	const [discoveredHosts, setDiscoveredHosts] = useState<readonly SSHHost[]>([])
 	const [selected, setSelected] = useState<Set<string>>(new Set())
 	const [loading, setLoading] = useState(false)
@@ -47,7 +48,11 @@ export function SSHHostManager() {
 	const [updating, setUpdating] = useState(false)
 	const [feedback, setFeedback] = useState("")
 	const hosts = discoveredHosts
-	const actionTargets = useMemo(() => getSSHHostActionTargets(hosts, systems, selected), [hosts, systems, selected])
+	const filteredHosts = useMemo(() => filterSSHHosts(hosts, hostQuery), [hosts, hostQuery])
+	const actionTargets = useMemo(
+		() => getSSHHostActionTargets(filteredHosts.hosts, systems, selected),
+		[filteredHosts.hosts, systems, selected]
+	)
 	const updatePathSystems = useMemo(
 		() => actionTargets.managedSystems.filter((system) => system.ssh_config !== loadedPath),
 		[actionTargets.managedSystems, loadedPath]
@@ -199,11 +204,36 @@ export function SSHHostManager() {
 					</p>
 				)}
 			</div>
+			<div className="grid gap-2">
+				<Label htmlFor="ssh-host-search">
+					<Trans>Search SSH hosts</Trans>
+				</Label>
+				<Input
+					id="ssh-host-search"
+					type="search"
+					value={hostQuery}
+					onChange={(event) => setHostQuery(event.target.value)}
+					placeholder={t`Prefix or /regular expression/`}
+					aria-invalid={filteredHosts.invalidRegex}
+					aria-describedby="ssh-host-search-help"
+				/>
+				<p
+					id="ssh-host-search-help"
+					className={cn("text-xs", filteredHosts.invalidRegex ? "text-destructive" : "text-muted-foreground")}
+				>
+					{filteredHosts.invalidRegex ? (
+						<Trans>Invalid regular expression.</Trans>
+					) : (
+						<Trans>Use a prefix, or wrap a regular expression in slashes.</Trans>
+					)}
+				</p>
+			</div>
 			<SSHHostList
-				hosts={hosts}
+				hosts={filteredHosts.hosts}
 				systems={systems}
 				selected={selected}
 				loading={loading}
+				filtered={hostQuery.trim() !== ""}
 				onSelectionChange={setSelected}
 			/>
 			<div className="grid gap-2 sm:max-w-48">

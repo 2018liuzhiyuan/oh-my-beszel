@@ -52,7 +52,7 @@ func resolveSSHConfigPath(requestedPath string) string {
 		return expandSSHConfigPath(requestedPath, home)
 	}
 	if configuredPath := strings.TrimSpace(os.Getenv("SSH_CONFIG_PATH")); configuredPath != "" {
-		return expandSSHConfigPath(configuredPath, home)
+		return expandSSHConfigPath(os.ExpandEnv(configuredPath), home)
 	}
 
 	seen := make(map[string]struct{})
@@ -102,7 +102,7 @@ func sshHomeCandidates() []string {
 }
 
 func expandSSHConfigPath(path, home string) string {
-	path = os.ExpandEnv(strings.TrimSpace(path))
+	path = strings.TrimSpace(path)
 	if path == "~" {
 		path = home
 	} else if strings.HasPrefix(path, "~/") || strings.HasPrefix(path, `~\`) {
@@ -235,7 +235,7 @@ func (p *sshConfigParser) parseIncludes(value, baseDir string, depth int) error 
 		if word == "" {
 			continue
 		}
-		path := expandSSHConfigPath(word, p.home)
+		path := expandSSHConfigPath(os.ExpandEnv(word), p.home)
 		if !filepath.IsAbs(path) {
 			if baseDir == "" {
 				continue
