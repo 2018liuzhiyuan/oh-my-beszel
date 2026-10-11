@@ -28,7 +28,7 @@ jobs:
       - name: Prepare isolated environment
         run: |
           mkdir -p "$HOME" internal/site/dist
-          printf '<!doctype html><html><body><div id="app"></div></body></html>\n' > internal/site/dist/index.html
+          cp internal/site/index.html internal/site/dist/index.html
           apt-get update
           apt-get install -y --no-install-recommends python3 util-linux procps
           useradd --uid 10001 --create-home --home-dir /tmp/beszel-ci-user ci-test
